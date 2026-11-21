@@ -487,6 +487,11 @@
   window.SchoolHubClassroom={
     render,wizardHTML,wizardOpen,askClose,onAction,onInput,onChange,
     metrics:classId=>core.summaryStats(assessmentsFor(classId),pupilsFor(classId)),
+    studentAssessments:studentId=>{
+      const pupil=fixture.students.find(p=>p.id===studentId);
+      if(!pupil)return [];
+      return assessmentsFor(pupil.classId).map(a=>({...a,result:core.resultFor(a,studentId)}));
+    },
     flags,assessmentsFor
   };
 })();
