@@ -133,3 +133,25 @@ test('index loads all modules before app and class UI has CSS',()=>{
   assert.ok(html.indexOf('classroom.js')<html.indexOf('app.js'));
   assert.ok(html.includes('classroom.css'));
 });
+
+
+test('a whole-assessment statistics exclusion needs a reason, acknowledgement and EXCLUDE',()=>{
+  const browser=createBrowserHarness(),classroom=browser.SchoolHubClassroom;
+  const ctx={store:{selectedClass:'12MA1',classTab:'register'},render:()=>{},notify:()=>{}};
+  classroom.onAction('class-new-assessment',{dataset:{}},ctx);
+  classroom.onInput({target:{dataset:{assessField:'title'},value:'Demonstration diagnostic'}});
+  for(let i=0;i<3;i++)classroom.onAction('assess-next',{dataset:{}},ctx);
+  assert.match(classroom.wizardHTML(),/Review before saving/);
+  classroom.onChange({target:{id:'assessment-summary-include',checked:false}},ctx);
+  classroom.onInput({target:{id:'assessment-summary-reason',dataset:{},value:'Diagnostic, do not aggregate'}});
+  classroom.onChange({target:{id:'assessment-exclusion-ack',checked:true}},ctx);
+  classroom.onAction('assess-save',{dataset:{}},ctx);
+  assert.ok(classroom.wizardOpen(),'should not save without EXCLUDE phrase');
+  assert.match(classroom.wizardHTML(),/Type EXCLUDE/i);
+  classroom.onInput({target:{id:'assessment-exclusion-phrase',dataset:{},value:'EXCLUDE'}});
+  classroom.onAction('assess-save',{dataset:{}},ctx);
+  assert.equal(classroom.wizardOpen(),false);
+  const saved=classroom.assessmentsFor('12MA1').find(x=>x.title==='Demonstration diagnostic');
+  assert.equal(saved.includeInSummary,false);
+  assert.equal(saved.exclusionReason,'Diagnostic, do not aggregate');
+});
