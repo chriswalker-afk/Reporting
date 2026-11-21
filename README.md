@@ -31,6 +31,35 @@ All demo edits exist in page memory only and **reset on refresh**. No data is su
 - Responsive layouts, visible focus states, reduced-motion support
 - Escape to dismiss open panels; Enter to select a search result
 
+## V2 — Classes and assessment editing
+
+The **Classes** area is now an interactive assessment workspace, with:
+
+- **Flagged register:** visible EAL (English as an Additional Language), SEN (Special Educational Needs) and SOC (Student of Concern) demonstration badges; tap filters to narrow the class register. The badges are **read-only, fictional indicators** and do not expose pastoral or safeguarding case details.
+- **Assessment list:** see assessment mode, mark coverage, mean, draft/published status, excluded pupils, and whether each assessment contributes to school/class summaries.
+- **New, edit or reuse:** enter an assessment name, date, type and analysis mode; reuse the question/topic structure of an existing assessment without copying marks or exclusions; edit existing assessments without deleting history.
+- **Structure editor:** add or remove topics or individual questions, choose maximum marks, topic tags and AO1/AO2/AO3 labels.
+- **Marks matrix:** enter marks per pupil and per topic/question; blank is not the same as zero. Pupil records remain visible even when excluded.
+- **Confirmation safeguards:** exclusions require a written reason and a dedicated final review. Excluding an entire assessment from class summary statistics additionally requires typing \`EXCLUDE\`. Changes to exclusion settings must be acknowledged before Save.
+- **Live analysis:** class and pupil marks, mean by topic, mean by question, assessment objectives, and context-aware status of missing/incomplete/excluded records.
+
+### Intended safety and data model
+
+A real version must **not** let class teachers edit authoritative EAL, SEN or SOC flags: they should be synchronised from school-approved sources and shown only to appropriate staff. SOC is an administrative support indicator, not a safeguarding allegation or clinical conclusion. Safeguarding detail stays outside the classroom workspace, in an approved restricted system.
+
+Assessment editing would require server-authorised write permissions, revision history with author/time/before-after values, independent audit storage, rollback, and clear single-source-of-truth rules. The prototype's review confirmation is a UI safeguard **only**, not a security control.
+
+### Summary rules
+
+- Per-student scores are calculated only when *all* item marks have been provided and validated.
+- A valid **0** is included; a blank or incomplete markbook is not silently turned into zero.
+- Student-level exclusions remove a student's marks from that assessment's calculations, but never delete the pupil or the entered scores.
+- Excluding an assessment from summary statistics removes it from the *cross-assessment class mean* but keeps its data, standalone analysis and pupil-level figures available.
+- The illustrative class summary is the **unweighted mean of eligible per-assessment percentage means**, not a high-stakes attainment indicator. A real school should define reporting periods, weighting, grading and whether different assessment types contribute differently.
+- A wholly unmarked assessment remains Draft and does not enter summary calculations.
+
+The prototype remains fully client-side, with all marks and actions held in page memory and reset on refresh.
+
 ## Deliberately not included
 
 - Google Workspace sign-in
@@ -56,7 +85,11 @@ A real implementation would require school IT sponsorship, documented system own
 - `styles.css` — responsive UI / design system
 - `data.js` — explicitly fictional demo fixtures
 - `app.js` — client-side navigation, search, details, interactions
+- `assessment-core.js` — pure, tested assessment and exclusion calculations
+- `classroom.js` — flagged registers, markbooks, assessment wizard and analysis
+- `classroom.css` — compact class workflows
 - `tests/fixture.test.cjs` — basic fixture invariants
+- `tests/assessment.test.cjs` — assessment computation and exclusion guard tests
 - `.github/workflows/ci.yml` — dependency-free syntax and fixture checks
 - `.github/workflows/pages.yml` — GitHub Pages deployment workflow
 
