@@ -395,6 +395,7 @@
   function openClass(id){
     if(!group(id))return;
     store.selectedClass=id;store.classTab='register';store.search='';
+    Classroom.resetFilter();
     route('class');
   }
   function openDrawer(type,id){
