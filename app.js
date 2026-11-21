@@ -371,10 +371,13 @@
   function render(opts={}){
     const workspace=document.getElementById('workspace');
     const oldScroll=workspace?.scrollTop||0;
+    const wizardScroll=document.querySelector('.assessment-wizard-scroll')?.scrollTop||0;
     document.getElementById('app').innerHTML='<div class="app-frame">'+header()+'<div class="body-grid">'+sidebar()+
       '<main id="workspace" class="workspace" tabindex="-1"><div class="workspace-inner">'+body()+'</div></main></div>'+
       searchLayer()+roleMenu()+drawerHTML()+Classroom.wizardHTML()+'<div id="toast-slot" aria-live="polite"></div></div>';
     if(!opts.scrollTop) document.getElementById('workspace').scrollTop=oldScroll;
+    const wizardPane=document.querySelector('.assessment-wizard-scroll');
+    if(wizardPane && !opts.wizardTop)wizardPane.scrollTop=wizardScroll;
     if(opts.focusSearch)takeFocus();
     if(store.drawer){window.setTimeout(()=>document.querySelector('.drawer [autofocus], .drawer .icon-button')?.focus(),0);}
     renderToast();
