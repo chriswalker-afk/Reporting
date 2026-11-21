@@ -492,6 +492,7 @@
       if(!pupil)return [];
       return assessmentsFor(pupil.classId).map(a=>({...a,result:core.resultFor(a,studentId)}));
     },
+    resetFilter:()=>{state.filter='All';},
     flags,assessmentsFor
   };
 })();
