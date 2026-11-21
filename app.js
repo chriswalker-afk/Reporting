@@ -1,11 +1,12 @@
 (() => {
   'use strict';
   const fixture = window.SchoolHubData;
-  if (!fixture) { document.getElementById('app').textContent = 'Demo data unavailable.'; return; }
+  const Classroom = window.SchoolHubClassroom;
+  if (!fixture || !Classroom) { document.getElementById('app').textContent = 'Demo data unavailable.'; return; }
   const { students, classes, tasks, interventions, messages, notes, resources, events } = fixture;
   const store = {
     page: 'home', lastPage:'home', selectedStudent:'S002', selectedClass:'11MA1',
-    studentTab:'overview', classTab:'students', role:'faculty', drawer:null, searchOpen:false,
+    studentTab:'overview', classTab:'register', role:'faculty', drawer:null, searchOpen:false,
     search:'', searchIndex:0, mobileNav:false, roleMenu:false, taskFilter:'open', personFilter:'',
     flashTimer:0, toast:'', taskContext:null, actionForm:null
   };
@@ -155,30 +156,27 @@
     }).join('')+'</div>';
   }
   function renderClass(){
-    const c=group(store.selectedClass)||classes[0],pupils=classPupils(c.id),mean=avg(pupils.map(s=>s.score)),prior=avg(pupils.map(s=>s.previous)),review=pupils.filter(p=>p.status==='Review');
-    const tabs=[['students','Students'],['analysis','Assessment analysis'],['actions','Follow-ups']];
-    let body='';
-    if(store.classTab==='students'){
-      body='<section class="surface table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Latest result</th><th>Previous</th><th>Change</th><th>Support</th><th></th></tr></thead><tbody>'+
-        sorted(pupils).map(s=>{const diff=s.score-s.previous;return '<tr><td><span class="person">'+avatar(s.name,'sm')+'<span><strong>'+escape(s.name)+'</strong><small>'+escape(s.form)+'</small></span></span></td>'+
-        '<td><strong>'+s.score+'%</strong></td><td>'+s.previous+'%</td><td style="color:'+(diff>=0?'#32817e':'#ab6960')+'">'+(diff>=0?'+':'')+diff+'pp</td>'+
-        '<td><span class="tag '+(s.status==='Review'?'amber':'teal')+'">'+escape(s.status)+'</span></td><td><button class="table-action" data-action="open-student" data-id="'+s.id+'">View '+icon('chevron',13)+'</button></td></tr>';}).join('')+'</tbody></table></section>';
-    }else if(store.classTab==='analysis'){
-      body='<div class="split-grid">'+panel('Class assessment snapshot',
-        '<div class="metric-grid"><div class="metric"><div class="number">'+mean+'%</div><div class="caption">Latest class mean</div></div><div class="metric"><div class="number">'+prior+'%</div><div class="caption">Previous mean</div></div><div class="metric"><div class="number">'+(mean-prior>=0?'+':'')+(mean-prior)+'pp</div><div class="caption">Mean change</div></div></div>'+
-        '<p class="tiny-copy">Illustrative summary from a small fictional group. No real assessment data has been imported.</p>')+
-        panel('Students to review',
-        review.length?review.map(s=>'<div class="list-row"><span><strong class="row-title">'+escape(s.name)+'</strong><span class="row-sub">'+s.score+'% latest · '+s.previous+'% previous</span></span>'+button('Open profile','open-student','soft','data-id="'+s.id+'"')+'</div>').join(''):'<div class="empty-help">No current review flags.</div>')+
-        '</div>';
-    }else{
-      const groupTasks=assignedTasks().filter(t=>t.classId===c.id||pupils.some(s=>s.id===t.studentId));
-      body=panel('Class follow-up actions',groupTasks.map(t=>taskRow(t)).join('')||'<div class="empty-help">No actions for this class yet.</div>',
-       button(icon('plus',14)+' Add task','new-task','soft'));
-    }
-    return '<div class="inner-intro"><button class="back-btn" data-action="go-classes" aria-label="Back to classes">'+icon('back')+'</button><div><p class="eyebrow">Classes / '+escape(c.id)+'</p><h1 class="page-title">'+escape(c.name)+'</h1><p class="subtitle">'+escape(c.course)+' · '+escape(c.room)+' · '+pupils.length+' sample students</p></div></div>'+
-      '<div class="student-header surface"><div class="student-intro"><span class="avatar lg green">'+icon('users',25)+'</span><div><h2 class="student-title">'+escape(c.id)+'</h2><div class="student-sub"><span>'+mean+'% class mean</span><span class="inline-dot"></span><span>'+review.length+' academic follow-ups</span></div></div></div>'+
-      '<div class="student-actions">'+button(icon('plus',14)+' Follow-up task','new-task','primary')+'</div></div>'+
-      '<div class="tab-bar" role="tablist" aria-label="Class sections">'+tabs.map(([id,label])=>'<button class="tab-btn '+(store.classTab===id?'active':'')+'" role="tab" aria-selected="'+(store.classTab===id)+'" data-action="class-tab" data-id="'+id+'">'+label+'</button>').join('')+'</div>'+body;
+    const c=group(store.selectedClass)||classes[0],pupils=classPupils(c.id);
+    const summary=Classroom.metrics(c.id);
+    const tabs=[['register','Class register'],['assessments','Assessments'],['analysis','Analysis'],['actions','Follow-ups']];
+    const body=Classroom.render({
+      classId:c.id, tab:store.classTab, pupils, icon, avatar, button, escape,
+      panel, assignedTasks, taskRow
+    });
+    return '<div class="inner-intro"><button class="back-btn" data-action="go-classes" aria-label="Back to classes">'+
+      icon('back')+'</button><div><p class="eyebrow">Classes / '+escape(c.id)+'</p>'+
+      '<h1 class="page-title">'+escape(c.name)+'</h1><p class="subtitle">'+escape(c.course)+
+      ' · '+escape(c.room)+' · '+pupils.length+' sample students</p></div></div>'+
+      '<div class="surface student-header"><div class="student-intro"><span class="avatar lg green">'+icon('users',25)+
+      '</span><div><h2 class="student-title">'+escape(c.id)+'</h2><div class="student-sub"><span>'+
+      pupils.length+' students</span><span class="inline-dot"></span><span>'+
+      (summary.usedAssessments?summary.mean+'% summary mean':'No included assessments')+
+      '</span></div></div></div><div class="student-actions">'+
+      button(icon('plus',14)+' New assessment','class-new-assessment','primary')+'</div></div>'+
+      '<div class="tab-bar" role="tablist" aria-label="Class sections">'+
+      tabs.map(([id,label])=>'<button class="tab-btn '+(store.classTab===id?'active':'')+
+      '" role="tab" aria-selected="'+(store.classTab===id)+'" data-action="class-tab" data-id="'+id+'">'+
+      label+'</button>').join('')+'</div>'+body;
   }
   function renderStudent(){
     const s=student(store.selectedStudent)||students[0];
@@ -370,7 +368,7 @@
     const oldScroll=workspace?.scrollTop||0;
     document.getElementById('app').innerHTML='<div class="app-frame">'+header()+'<div class="body-grid">'+sidebar()+
       '<main id="workspace" class="workspace" tabindex="-1"><div class="workspace-inner">'+body()+'</div></main></div>'+
-      searchLayer()+roleMenu()+drawerHTML()+'<div id="toast-slot" aria-live="polite"></div></div>';
+      searchLayer()+roleMenu()+drawerHTML()+Classroom.wizardHTML()+'<div id="toast-slot" aria-live="polite"></div></div>';
     if(!opts.scrollTop) document.getElementById('workspace').scrollTop=oldScroll;
     if(opts.focusSearch)takeFocus();
     if(store.drawer){window.setTimeout(()=>document.querySelector('.drawer [autofocus], .drawer .icon-button')?.focus(),0);}
@@ -388,7 +386,7 @@
   }
   function openClass(id){
     if(!group(id))return;
-    store.selectedClass=id;store.classTab='students';store.search='';
+    store.selectedClass=id;store.classTab='register';store.search='';
     route('class');
   }
   function openDrawer(type,id){
@@ -396,6 +394,7 @@
     store.roleMenu=false;render();
   }
   function dispatch(action,el){
+    if(Classroom.onAction(action,el,{render,notify,store}))return;
     const id=el?.dataset.id || '';
     switch(action){
       case 'navigate':case 'home': route(action==='home'?'home':el.dataset.page);break;
@@ -438,6 +437,7 @@
     else if(store.roleMenu&&!event.target.closest('.role-menu')){store.roleMenu=false;render();}
   });
   document.addEventListener('input',event=>{
+    if(Classroom.onInput(event))return;
     if(event.target.id==='global-search'){
       const value=event.target.value;const selection=event.target.selectionStart;
       store.search=value;store.searchOpen=true;store.searchIndex=0;
@@ -466,7 +466,16 @@
       }
     }
   });
+  document.addEventListener('change',event=>{
+    Classroom.onChange(event,{render,notify});
+  });
   document.addEventListener('keydown',event=>{
+    if(Classroom.wizardOpen()){
+      if(event.key==='Escape'){
+        event.preventDefault();Classroom.askClose();render();
+      }
+      return;
+    }
     const active=document.activeElement;
     const typing=active&&(['INPUT','TEXTAREA','SELECT'].includes(active.tagName)||active.isContentEditable);
     if(event.key==='Escape'){
