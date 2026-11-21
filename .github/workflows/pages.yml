@@ -30,6 +30,11 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+          name: schoolhub-pages-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Allow artifact metadata to propagate
+        run: sleep 15
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: schoolhub-pages-${{ github.run_id }}-${{ github.run_attempt }}
