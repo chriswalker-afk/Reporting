@@ -376,11 +376,11 @@
     if(action==='assess-request-close'){requestClose();ctx.render();return true;}
     if(action==='assess-keep'){w.discard=false;ctx.render();return true;}
     if(action==='assess-discard'){closeWizard();ctx.render();return true;}
-    if(action==='assess-back'){w.step=Math.max(1,w.step-1);w.removeIndex=null;ctx.render();return true;}
+    if(action==='assess-back'){w.step=Math.max(1,w.step-1);w.removeIndex=null;ctx.render({wizardTop:true});return true;}
     if(action==='assess-next'){
       const error=validateStep(w.step,w.draft);
       if(error)w.error=error;else{w.step=Math.min(4,w.step+1);w.removeIndex=null;}
-      ctx.render();return true;
+      ctx.render({wizardTop:true});return true;
     }
     if(action==='assess-save'){
       const ok=save(()=>{ctx.store.classTab='assessments';});
