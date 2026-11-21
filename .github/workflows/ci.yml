@@ -18,6 +18,8 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check data.js
+          node --check assessment-core.js
+          node --check classroom.js
           node --check app.js
           node --check tests/fixture.test.cjs
       - name: Run fixture tests
