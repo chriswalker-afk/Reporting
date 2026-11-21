@@ -11,6 +11,7 @@
     S012:['EAL'],S014:['EAL','SOC']
   };
   const all=[];
+  let newIdSequence=0;
   const state={filter:'All',assessmentId:null,wizard:null,removeIndex:null,markFocus:null};
   const flags=s=>flagMap[s.id]||[];
   const pupilsFor=id=>fixture.students.filter(s=>s.classId===id);
@@ -98,7 +99,7 @@
       '<td><button class="table-action" data-action="open-student" data-id="'+p.id+'">Profile '+icon('chevron',13)+'</button></td></tr>').join('')+
       '</tbody></table></div></section>';
     h+='<div class="class-footer-note">'+icon('info',14)+' <span>Flags are read-only in this demonstration. Assessment data can be edited; a live version must enforce permissions and restrict SOC details.</span>'+
-      '<button class="btn-link" data-action="class-new-assessment">Add assessment '+icon('plus',13)+'</button></div>';
+      '<button class="btn-link" data-action="class-new-assessment">New assessment '+icon('plus',13)+'</button></div>';
     return h;
   }
 
@@ -171,7 +172,7 @@
   }
 
   function newDraft(classId) {
-    return {id:'A'+Date.now().toString(36),classId,title:'',date:'2026-11-22',type:'Topic test',mode:'topics',
+    return {id:'A'+(++newIdSequence)+'-'+Date.now().toString(36),classId,title:'',date:'2026-11-22',type:'Topic test',mode:'topics',
       items:initialItems('topics'),scores:{},excludedStudents:{},includeInSummary:true,exclusionReason:'',
       status:'Draft',version:0,history:[]};
   }
@@ -188,7 +189,7 @@
   }
   const wizardOpen=()=>!!state.wizard;
   function closeWizard() {state.wizard=null;state.removeIndex=null;}
-  function requestClose() {if(!state.wizard)return;state.wizard.discard=true;}
+  function requestClose() {if(!state.wizard)return;if(state.wizard.changed)state.wizard.discard=true;else closeWizard();}
   function wizardSteps() {
     const w=state.wizard;
     return '<div class="assessment-steps" aria-label="Assessment creation steps">'+
