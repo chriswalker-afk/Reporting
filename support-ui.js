@@ -6,6 +6,11 @@
  const state={modal:null,caseId:null,studentId:null,classId:null,form:null,filter:'actions',error:''};
  const clean=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const person=id=>data.students.find(x=>x.id===id);
+ const tutorDescription=student=>{
+   const record=data.tutorGroups.find(g=>g.id===student?.tutorGroupId);
+   const tutor=Access.profiles.find(p=>p.id===record?.tutorId);
+   return 'TG '+(student?.tutorGroupId||'—')+(tutor?' · Tutor: '+tutor.name:'');
+ };
  const group=id=>data.classes.find(x=>x.id===id);
  const fmt=date=>date&&/^\d{4}-\d\d-\d\d$/.test(date)?new Date(date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):date||'—';
  const stageLabel=c=>Support.states[c.state]||c.state;
@@ -25,7 +30,7 @@
  function caseRow(c,icon){
    const s=person(c.studentId),g=group(c.classId),hasAction=context().queue.some(x=>x.caseId===c.id);
    return '<button class="support-case-row" data-action="support-open" data-id="'+c.id+'">'+
-     '<span class="support-student"><strong>'+clean(s?.name||'Student')+'</strong><small>'+clean(g?.id||'')+' · '+clean(g?.faculty||'')+' · '+clean(s?.house||'')+' House</small></span>'+
+     '<span class="support-student"><strong>'+clean(s?.name||'Student')+'</strong><small>'+clean(g?.id||'')+' · '+clean(g?.faculty||'')+' · '+clean(s?.house||'')+' House · '+clean('TG '+(s?.tutorGroupId||'—'))+'</small></span>'+
      '<span class="support-wave wave-'+stageNumber(c)+'">'+stageLabel(c)+'</span>'+
      '<span class="support-case-topic">'+clean(c.wave1.focus)+'</span>'+
      '<span class="support-next">'+(hasAction?'<span class="support-needs-action">Action in your scope</span>':'<span class="support-muted">View shared record</span>')+'</span>'+
@@ -97,7 +102,7 @@
    let content='<div class="support-stage-track">'+[1,2,3].map(i=>
      '<div class="support-stage-item '+(c.wave>=i?'done':'')+'"><span>W'+i+'</span><strong>'+(['Classroom','Faculty / House','Leadership'][i-1])+'</strong></div>').join('')+'</div>'+
      '<div class="support-meta-grid">'+itemText('Subject / class',g?.faculty+' · '+g?.id)+itemText('House',s?.house)+
-     itemText('Form / tutor group',s?.form)+itemText('Last update',c.updatedAt)+'</div>'+
+     itemText('Tutor group',tutorDescription(s))+itemText('Last update',c.updatedAt)+'</div>'+
      heading('Wave 1 · Class teacher','<div class="support-detail-title">'+clean(c.wave1.focus)+'</div><p>'+clean(c.wave1.description)+'</p>'+
        strategyList(c.wave1.strategies)+itemText('Wave 1 review',fmt(c.wave1.reviewDate)))+
      (c.wave>=2?heading('Wave 2 · Faculty and House',
@@ -121,7 +126,7 @@
        '<strong>'+clean(event.actor)+'</strong><small>'+clean(event.date)+' · '+clean(event.roles)+'</small>'+
        '<p>'+clean(event.text)+'</p></div></div>').join('')+'</div>','support-history-section');
    return '<div class="support-case-hero"><div><p class="eyebrow">Shared case · '+clean(c.id)+'</p>'+
-     '<h2 id="support-modal-title">'+clean(s.name)+'</h2><p>'+clean(g.name)+' · '+clean(s.house)+' House</p></div>'+
+     '<h2 id="support-modal-title">'+clean(s.name)+'</h2><p>'+clean(g.name)+' · '+clean(s.house)+' House · '+clean(tutorDescription(s))+'</p></div>'+
      '<span class="support-wave wave-'+stageNumber(c)+'">'+clean(stageLabel(c))+'</span></div>'+
      '<div class="support-case-content">'+content+'</div>'+
      '<div class="support-modal-foot"><button class="btn btn-light" data-action="support-close">Close</button>'+
