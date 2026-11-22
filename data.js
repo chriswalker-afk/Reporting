@@ -29,6 +29,7 @@
   const bound = value => Math.max(45,Math.min(96,value));
   const students = roster.map(([id,name,year,classId,form,score,previous,status,cca],index)=>({
     id,name,year,classId,form,score,previous,status,cca,
+    tutorGroupId:form, // Canonical tutor-group assignment; form retained only for compatibility.
     house:['Cedar','Willow','Oak'][index%3],
     initials:name.split(' ').map(part=>part[0]).join(''),
     attendance: 93 + (index % 6),
@@ -47,6 +48,11 @@
     ccaAttendance:`${7+(index%3)}/9 sessions`,
     ptm:index%3===0?'Booked · 26 Nov':'Availability pending'
   }));
+  // Fictional tutor-group directory: students are independently tagged with a
+  // tutor group and the group can have an assigned tutor. House membership is separate.
+  const tutorGroupTutorIds={'11A':'sam','10B':'jordan','10A':'morgan','11C':'priya'};
+  const tutorGroups=[...new Set(students.map(s=>s.tutorGroupId))]
+    .sort().map(id=>({id,name:'Tutor group '+id,tutorId:tutorGroupTutorIds[id]||null}));
   const classes = [
     {id:'11MA1',name:'Year 11 Mathematics',shortName:'Y11 Maths',room:'T11',next:'08:00',course:'IGCSE Higher',faculty:'Mathematics',teacherId:'sam',color:'teal'},
     {id:'12MA1',name:'Year 12 Mathematics',shortName:'Y12 Maths',room:'T12',next:'10:20',course:'A level Mathematics',faculty:'Mathematics',teacherId:'sam',color:'blue'},
@@ -88,5 +94,5 @@
     {id:'e2',day:'02',month:'DEC',title:'CCA registration review',detail:'Activity sign-ups and attendance · Demo event',action:'cca'},
     {id:'e3',day:'09',month:'DEC',title:'Academic review checkpoint',detail:'Progress and intervention evaluation · Demo event',action:'review'}
   ];
-  window.SchoolHubData = {students,classes,tasks,interventions,messages,notes,resources,events};
+  window.SchoolHubData = {students,tutorGroups,classes,tasks,interventions,messages,notes,resources,events};
 })();

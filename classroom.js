@@ -15,7 +15,7 @@
   const canEdit=id=>!Access||Access.canEditAssessment(Access.viewer(),classById(id));
   const all=[];
   let newIdSequence=0;
-  const state={filter:'All',assessmentId:null,wizard:null,removeIndex:null,markFocus:null};
+  const state={filter:'All',tutorGroupFilter:'All',assessmentId:null,wizard:null,removeIndex:null,markFocus:null};
   const flags=s=>{
     const basic=[...(flagMap[s.id]||[])];
     const incident=SupportUI?.caseFor(s.id,s.classId);
@@ -24,6 +24,7 @@
     return basic;
   };
   const pupilsFor=id=>fixture.students.filter(s=>s.classId===id);
+  const tutorTag=p=>'<span class="tutor-group-tag" title="Tutor group '+safe(p.tutorGroupId)+'">TG '+safe(p.tutorGroupId)+'</span>';
   const assessmentsFor=id=>all.filter(a=>a.classId===id).sort((a,b)=>b.date.localeCompare(a.date));
   const displayMark=value=>value===null?'—':String(value);
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -90,19 +91,26 @@
 
   function renderRegister(ctx) {
     const {classId,icon,avatar}=ctx, allPupils=pupilsFor(classId), a=assessmentsFor(classId).slice(0,3);
-    const shown=allPupils.filter(p=>state.filter==='All'||flags(p).includes(state.filter));
+    const shown=allPupils.filter(p=>
+      (state.filter==='All'||flags(p).includes(state.filter))&&
+      (state.tutorGroupFilter==='All'||p.tutorGroupId===state.tutorGroupFilter));
+    const tutorChoices=[...new Set(allPupils.map(p=>p.tutorGroupId))].sort();
     const controls=['All','EAL','SEN','SOC','W1'].map(f=>'<button class="class-filter '+(state.filter===f?'active':'')+
       '" data-action="class-filter" data-id="'+f+'" aria-pressed="'+(state.filter===f)+'">'+f+'</button>').join('');
     let h=metricsRow(classId)+'<div class="class-subtoolbar"><div class="class-filters" role="group" aria-label="Filter pupils by flag">'+controls+'</div>'+
+      '<label class="tutor-filter" for="class-tutor-group-filter">Tutor group <select id="class-tutor-group-filter" aria-label="Filter class by tutor group">'+
+        '<option value="All">All groups</option>'+tutorChoices.map(id=>
+        '<option value="'+safe(id)+'" '+(state.tutorGroupFilter===id?'selected':'')+'>'+safe(id)+'</option>').join('')+
+        '</select></label>'+
       '<div class="class-legend"><span class="class-flag flag-eal">EAL</span> English additional language <span class="class-flag flag-sen">SEN</span> Additional needs <span class="class-flag flag-soc">SOC</span> Student of concern</div></div>';
     h+='<section class="surface register-surface"><div class="register-scroll"><table class="data-table class-register">'+
-      '<thead><tr><th class="sticky-name">Student <span class="small-muted">('+shown.length+')</span></th><th>Flags</th>'+
+      '<thead><tr><th class="sticky-name">Student <span class="small-muted">('+shown.length+')</span></th><th>Tutor group</th><th>Flags</th>'+
       a.map(x=>'<th><button class="assess-column-head" data-action="assess-open-analysis" data-id="'+safe(x.id)+'">'+safe(x.title)+
         (x.includeInSummary===false?' <span class="mini-excluded">Not in summary</span>':'')+'</button></th>').join('')+
       '<th>Next step</th></tr></thead><tbody>'+
       shown.map(p=>'<tr><td class="sticky-name"><button class="register-student" data-action="open-student" data-id="'+p.id+'">'+
-        avatar(p.name,'sm',p.year===10?'lavender':p.year===12?'green':'')+'<span><strong>'+safe(p.name)+'</strong><small>'+safe(p.form)+'</small></span></button></td>'+
-      '<td><div class="flag-group">'+flagHTML(p)+'</div></td>'+
+        avatar(p.name,'sm',p.year===10?'lavender':p.year===12?'green':'')+'<span><strong>'+safe(p.name)+'</strong><small>'+safe(p.id)+'</small></span></button></td>'+
+      '<td>'+tutorTag(p)+'</td><td><div class="flag-group">'+flagHTML(p)+'</div></td>'+
       a.map(x=>{const r=core.resultFor(x,p.id);return '<td><span class="mark-cell '+r.status+'" title="'+(r.status==='excluded'?'Explicitly excluded':r.status)+'">'+
         (r.status==='scored'?percent(r.percent):r.status==='excluded'?'Excluded':r.status==='unmarked'?'—':'Partial')+'</span></td>';}).join('')+
       '<td>'+(SupportUI?.caseFor(p.id,classId) &&
@@ -484,6 +492,7 @@
   function onChange(event,ctx){
     const el=event.target,w=state.wizard;
     if(el.id==='analysis-assessment'){state.assessmentId=el.value;ctx.render();return true;}
+    if(el.id==='class-tutor-group-filter'){state.tutorGroupFilter=el.value;ctx.render();return true;}
     if(!w||!canEdit(w.draft.classId))return false;
     if(el.id==='assessment-template'){w.templateId=el.value;ctx.render();return true;}
     if(el.id==='assessment-summary-include'){
@@ -515,7 +524,7 @@
       if(!pupil)return [];
       return assessmentsFor(pupil.classId).map(a=>({...a,result:core.resultFor(a,studentId)}));
     },
-    resetFilter:()=>{state.filter='All';},
+    resetFilter:()=>{state.filter='All';state.tutorGroupFilter='All';},
     flags,assessmentsFor
   };
 })();

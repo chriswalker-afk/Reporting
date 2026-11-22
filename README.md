@@ -93,6 +93,19 @@ Source decks supplied for this prototype:
 
 **Production requirements:** staff Google identity + group sync, class/faculty/house/tutor assignments from authoritative school sources, server-enforced row/field permissions, restricted protected data, approvals, durable audit trail with immutable events, access reviews, retention and escalation rules, backups, and a formal privacy/security assessment. The current public GitHub Pages prototype has *none* of those controls. All changes are session-only and disappear on reload. Notifications and email reminders are **illustrative**, not sent to staff.
 
+## V4 — First-class tutor-group tags (fictional prototype)
+
+Every student now has an explicit **tutorGroupId** (for example, **TG 11A**), separately from their year, subject class, House, and EAL/SEN/SOC indicators. A **tutorGroups** directory includes the tutor assigned to a group when present in the synthetic fixture; a group without a recorded tutor remains valid.
+
+- **Class registers:** a compact **Tutor group** column with neutral TG 11A tags plus an **All groups / 11A / 11B …** dropdown. Tutor-group and EAL/SEN/SOC/W1 flag filters can be combined.
+- **Student profiles:** tutor group is displayed with the student identity, beside year and House.
+- **People and Tutor group:** the same tag identifies each pupil regardless of their teaching class. Teacher access to a tutor group works across subject areas.
+- **Search:** typing a tutor-group code finds students in that group, subject to the active demo role’s scope.
+- **Interventions:** the shared case list and record include tutor-group membership; a named tutor appears when the demo directory has an assignment.
+- **Roles:** isTutorOf and canViewStudent use the explicit tutorGroupId, not the older form field. The older field is retained only as a compatibility alias in the demo fixture and should not be trusted for permission checks.
+
+Tutor-group assignments are read-only in this prototype. In a production system, the authoritative student–tutor-group and staff–group assignments should be synchronised from approved school records (for example, SIMS), subject to approved administrators and an audited change process. **A tutor-group tag is routine administrative metadata, not a concern or safeguarding flag.**
+
 ## Deliberately not included
 
 - Google Workspace sign-in
