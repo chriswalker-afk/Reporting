@@ -60,6 +60,39 @@ Assessment editing would require server-authorised write permissions, revision h
 
 The prototype remains fully client-side, with all marks and actions held in page memory and reset on refresh.
 
+## V3 — Additive roles and Wave 1–3 student support (fictional prototype)
+
+### Who sees which classes?
+
+| Active role | Class visibility | Edit assessment data | Intervention scope |
+| --- | --- | --- | --- |
+| Teacher | Own teaching classes + pupil profiles in their tutor group | **Only their teaching classes** | Wave 1 and relevant pupil support for their classes; Wave 2+ tutor-group summary if relevant |
+| Head of Faculty / Department | All classes in their faculty | Only if **also** the class teacher in this demo | All faculty cases; approves Wave 2, defines faculty response and requests House actions |
+| Housemaster / Housemistress | All classes | No unless **also** teacher of that class | Case details for their own House; action requests and optional Wave 3 referral |
+| School Leadership | All classes | No unless **also** teacher of that class | All cases; acts on Wave 3 referrals |
+
+A staff member may have **multiple roles at once**, with the union of their relevant permissions. The demo staff menu switches among fictional people and allows additive role toggles to exercise the UI. Changing a role does not create real permission or provide authentication.
+
+**Student of Concern** is not the same as **Wave 1**. Wave 1 is a class-teacher support plan and gets a **W1** badge; **SOC** appears when the same case reaches Wave 2 or 3. The full intervention history is restricted to relevant staff even when a Housemaster can browse another House's class.
+
+### The support pathway
+
+1. **Wave 1: class teacher** starts an intervention from a class register or profile, defines the concern, selects suggested strategies, writes the individual action plan and sets a review date. Suggestions reflect the supplied mathematics intervention examples: scaffolded practice, differentiation, vocabulary support, visual resources, motivation and study skills. A teacher can choose **Requires Wave 2** during this step; the referral asks for a reason and intentional confirmation.
+2. **Request Wave 2: teacher** documents why Wave 1 is insufficient, including a potential 3-related-SIMS-behaviour-points trigger or a more serious concern. This is a deliberate request—not automated scoring or a replacement for recording behaviour points in SIMS.
+3. **Wave 2: Head of Faculty** sees the action in their queue, records a faculty support plan and review date, and gives the relevant Housemaster/mistress a **specific requested action**. The shared case captures the faculty plan and the House response.
+4. **Housemaster/mistress** sees the request for a student in their House, records the action taken and can mark the action complete.
+5. **Wave 3: HoF or HsM** can request School Leadership involvement if Wave 2 is unsuccessful or a wider concern emerges. A written reason and deliberate confirmation are required.
+6. **School Leadership** receives the referral and records the Wave 3 plan and review date.
+7. **All relevant staff** can see the single chronological record, with separate wave plans, outcomes, owner actions and review history.
+
+This is **not safeguarding case management**. It must not store confidential safeguarding information or trigger public disclosures. Emergency/safeguarding concerns must continue through the school's approved specialist processes.
+
+Source decks supplied for this prototype:
+- [Students of concern and intervention in Maths](https://docs.google.com/presentation/d/1xPzMFP9NAmG4WC8wViI_vS2aN1sCmDt4_bZgFFwmEVg/edit)
+- [In-class interventions in Maths](https://docs.google.com/presentation/d/1800naLpid4EwwP9poxreig-_-U8ANMtalRM29cDtUFo/edit)
+
+**Production requirements:** staff Google identity + group sync, class/faculty/house/tutor assignments from authoritative school sources, server-enforced row/field permissions, restricted protected data, approvals, durable audit trail with immutable events, access reviews, retention and escalation rules, backups, and a formal privacy/security assessment. The current public GitHub Pages prototype has *none* of those controls. All changes are session-only and disappear on reload. Notifications and email reminders are **illustrative**, not sent to staff.
+
 ## Deliberately not included
 
 - Google Workspace sign-in
@@ -88,6 +121,10 @@ A real implementation would require school IT sponsorship, documented system own
 - `assessment-core.js` — pure, tested assessment and exclusion calculations
 - `classroom.js` — flagged registers, markbooks, assessment wizard and analysis
 - `classroom.css` — compact class workflows
+- `access.js` — role-based access simulation with additive roles and scopes
+- `support-core.js` — transition-validated fictional intervention cases
+- `support-ui.js` / `support.css` — shared support queue, hand-offs, and timeline
+- `tests/access-support.test.cjs` — additive role and workflow transition tests
 - `tests/fixture.test.cjs` — basic fixture invariants
 - `tests/assessment.test.cjs` — assessment computation and exclusion guard tests
 - `.github/workflows/ci.yml` — dependency-free syntax and fixture checks

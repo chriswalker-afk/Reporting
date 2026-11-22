@@ -20,6 +20,9 @@ jobs:
           node --check data.js
           node --check assessment-core.js
           node --check classroom.js
+          node --check access.js
+          node --check support-core.js
+          node --check support-ui.js
           node --check app.js
           node --check tests/fixture.test.cjs
       - name: Run fixture tests

@@ -4,16 +4,25 @@
   'use strict';
   const fixture=window.SchoolHubData, core=window.SchoolHubAssessmentCore;
   if (!fixture||!core) return;
-  const roleName='Sam Taylor';
+  const roleName=()=>window.SchoolHubAccess?.viewer()?.name||'Demo teacher';
   const flagMap={
-    S001:['EAL'],S002:['SOC'],S003:['SEN'],S004:['SEN','SOC'],
-    S005:['EAL'],S007:['EAL'],S008:['SOC'],S011:['SEN'],
-    S012:['EAL'],S014:['EAL','SOC']
+    S001:['EAL'],S003:['SEN'],S004:['SEN'],S005:['EAL'],
+    S007:['EAL'],S011:['SEN'],S012:['EAL'],S014:['EAL'],S018:['EAL']
   };
+  const Access=window.SchoolHubAccess, Support=window.SchoolHubSupport,
+    SupportUI=window.SchoolHubSupportUI;
+  const classById=id=>fixture.classes.find(c=>c.id===id);
+  const canEdit=id=>!Access||Access.canEditAssessment(Access.viewer(),classById(id));
   const all=[];
   let newIdSequence=0;
   const state={filter:'All',assessmentId:null,wizard:null,removeIndex:null,markFocus:null};
-  const flags=s=>flagMap[s.id]||[];
+  const flags=s=>{
+    const basic=[...(flagMap[s.id]||[])];
+    const incident=SupportUI?.caseFor(s.id,s.classId);
+    if(incident&&(!Access||Access.canViewCase(Access.viewer(),incident,s,classById(s.classId))))
+      basic.push(...SupportUI.caseFlags(s.id,s.classId));
+    return basic;
+  };
   const pupilsFor=id=>fixture.students.filter(s=>s.classId===id);
   const assessmentsFor=id=>all.filter(a=>a.classId===id).sort((a,b)=>b.date.localeCompare(a.date));
   const displayMark=value=>value===null?'—':String(value);
@@ -21,7 +30,7 @@
   const labelFor=mode=>mode==='questions'?'Question':'Topic';
   const percent=p=>p===null?'—':p+'%';
   const flagHTML=(p)=>flags(p).map(f=>'<span class="class-flag flag-'+f.toLowerCase()+'" title="'+
-    (f==='EAL'?'English as an Additional Language':f==='SEN'?'Special Educational Needs':'Student of Concern (restricted details)')+
+    (f==='EAL'?'English as an Additional Language':f==='SEN'?'Special Educational Needs':f==='SOC'?'Student of concern: faculty and house stage':f==='W1'?'Wave 1 classroom intervention':f==='W2'?'Wave 2 faculty and house intervention':'Wave 3 leadership intervention')+
     '" aria-label="'+(f==='SOC'?'Student of Concern':f)+'">'+f+'</span>').join('');
   const dateHuman=date=>{if(!date)return '';const d=new Date(date+'T12:00:00');return Number.isNaN(d.getTime())?date:
     d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});};
@@ -82,7 +91,7 @@
   function renderRegister(ctx) {
     const {classId,icon,avatar}=ctx, allPupils=pupilsFor(classId), a=assessmentsFor(classId).slice(0,3);
     const shown=allPupils.filter(p=>state.filter==='All'||flags(p).includes(state.filter));
-    const controls=['All','EAL','SEN','SOC'].map(f=>'<button class="class-filter '+(state.filter===f?'active':'')+
+    const controls=['All','EAL','SEN','SOC','W1'].map(f=>'<button class="class-filter '+(state.filter===f?'active':'')+
       '" data-action="class-filter" data-id="'+f+'" aria-pressed="'+(state.filter===f)+'">'+f+'</button>').join('');
     let h=metricsRow(classId)+'<div class="class-subtoolbar"><div class="class-filters" role="group" aria-label="Filter pupils by flag">'+controls+'</div>'+
       '<div class="class-legend"><span class="class-flag flag-eal">EAL</span> English additional language <span class="class-flag flag-sen">SEN</span> Additional needs <span class="class-flag flag-soc">SOC</span> Student of concern</div></div>';
@@ -96,7 +105,12 @@
       '<td><div class="flag-group">'+flagHTML(p)+'</div></td>'+
       a.map(x=>{const r=core.resultFor(x,p.id);return '<td><span class="mark-cell '+r.status+'" title="'+(r.status==='excluded'?'Explicitly excluded':r.status)+'">'+
         (r.status==='scored'?percent(r.percent):r.status==='excluded'?'Excluded':r.status==='unmarked'?'—':'Partial')+'</span></td>';}).join('')+
-      '<td><button class="table-action" data-action="open-student" data-id="'+p.id+'">Profile '+icon('chevron',13)+'</button></td></tr>').join('')+
+      '<td>'+(SupportUI?.caseFor(p.id,classId) &&
+    (!Access||Access.canViewCase(Access.viewer(),SupportUI.caseFor(p.id,classId),p,classById(classId))) ?
+    '<button class="table-action" data-action="support-open" data-id="'+SupportUI.caseFor(p.id,classId).id+'">View intervention '+icon('chevron',13)+'</button>' :
+    Access?.canStartWave1(Access.viewer(),classById(classId)) && !SupportUI?.caseFor(p.id,classId)?
+    '<button class="table-action" data-action="support-start" data-id="'+p.id+'" data-class-id="'+classId+'">Start Wave 1 '+icon('plus',13)+'</button>':
+    '<button class="table-action" data-action="open-student" data-id="'+p.id+'">Profile '+icon('chevron',13)+'</button>')+'</td></tr>').join('')+
       '</tbody></table></div></section>';
     h+='<div class="class-footer-note">'+icon('info',14)+' <span>Flags are read-only in this demonstration. Assessment data can be edited; a live version must enforce permissions and restrict SOC details.</span>'+
       '<button class="btn-link" data-action="class-new-assessment">New assessment '+icon('plus',13)+'</button></div>';
@@ -107,7 +121,8 @@
     const {classId,icon}=ctx,pupils=pupilsFor(classId),a=assessmentsFor(classId);
     let h=metricsRow(classId)+'<section class="surface assessment-list"><div class="list-row assessment-list-head">'+
       '<div><div class="row-title">Assessments for '+safe(classId)+'</div><div class="row-sub">Create by topic or question · reopen to edit marks and settings</div></div>'+
-      '<button class="btn btn-primary" data-action="class-new-assessment">'+icon('plus',14)+' New assessment</button></div>';
+      (canEdit(classId)?'<button class="btn btn-primary" data-action="class-new-assessment">'+icon('plus',14)+' New assessment</button>':
+      '<span class="tag slate">View only · not class teacher</span>')+'</div>';
     for(const x of a) {
       const stats=core.assessmentStats(x,pupils);
       h+='<div class="assessment-row"><div class="assessment-row-main"><div class="assessment-row-title">'+safe(x.title)+'</div>'+
@@ -119,8 +134,9 @@
         (stats.incomplete?'<span class="tag amber">'+stats.incomplete+' incomplete</span>':'')+'</div></div>'+
         '<div class="assessment-row-stat"><strong>'+percent(stats.mean)+'</strong><small>'+stats.scored+'/'+pupils.length+' marked</small></div>'+
         '<div class="assessment-row-actions"><button class="btn btn-light btn-sm" data-action="assess-open-analysis" data-id="'+safe(x.id)+'">Analyse</button>'+
+        (canEdit(classId)?
         '<button class="btn btn-soft btn-sm" data-action="assess-edit" data-id="'+safe(x.id)+'">Edit</button>'+
-        '<button class="btn btn-light btn-sm" data-action="assess-reuse" data-id="'+safe(x.id)+'" title="Reuse structure only; no marks are copied">Reuse</button></div></div>';
+        '<button class="btn btn-light btn-sm" data-action="assess-reuse" data-id="'+safe(x.id)+'" title="Reuse structure only; no marks are copied">Reuse</button>':'')+'</div></div>';
     }
     h+='</section><div class="class-footer-note">'+icon('info',14)+' <span>Exclusions never delete a record. Blank marks are not zero and incomplete markbooks do not contribute to the mean.</span></div>';
     return h;
@@ -133,7 +149,7 @@
       byTopic=core.topicStats(selected,pupils),byItem=core.itemStats(selected,pupils);
     let h='<div class="class-analysis-select"><label for="analysis-assessment">Assessment</label>'+
       '<select id="analysis-assessment">'+a.map(x=>'<option value="'+safe(x.id)+'" '+(x.id===selected.id?'selected':'')+'>'+safe(x.title)+'</option>').join('')+'</select>'+
-      '<button class="btn btn-soft" data-action="assess-edit" data-id="'+safe(selected.id)+'">'+icon('file',14)+' Edit marks & settings</button></div>';
+      (canEdit(classId)?'<button class="btn btn-soft" data-action="assess-edit" data-id="'+safe(selected.id)+'">'+icon('file',14)+' Edit marks & settings</button>':'')+'</div>';
     h+='<div class="class-analysis-stats"><div class="metric"><div class="number">'+percent(stats.mean)+'</div><div class="caption">Mean among marked students</div></div>'+
       '<div class="metric"><div class="number">'+stats.scored+'</div><div class="caption">Complete markbooks</div></div>'+
       '<div class="metric"><div class="number">'+stats.excluded+'</div><div class="caption">Excluded students</div></div>'+
@@ -149,7 +165,7 @@
       '<div class="detail-row"><span class="label">Unmarked / incomplete</span><span class="value">'+(stats.unmarked+stats.incomplete)+'</span></div>'+
       '<div class="detail-row"><span class="label">Summary inclusion</span><span class="value">'+(selected.includeInSummary?'Yes':'No')+'</span></div></div></section></div>';
     h+='<section class="surface class-question-report"><div class="surface-top"><h2 class="section-title">'+(selected.mode==='questions'?'Question-level analysis':'Topic-level analysis')+'</h2>'+
-      '<button class="btn btn-light btn-sm" data-action="assess-edit" data-id="'+safe(selected.id)+'">Edit assessment '+icon('arrow',13)+'</button></div>'+
+      (canEdit(classId)?'<button class="btn btn-light btn-sm" data-action="assess-edit" data-id="'+safe(selected.id)+'">Edit assessment '+icon('arrow',13)+'</button>':'')+'</div>'+
       '<div class="table-wrap"><table class="data-table"><thead><tr><th>'+labelFor(selected.mode)+'</th>'+(selected.mode==='questions'?'<th>Topic</th><th>Objective</th>':'')+
       '<th>Maximum</th><th>Mean mark</th><th>Mean %</th><th>Below half marks</th></tr></thead><tbody>'+
       byItem.map(x=>'<tr><td><strong>'+safe(x.label)+'</strong></td>'+(selected.mode==='questions'?'<td>'+safe(x.topic)+'</td><td>'+safe(x.ao)+'</td>':'')+
@@ -339,8 +355,10 @@
     return '';
   }
   function save(onSuccess) {
-    const w=state.wizard;if(!w)return;
-    const d=w.draft,pupils=pupilsFor(d.classId),errors=core.validate(d,pupils);
+    const w=state.wizard;if(!w)return false;
+    const d=w.draft;
+    if(!canEdit(d.classId)){w.error='You do not have assessment edit access for this class.';return false;}
+    const pupils=pupilsFor(d.classId),errors=core.validate(d,pupils);
     if(errors.length){w.error=errors[0];return false;}
     const exclusionChange=core.exclusionChanged(w.original,d);
     if(exclusionChange&&!w.ack){w.error='Confirm that you have reviewed the exclusion changes.';return false;}
@@ -351,7 +369,7 @@
     output.status=core.publishState(output,pupils);
     output.version=(w.original?.version||0)+1;
     const exclusionNote=exclusionChange?' Exclusion settings reviewed and acknowledged.':'';
-    output.history=[...(w.original?.history||[]),{when:'22 Nov 2026',who:roleName,
+    output.history=[...(w.original?.history||[]),{when:'22 Nov 2026',who:roleName(),
       change:(w.original?'Revised assessment':'Created assessment')+'.'+exclusionNote}];
     const index=all.findIndex(x=>x.id===output.id);
     if(index>=0)all.splice(index,1,output);else all.push(output);
@@ -362,6 +380,11 @@
   function onAction(action,el,ctx) {
     if(!action?.startsWith('assess-')&&action!=='class-filter'&&action!=='class-new-assessment')return false;
     const id=el?.dataset?.id||'',w=state.wizard;
+    if(action!=='class-filter'&&action!=='assess-open-analysis'&&
+       !['assess-request-close','assess-discard','assess-keep','assess-back'].includes(action)&&
+       !canEdit(w?.draft?.classId||state.wizard?.draft?.classId||ctx.store.selectedClass)){
+      ctx.notify('View only: assessment editing belongs to the class teacher.');return true;
+    }
     if(action==='class-filter'){state.filter=id;ctx.render();return true;}
     if(action==='class-new-assessment'){
       openWizard(ctx.store.selectedClass);ctx.render();return true;
@@ -424,7 +447,7 @@
 
   function onInput(event) {
     const el=event.target,w=state.wizard;
-    if(!w)return false;
+    if(!w||!canEdit(w.draft.classId))return false;
     const field=el.dataset.assessField;
     if(field) {
       if(field==='mode'||field==='type')return false;
@@ -461,7 +484,7 @@
   function onChange(event,ctx){
     const el=event.target,w=state.wizard;
     if(el.id==='analysis-assessment'){state.assessmentId=el.value;ctx.render();return true;}
-    if(!w)return false;
+    if(!w||!canEdit(w.draft.classId))return false;
     if(el.id==='assessment-template'){w.templateId=el.value;ctx.render();return true;}
     if(el.id==='assessment-summary-include'){
       w.draft.includeInSummary=el.checked;
