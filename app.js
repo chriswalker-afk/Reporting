@@ -175,7 +175,7 @@
   }
   function renderPeople(){
     const q=store.personFilter.trim().toLowerCase();
-    const results=sorted(students.filter(s=>!q||[s.name,s.id,s.classId,s.form,String(s.year)].some(v=>v.toLowerCase().includes(q))));
+    const results=sorted(accessibleStudents().filter(s=>!q||[s.name,s.id,s.classId,s.form,String(s.year)].some(v=>v.toLowerCase().includes(q))));
     return topIntro('People & classes','Find people','A single starting point for relevant student information.',
       button(icon('users',15)+' View classes','go-classes','light'))+
       '<div class="page-toolbar"><label class="filter-field">'+icon('search',16)+'<input id="person-filter" placeholder="Filter by name, year or class..." value="'+escape(store.personFilter)+'" aria-label="Filter students"></label><span class="small-muted">'+results.length+' fictional students</span></div>'+
@@ -186,15 +186,17 @@
       '</tbody></table>'+(results.length?'':'<div class="empty-state">No matching students.</div>')+'</section>';
   }
   function renderClasses(){
-    return '<div class="inner-intro"><button class="back-btn" data-action="navigate" data-page="people" aria-label="Back to people">'+icon('back')+'</button><div><p class="eyebrow">People / Classes</p><h1 class="page-title">My classes</h1></div></div>'+
-    '<div class="class-cards-large">'+classes.map(c=>{
+    return '<div class="inner-intro"><button class="back-btn" data-action="navigate" data-page="people" aria-label="Back to people">'+icon('back')+'</button><div><p class="eyebrow">People / Classes</p><h1 class="page-title">'+(Access.has(viewer(),'house')||Access.has(viewer(),'leadership')?'All classes':'Classes in my scope')+'</h1></div></div>'+
+    '<div class="class-cards-large">'+visibleClasses().map(c=>{
       const pupils=classPupils(c.id),mean=Classroom.metrics(c.id).mean;
       return '<button class="class-big" data-action="open-class" data-id="'+c.id+'"><div class="class-big-name">'+escape(c.id)+'</div><div class="class-big-detail">'+escape(c.name)+'</div><div class="class-big-detail">'+escape(c.course)+' · '+pupils.length+' sample students</div>'+
       '<div class="big-progress"><span style="width:'+(mean===null?0:mean)+'%"></span></div><div class="class-big-foot"><strong>'+(mean===null?'—':mean+'%')+' summary mean</strong><span>Open class '+icon('arrow',14)+'</span></div></button>';
     }).join('')+'</div>';
   }
   function renderClass(){
-    const c=group(store.selectedClass)||classes[0],pupils=classPupils(c.id);
+    const c=group(store.selectedClass)||classes[0];
+    if(!Access.canViewClass(viewer(),c))return '<div class="empty-help">This class is outside your current demo role scope.</div>';
+    const pupils=classPupils(c.id);
     const summary=Classroom.metrics(c.id);
     const tabs=[['register','Class register'],['assessments','Assessments'],['analysis','Analysis'],['actions','Follow-ups']];
     const body=Classroom.render({
@@ -210,7 +212,7 @@
       pupils.length+' students</span><span class="inline-dot"></span><span>'+
       (summary.usedAssessments?summary.mean+'% summary mean':'No included assessments')+
       '</span></div></div></div><div class="student-actions">'+
-      button(icon('plus',14)+' New assessment','class-new-assessment','primary')+'</div></div>'+
+      (Access.canEditAssessment(viewer(),c)?button(icon('plus',14)+' New assessment','class-new-assessment','primary'):'<span class="tag slate">View-only assessment access</span>')+'</div></div>'+
       '<div class="tab-bar" role="tablist" aria-label="Class sections">'+
       tabs.map(([id,label])=>'<button class="tab-btn '+(store.classTab===id?'active':'')+
       '" role="tab" aria-selected="'+(store.classTab===id)+'" data-action="class-tab" data-id="'+id+'">'+
@@ -218,6 +220,8 @@
   }
   function renderStudent(){
     const s=student(store.selectedStudent)||students[0];
+    if(!Access.canViewStudent(viewer(),s,classes))return '<div class="empty-help">This student is outside your current demo role scope.</div>';
+    const subjectName=group(s.classId)?.faculty||'Subject';
     const tabs=[['overview','Overview'],['academic','Academic'],['support','Support & actions'],['activities','Activities & meetings']];
     let body='';
     const academicAssessments=Classroom.studentAssessments(s.id);
@@ -226,8 +230,8 @@
     const priorScore=marked.length>1?marked[1].result.percent:s.previous;
     const delta=Math.round((currentScore-priorScore)*10)/10;
     const insight=(delta>=0?'+':'')+delta+' percentage points vs previous';
-    const perf='<div class="metric-grid"><div class="metric"><div class="number">'+currentScore+'%</div><div class="caption">Latest Maths assessment</div></div><div class="metric"><div class="number">'+s.grade+'</div><div class="caption">Indicative grade</div></div><div class="metric"><div class="number">'+s.attendance+'%</div><div class="caption">Demo attendance</div></div></div>'+
-      '<div class="subject-list">'+s.subjects.map(a=>{const value=a.name==='Mathematics'?currentScore:a.latest;return '<div class="subject-row"><strong>'+escape(a.name)+'</strong><div class="track" aria-label="'+escape(a.name)+': '+value+' percent"><span style="width:'+value+'%"></span></div><span class="score">'+value+'%</span></div>';}).join('')+'</div>';
+    const perf='<div class="metric-grid"><div class="metric"><div class="number">'+currentScore+'%</div><div class="caption">Latest '+escape(subjectName)+' assessment</div></div><div class="metric"><div class="number">'+s.grade+'</div><div class="caption">Indicative grade</div></div><div class="metric"><div class="number">'+s.attendance+'%</div><div class="caption">Demo attendance</div></div></div>'+
+      '<div class="subject-list">'+s.subjects.map(a=>{const value=a.name===subjectName?currentScore:a.latest;return '<div class="subject-row"><strong>'+escape(a.name)+'</strong><div class="track" aria-label="'+escape(a.name)+': '+value+' percent"><span style="width:'+value+'%"></span></div><span class="score">'+value+'%</span></div>';}).join('')+'</div>';
     const supportItems=(interventions[s.id]||[]);
     const supportHTML=supportItems.map(a=>'<div class="intervention"><div class="head"><strong>'+escape(a.title)+'</strong><span class="tag teal">'+escape(a.status)+'</span></div><p>'+escape(a.description)+'</p><small>'+escape(a.owner)+' · '+escape(a.date)+'</small></div>').join('')||'<div class="empty-help">No academic interventions are recorded in this fictional profile.</div>';
     const notesHTML=(notes[s.id]||[]).map(n=>'<div class="note-line"><div class="note-heading"><h4>'+escape(n.title)+'</h4><small>'+escape(n.date)+'</small></div><p>'+escape(n.body)+'</p><small>'+escape(n.author)+' · '+escape(n.audience)+'</small></div>').join('')||'<div class="empty-help">No academic notes in this demo profile.</div>';
@@ -240,9 +244,9 @@
       body='<div class="student-grid"><div class="stack">'+panel('Academic snapshot',perf,
         button('View assessments '+icon('arrow',13),'academic-tab','light','style="border:0"'))+
         panel('Academic notes',notesHTML,button(icon('plus',13)+' Add note','new-note','soft'))+'</div>'+
-        '<div class="stack">'+panel('Support & follow-up',supportHTML+
-        '<div class="subtle-rule"></div><div class="detail-row"><span class="label">Outstanding actions</span><span class="value">'+actions.length+'</span></div>',
-        button(icon('plus',13)+' Add','new-intervention','soft'))+
+        '<div class="stack">'+panel('Wave intervention & shared record',SupportUI.studentPanel(s.id,s.classId,icon))+
+        panel('Other academic follow-ups',supportHTML+
+        '<div class="subtle-rule"></div><div class="detail-row"><span class="label">Outstanding actions</span><span class="value">'+actions.length+'</span></div>')+
         panel('Staff conversation',threadUI)+'</div></div>';
     }else if(store.studentTab==='academic'){
       body='<div class="student-grid"><div class="stack">'+panel('Academic profile',perf)+
@@ -250,7 +254,8 @@
         '</div><div class="stack">'+panel('Interpretation','<p class="tiny-copy">Latest mathematics result: <strong>'+currentScore+'%</strong>. Change: '+insight+'. Academic patterns should be reviewed by a teacher, not interpreted as automated risk decisions.</p>')+
         panel('Notes',notesHTML,button(icon('plus',13)+' Add note','new-note','soft'))+'</div></div>';
     }else if(store.studentTab==='support'){
-      body='<div class="student-grid"><div class="stack">'+panel('Academic interventions',supportHTML,button(icon('plus',13)+' Add intervention','new-intervention','soft'))+
+      body='<div class="student-grid"><div class="stack">'+panel('Wave 1 / 2 / 3 intervention',SupportUI.studentPanel(s.id,s.classId,icon))+
+        panel('Other academic interventions',supportHTML)+
         panel('Assigned follow-ups',actions.length?actions.map(t=>taskRow(t)).join(''):'<div class="empty-help">No outstanding follow-up tasks.</div>',
         button(icon('plus',13)+' Add task','new-task','soft'))+'</div><div class="stack">'+panel('Staff discussion',threadUI)+
         panel('Academic notes',notesHTML,button(icon('plus',13)+' Add note','new-note','soft'))+'</div></div>';
@@ -261,7 +266,7 @@
     }
     return '<div class="inner-intro"><button class="back-btn" data-action="student-back" aria-label="Back to previous view">'+icon('back')+'</button><div><p class="eyebrow">People / Student profile</p><h1 class="page-title">Student profile</h1></div></div>'+
       '<section class="surface student-header"><div class="student-intro">'+avatar(s.name,'lg',s.year===10?'lavender':s.year===12?'green':'')+
-      '<div><h2 class="student-title">'+escape(s.name)+'</h2><div class="student-sub"><span>Year '+s.year+'</span><span class="inline-dot"></span><span>Form '+escape(s.form)+'</span><span class="inline-dot"></span><span>'+escape(s.classId)+'</span><span class="inline-dot"></span><span>'+escape(s.id)+'</span></div></div></div>'+
+      '<div><h2 class="student-title">'+escape(s.name)+'</h2><div class="student-sub"><span>Year '+s.year+'</span><span class="inline-dot"></span><span>Form '+escape(s.form)+'</span><span class="inline-dot"></span><span>'+escape(s.house)+' House</span><span class="inline-dot"></span><span>'+escape(s.classId)+'</span><span class="inline-dot"></span><span>'+escape(s.id)+'</span></div></div></div>'+
       '<div class="student-actions">'+button(icon('file',14)+' Add note','new-note','light')+
       button(icon('plus',14)+' Intervention','new-intervention','light')+button(icon('tasks',14)+' Assign task','new-task','primary')+'</div></section>'+
       '<div class="tab-bar" role="tablist" aria-label="Student profile sections">'+tabs.map(([id,label])=>
