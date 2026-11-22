@@ -36,7 +36,7 @@
  const today='22 Nov 2026';
  function createService(data,access){
   const cases=[];
-  let serial=0;
+  let caseSerial=0,eventSerial=0;
   const findStudent=id=>data.students.find(s=>s.id===id);
   const findClass=id=>data.classes.find(c=>c.id===id);
   const findCase=id=>cases.find(x=>x.id===id);
@@ -45,12 +45,12 @@
   const classCases=id=>cases.filter(c=>c.classId===id);
   const visible=(user)=>cases.filter(c=>access.canViewCase(user,c,findStudent(c.studentId),findClass(c.classId)));
   function history(c,actor,type,text){
-    c.history.push({id:'H'+(++serial),date:today,actor:actor.name,roles:actor.roles.join(' + '),
+    c.history.push({id:'H'+(++eventSerial),date:today,actor:actor.name,roles:actor.roles.join(' + '),
        type,text});
     c.updatedAt=today;
   }
   function make(seed){
-    const id='SOC-'+(++serial).toString().padStart(3,'0');
+    const id='SOC-'+(++caseSerial).toString().padStart(3,'0');
     const c={id,studentId:seed.studentId,classId:seed.classId,wave:seed.wave||1,
       state:seed.state||'wave1',openedAt:'18 Nov 2026',updatedAt:'18 Nov 2026',
       wave1:{focus:seed.focus||'',strategies:seed.strategies||[],description:seed.description||'',
