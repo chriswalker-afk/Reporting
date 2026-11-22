@@ -101,7 +101,7 @@
   }
   function sidebar() {
     return '<aside class="sidebar '+(store.mobileNav?'is-open':'')+'" aria-label="Primary navigation">'+
-      '<div class="nav-label">Workspace</div><nav class="nav-list">'+navItems.filter(([id])=>id!=='tutor'||(Access.has(viewer(),'teacher')&&viewer().tutorForms?.length)).map(([id,ic,label])=>
+      '<div class="nav-label">Workspace</div><nav class="nav-list">'+navItems.filter(([id])=>id!=='tutor'||(Access.has(viewer(),'teacher')&&viewer().tutorGroupIds?.length)).map(([id,ic,label])=>
       '<button class="nav-button '+(store.page===id||store.page==='student'&&id==='people'||store.page==='class'&&id==='people'?'active':'')+
       '" data-action="navigate" data-page="'+id+'" '+(store.page===id?'aria-current="page"':'')+'>'+icon(ic,17)+
       '<span>'+label+'</span>'+(id==='tasks'?'<span class="nav-count">'+pending().length+'</span>':'')+'</button>').join('')+'</nav>'+
@@ -123,7 +123,7 @@
         (v.roles.includes(role)?'checked':'')+' aria-label="'+escape(Access.labels[role])+'">'+
         '<span>'+escape(Access.labels[role])+'</span></label>').join('')+
       '<div class="role-scope">Teaching: '+escape(v.taughtClasses.join(', ')||'None')+
-      ' · Tutor: '+escape(v.tutorForms.join(', ')||'None')+
+      ' · Tutor: '+escape(v.tutorGroupIds.join(', ')||'None')+
       ' · Faculty: '+escape(v.faculties.join(', '))+
       ' · House: '+escape(v.houses.join(', '))+
       '<br><strong>Role changes are a demo preview, not authentication.</strong></div></div>';
@@ -175,24 +175,24 @@
   }
   function renderPeople(){
     const q=store.personFilter.trim().toLowerCase();
-    const results=sorted(accessibleStudents().filter(s=>!q||[s.name,s.id,s.classId,s.form,String(s.year)].some(v=>v.toLowerCase().includes(q))));
+    const results=sorted(accessibleStudents().filter(s=>!q||[s.name,s.id,s.classId,s.tutorGroupId,String(s.year)].some(v=>v.toLowerCase().includes(q))));
     return topIntro('People & classes','Find people','A single starting point for relevant student information.',
       button(icon('users',15)+' View classes','go-classes','light'))+
-      '<div class="page-toolbar"><label class="filter-field">'+icon('search',16)+'<input id="person-filter" placeholder="Filter by name, year or class..." value="'+escape(store.personFilter)+'" aria-label="Filter students"></label><span class="small-muted">'+results.length+' fictional students</span></div>'+
-      '<section class="surface table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Year / Form</th><th>Class</th><th>Latest assessment</th><th>Academic follow-up</th><th></th></tr></thead><tbody>'+
+      '<div class="page-toolbar"><label class="filter-field">'+icon('search',16)+'<input id="person-filter" placeholder="Filter by name, tutor group or class..." value="'+escape(store.personFilter)+'" aria-label="Filter students"></label><span class="small-muted">'+results.length+' fictional students</span></div>'+
+      '<section class="surface table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Year / tutor group</th><th>Class</th><th>Latest assessment</th><th>Academic follow-up</th><th></th></tr></thead><tbody>'+
       results.map(s=>'<tr><td><span class="person">'+avatar(s.name,'sm',s.year===10?'lavender':s.year===12?'green':'')+'<span><strong>'+escape(s.name)+'</strong><small>'+escape(s.id)+'</small></span></span></td>'+
-      '<td>Year '+s.year+' · '+escape(s.form)+'</td><td>'+escape(s.classId)+'</td><td><strong>'+s.score+'%</strong></td><td><span class="tag '+(s.status==='Review'?'amber':'teal')+'">'+escape(s.status)+'</span></td>'+
+      '<td>Year '+s.year+' · '+escape(s.tutorGroupId)+'</td><td>'+escape(s.classId)+'</td><td><strong>'+s.score+'%</strong></td><td><span class="tag '+(s.status==='Review'?'amber':'teal')+'">'+escape(s.status)+'</span></td>'+
       '<td><button class="table-action" data-action="open-student" data-id="'+s.id+'">Open profile '+icon('chevron',13)+'</button></td></tr>').join('')+
       '</tbody></table>'+(results.length?'':'<div class="empty-state">No matching students.</div>')+'</section>';
   }
   function renderTutor(){
-    const v=viewer(),members=sorted(students.filter(s=>Access.has(v,'teacher')&&v.tutorForms.includes(s.form)&&Access.canViewStudent(v,s,classes)));
-    return topIntro('Your pastoral group','Tutor group',members.length+' fictional students in '+v.tutorForms.join(', '),
+    const v=viewer(),members=sorted(students.filter(s=>Access.isTutorOf(v,s)&&Access.canViewStudent(v,s,classes)));
+    return topIntro('Your pastoral group','Tutor group',members.length+' fictional students in '+v.tutorGroupIds.join(', '),
       button(icon('users',14)+' Find student','navigate','light','data-page="people"'))+
       '<section class="surface table-wrap"><table class="data-table"><thead>'+
-      '<tr><th>Student</th><th>Form</th><th>Subject class</th><th>Flags in your scope</th><th></th></tr></thead><tbody>'+
+      '<tr><th>Student</th><th>Tutor group</th><th>Subject class</th><th>Flags in your scope</th><th></th></tr></thead><tbody>'+
       members.map(s=>'<tr><td><span class="person">'+avatar(s.name,'sm')+'<span><strong>'+escape(s.name)+
-        '</strong><small>'+escape(s.id)+'</small></span></span></td><td>'+escape(s.form)+'</td>'+
+        '</strong><small>'+escape(s.id)+'</small></span></span></td><td>'+escape(s.tutorGroupId)+'</td>'+
         '<td>'+escape(s.classId)+'</td><td><span class="flag-group">'+
         Classroom.flags(s).map(f=>'<span class="class-flag flag-'+f.toLowerCase()+'">'+escape(f)+'</span>').join('')+
         '</span></td><td><button class="table-action" data-action="open-student" data-id="'+s.id+'">Profile '+
@@ -282,7 +282,7 @@
     }
     return '<div class="inner-intro"><button class="back-btn" data-action="student-back" aria-label="Back to previous view">'+icon('back')+'</button><div><p class="eyebrow">People / Student profile</p><h1 class="page-title">Student profile</h1></div></div>'+
       '<section class="surface student-header"><div class="student-intro">'+avatar(s.name,'lg',s.year===10?'lavender':s.year===12?'green':'')+
-      '<div><h2 class="student-title">'+escape(s.name)+'</h2><div class="student-sub"><span>Year '+s.year+'</span><span class="inline-dot"></span><span>Form '+escape(s.form)+'</span><span class="inline-dot"></span><span>'+escape(s.house)+' House</span><span class="inline-dot"></span><span>'+escape(s.classId)+'</span><span class="inline-dot"></span><span>'+escape(s.id)+'</span></div></div></div>'+
+      '<div><h2 class="student-title">'+escape(s.name)+'</h2><div class="student-sub"><span>Year '+s.year+'</span><span class="inline-dot"></span><span>Tutor group '+escape(s.tutorGroupId)+'</span><span class="inline-dot"></span><span>'+escape(s.house)+' House</span><span class="inline-dot"></span><span>'+escape(s.classId)+'</span><span class="inline-dot"></span><span>'+escape(s.id)+'</span></div></div></div>'+
       '<div class="student-actions">'+button(icon('file',14)+' Add note','new-note','light')+
       button(icon('plus',14)+' Intervention','new-intervention','light')+button(icon('tasks',14)+' Assign task','new-task','primary')+'</div></section>'+
       '<div class="tab-bar" role="tablist" aria-label="Student profile sections">'+tabs.map(([id,label])=>
@@ -336,8 +336,8 @@
     const people=accessibleStudents(),classList=visibleClasses();
     const match=(...xs)=>xs.some(x=>String(x||'').toLowerCase().includes(q));
     const available=[
-      ...people.filter(s=>match(s.name,s.id,s.classId,s.form,'year '+s.year)).map(s=>({
-        type:'Students',id:s.id,label:s.name,sub:'Year '+s.year+' · '+s.classId,action:'open-student',ic:'people'})),
+      ...people.filter(s=>match(s.name,s.id,s.classId,s.tutorGroupId,'tutor group '+s.tutorGroupId,'year '+s.year)).map(s=>({
+        type:'Students',id:s.id,label:s.name,sub:'Year '+s.year+' · TG '+s.tutorGroupId+' · '+s.classId,action:'open-student',ic:'people'})),
       ...classList.filter(c=>match(c.id,c.name,c.course,c.faculty)).map(c=>({
         type:'Classes',id:c.id,label:c.id,sub:c.name,action:'open-class',ic:'book'})),
       ...window.SchoolHubSupport.visible(viewer()).filter(c=>{
@@ -539,7 +539,7 @@
       const node=document.querySelector('.data-table tbody');
       if(node){
         const q=store.personFilter.trim().toLowerCase();
-        const matches=sorted(accessibleStudents().filter(s=>!q||[s.name,s.id,s.classId,s.form,String(s.year)].some(v=>v.toLowerCase().includes(q))));
+        const matches=sorted(accessibleStudents().filter(s=>!q||[s.name,s.id,s.classId,s.tutorGroupId,String(s.year)].some(v=>v.toLowerCase().includes(q))));
         node.querySelectorAll('tr').forEach(tr=>{
           const name=tr.querySelector('.person strong')?.textContent||'';
           const s=students.find(p=>p.name===name);
