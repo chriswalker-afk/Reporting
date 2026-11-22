@@ -185,6 +185,22 @@
       '<td><button class="table-action" data-action="open-student" data-id="'+s.id+'">Open profile '+icon('chevron',13)+'</button></td></tr>').join('')+
       '</tbody></table>'+(results.length?'':'<div class="empty-state">No matching students.</div>')+'</section>';
   }
+  function renderTutor(){
+    const v=viewer(),members=sorted(students.filter(s=>v.tutorForms.includes(s.form)));
+    return topIntro('Your pastoral group','Tutor group',members.length+' fictional students in '+v.tutorForms.join(', '),
+      button(icon('users',14)+' Find student','navigate','light','data-page="people"'))+
+      '<section class="surface table-wrap"><table class="data-table"><thead>'+
+      '<tr><th>Student</th><th>Form</th><th>Subject class</th><th>Flags in your scope</th><th></th></tr></thead><tbody>'+
+      members.map(s=>'<tr><td><span class="person">'+avatar(s.name,'sm')+'<span><strong>'+escape(s.name)+
+        '</strong><small>'+escape(s.id)+'</small></span></span></td><td>'+escape(s.form)+'</td>'+
+        '<td>'+escape(s.classId)+'</td><td><span class="flag-group">'+
+        Classroom.flags(s).map(f=>'<span class="class-flag flag-'+f.toLowerCase()+'">'+escape(f)+'</span>').join('')+
+        '</span></td><td><button class="table-action" data-action="open-student" data-id="'+s.id+'">Profile '+
+        icon('chevron',13)+'</button></td></tr>').join('')+
+      '</tbody></table></section><div class="class-footer-note">'+icon('info',14)+
+      ' Being a tutor grants student profile visibility, not permission to edit assessments or access unrelated intervention details.</div>';
+  }
+  function renderSupport(){return SupportUI.dashboard({icon});}
   function renderClasses(){
     return '<div class="inner-intro"><button class="back-btn" data-action="navigate" data-page="people" aria-label="Back to people">'+icon('back')+'</button><div><p class="eyebrow">People / Classes</p><h1 class="page-title">'+(Access.has(viewer(),'house')||Access.has(viewer(),'leadership')?'All classes':'Classes in my scope')+'</h1></div></div>'+
     '<div class="class-cards-large">'+visibleClasses().map(c=>{
@@ -306,6 +322,8 @@
     if(store.page==='home') return renderHome();
     if(store.page==='people') return renderPeople();
     if(store.page==='classes') return renderClasses();
+    if(store.page==='tutor') return renderTutor();
+    if(store.page==='support') return renderSupport();
     if(store.page==='class') return renderClass();
     if(store.page==='student') return renderStudent();
     if(store.page==='tasks') return renderTasks();
@@ -315,18 +333,23 @@
   }
   function results(){
     const q=store.search.trim().toLowerCase();
-    if(!q) return [
-      {type:'Students',id:'S002',label:'Daniel Tan',sub:'Year 11 · 11MA1',action:'open-student',ic:'people'},
-      {type:'Classes',id:'11MA1',label:'11MA1',sub:'Year 11 Mathematics',action:'open-class',ic:'book'},
-      {type:'Tasks',id:'T001',label:'Review Year 11 assessment analysis',sub:'Academic review',action:'open-task',ic:'tasks'}
-    ];
+    const people=accessibleStudents(),classList=visibleClasses();
     const match=(...xs)=>xs.some(x=>String(x||'').toLowerCase().includes(q));
-    return [
-      ...students.filter(s=>match(s.name,s.id,s.classId,s.form,'year '+s.year)).map(s=>({type:'Students',id:s.id,label:s.name,sub:'Year '+s.year+' · '+s.classId,action:'open-student',ic:'people'})),
-      ...classes.filter(c=>match(c.id,c.name,c.course)).map(c=>({type:'Classes',id:c.id,label:c.id,sub:c.name,action:'open-class',ic:'book'})),
-      ...assignedTasks().filter(t=>match(t.title,t.category,t.detail)).map(t=>({type:'Tasks',id:t.id,label:t.title,sub:t.category,action:'open-task',ic:'tasks'})),
-      ...resources.filter(r=>match(r.title,r.category,r.summary)).map(r=>({type:'Information',id:r.id,label:r.title,sub:r.summary,action:'resource',ic:'info'}))
-    ].slice(0,15);
+    const available=[
+      ...people.filter(s=>match(s.name,s.id,s.classId,s.form,'year '+s.year)).map(s=>({
+        type:'Students',id:s.id,label:s.name,sub:'Year '+s.year+' · '+s.classId,action:'open-student',ic:'people'})),
+      ...classList.filter(c=>match(c.id,c.name,c.course,c.faculty)).map(c=>({
+        type:'Classes',id:c.id,label:c.id,sub:c.name,action:'open-class',ic:'book'})),
+      ...window.SchoolHubSupport.visible(viewer()).filter(c=>{
+        const s=student(c.studentId);return match(s?.name,c.id,c.classId,c.wave1.focus);
+      }).map(c=>({type:'Interventions',id:c.id,label:student(c.studentId)?.name+' · '+window.SchoolHubSupport.states[c.state],
+        sub:c.wave1.focus,action:'support-open',ic:'flag'})),
+      ...assignedTasks().filter(t=>match(t.title,t.category,t.detail)).map(t=>({
+        type:'Tasks',id:t.id,label:t.title,sub:t.category,action:'open-task',ic:'tasks'})),
+      ...resources.filter(r=>match(r.title,r.category,r.summary)).map(r=>({
+        type:'Information',id:r.id,label:r.title,sub:r.summary,action:'resource',ic:'info'}))
+    ];
+    return (q?available:available.filter(x=>x.type!=='Information')).slice(0,q?15:5);
   }
   function searchLayer() {
     if(!store.searchOpen) return '';
@@ -417,7 +440,7 @@
     const wizardScroll=document.querySelector('.assessment-wizard-scroll')?.scrollTop||0;
     document.getElementById('app').innerHTML='<div class="app-frame">'+header()+'<div class="body-grid">'+sidebar()+
       '<main id="workspace" class="workspace" tabindex="-1"><div class="workspace-inner">'+body()+'</div></main></div>'+
-      searchLayer()+roleMenu()+drawerHTML()+Classroom.wizardHTML()+'<div id="toast-slot" aria-live="polite"></div></div>';
+      searchLayer()+roleMenu()+drawerHTML()+Classroom.wizardHTML()+SupportUI.modalHTML(icon)+'<div id="toast-slot" aria-live="polite"></div></div>';
     if(!opts.scrollTop) document.getElementById('workspace').scrollTop=oldScroll;
     const wizardPane=document.querySelector('.assessment-wizard-scroll');
     if(wizardPane && !opts.wizardTop)wizardPane.scrollTop=wizardScroll;
@@ -430,13 +453,13 @@
     render({scrollTop:true});document.getElementById('workspace').scrollTop=0;
   }
   function openStudent(id){
-    if(!student(id))return;
+    if(!Access.canViewStudent(viewer(),student(id),classes)){notify('Student outside your demo access scope');return;}
     store.lastPage=store.page==='student'?store.lastPage:store.page;
     store.selectedStudent=id;store.studentTab='overview';store.search='';
     route('student');
   }
   function openClass(id){
-    if(!group(id))return;
+    if(!Access.canViewClass(viewer(),group(id))){notify('Class outside your demo access scope');return;}
     store.selectedClass=id;store.classTab='register';store.search='';
     Classroom.resetFilter();
     route('class');
@@ -446,12 +469,14 @@
     store.roleMenu=false;render();
   }
   function dispatch(action,el){
+    if(SupportUI.action(action,el,{render,notify,store}))return;
     if(Classroom.onAction(action,el,{render,notify,store}))return;
     const id=el?.dataset.id || '';
     switch(action){
       case 'navigate':case 'home': route(action==='home'?'home':el.dataset.page);break;
       case 'go-classes':route('classes');break;
       case 'go-tasks':route('tasks');break;
+      case 'go-support':route('support');break;
       case 'open-student':openStudent(id);break;
       case 'open-class':openClass(id);break;
       case 'student-back':route(store.lastPage==='student'?'people':store.lastPage);break;
@@ -479,7 +504,13 @@
       case 'toggle-nav':store.mobileNav=!store.mobileNav;render();break;
       case 'notifications':route('tasks');break;
       case 'role-menu':store.roleMenu=!store.roleMenu;render();break;
-      case 'set-role':store.role=el.dataset.role;store.roleMenu=false;store.drawer=null;route('home');notify('Viewing as '+roleNames[store.role]);break;
+      case 'set-persona':
+        if(Access.select(id)){store.roleMenu=false;store.drawer=null;SupportUI.close();route('home');notify('Demo user: '+viewer().name);}
+        break;
+      case 'toggle-role':
+        if(Access.toggleRole(id)){store.roleMenu=false;store.drawer=null;SupportUI.close();route('home');notify('Active roles: '+Access.roleSummary(viewer()));}
+        else notify('At least one role must remain active.');
+        break;
       default:break;
     }
   }
@@ -508,7 +539,7 @@
       const node=document.querySelector('.data-table tbody');
       if(node){
         const q=store.personFilter.trim().toLowerCase();
-        const matches=sorted(students.filter(s=>!q||[s.name,s.id,s.classId,s.form,String(s.year)].some(v=>v.toLowerCase().includes(q))));
+        const matches=sorted(accessibleStudents().filter(s=>!q||[s.name,s.id,s.classId,s.form,String(s.year)].some(v=>v.toLowerCase().includes(q))));
         node.querySelectorAll('tr').forEach(tr=>{
           const name=tr.querySelector('.person strong')?.textContent||'';
           const s=students.find(p=>p.name===name);
@@ -519,9 +550,14 @@
     }
   });
   document.addEventListener('change',event=>{
+    if(SupportUI.onChange(event))return;
     Classroom.onChange(event,{render,notify});
   });
   document.addEventListener('keydown',event=>{
+    if(SupportUI.isOpen()){
+      if(event.key==='Escape'){event.preventDefault();SupportUI.close();render();}
+      return;
+    }
     if(Classroom.wizardOpen()){
       if(event.key==='Escape'){
         event.preventDefault();Classroom.askClose();render();
@@ -560,6 +596,7 @@
     });
   }
   document.addEventListener('submit',event=>{
+    if(SupportUI.onSubmit(event,{render,notify}))return;
     if(!['task-form','note-form','intervention-form','message-form'].includes(event.target.id))return;
     event.preventDefault();const data=new FormData(event.target);
     const val=name=>String(data.get(name)||'').trim();
