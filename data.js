@@ -16,11 +16,20 @@
     ['S013','Hana Park',10,'10MA2','10A',90,87,'On track','Orchestra'],
     ['S014','Leo Martin',10,'10MA2','10D',58,69,'Review','Volleyball'],
     ['S015','Nila Das',10,'10MA2','10B',81,78,'On track','Art Studio'],
-    ['S016','Mia Roberts',11,'11MA1','11B',69,68,'On track','Swimming']
+    ['S016','Mia Roberts',11,'11MA1','11B',69,68,'On track','Swimming'],
+    ['S017','Aria Bennett',10,'10SC1','10A',82,78,'On track','Robotics'],
+    ['S018','Harper Ellis',10,'10SC1','10C',59,70,'Review','Art Studio'],
+    ['S019','Oliver Stone',10,'10SC1','10B',73,69,'On track','Football'],
+    ['S020','Amelia Quinn',10,'10SC1','10A',67,65,'On track','Debate Club'],
+    ['S021','Tara Hassan',11,'11EN1','11C',77,79,'On track','Orchestra'],
+    ['S022','Jacob Price',11,'11EN1','11B',64,67,'Review','Chess'],
+    ['S023','Eva Moore',11,'11EN1','11A',81,78,'On track','Drama'],
+    ['S024','Liam Scott',11,'11EN1','11D',70,68,'On track','Swimming']
   ];
   const bound = value => Math.max(45,Math.min(96,value));
   const students = roster.map(([id,name,year,classId,form,score,previous,status,cca],index)=>({
     id,name,year,classId,form,score,previous,status,cca,
+    house:['Cedar','Willow','Oak'][index%3],
     initials:name.split(' ').map(part=>part[0]).join(''),
     attendance: 93 + (index % 6),
     target: score>=80?'8':score>=70?'7':score>=60?'6':'5',
@@ -39,9 +48,11 @@
     ptm:index%3===0?'Booked · 26 Nov':'Availability pending'
   }));
   const classes = [
-    {id:'11MA1',name:'Year 11 Mathematics',shortName:'Y11 Maths',room:'T11',next:'08:00',course:'IGCSE Higher',color:'teal'},
-    {id:'12MA1',name:'Year 12 Mathematics',shortName:'Y12 Maths',room:'T12',next:'10:20',course:'A level Mathematics',color:'blue'},
-    {id:'10MA2',name:'Year 10 Mathematics',shortName:'Y10 Maths',room:'T11',next:'13:10',course:'IGCSE Higher',color:'lavender'}
+    {id:'11MA1',name:'Year 11 Mathematics',shortName:'Y11 Maths',room:'T11',next:'08:00',course:'IGCSE Higher',faculty:'Mathematics',teacherId:'sam',color:'teal'},
+    {id:'12MA1',name:'Year 12 Mathematics',shortName:'Y12 Maths',room:'T12',next:'10:20',course:'A level Mathematics',faculty:'Mathematics',teacherId:'sam',color:'blue'},
+    {id:'10MA2',name:'Year 10 Mathematics',shortName:'Y10 Maths',room:'T11',next:'13:10',course:'IGCSE Higher',faculty:'Mathematics',teacherId:'jordan',color:'lavender'},
+    {id:'10SC1',name:'Year 10 Science',shortName:'Y10 Science',room:'S04',next:'09:30',course:'IGCSE Science',faculty:'Science',teacherId:'morgan',color:'teal'},
+    {id:'11EN1',name:'Year 11 English',shortName:'Y11 English',room:'E03',next:'11:30',course:'IGCSE English',faculty:'English',teacherId:'priya',color:'blue'}
   ];
   const tasks = [
     {id:'T001',title:'Review Year 11 assessment analysis',category:'Academic review',detail:'Compare November checkpoint results and identify targeted support.',due:'Today',priority:'high',classId:'11MA1',status:'Open',assignee:'Sam Taylor',roles:['faculty','teacher','senior']},
