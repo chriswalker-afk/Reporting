@@ -4,7 +4,7 @@
   'use strict';
   const fixture=window.SchoolHubData, core=window.SchoolHubAssessmentCore;
   if (!fixture||!core) return;
-  const roleName='Sam Taylor';
+  const roleName=()=>window.SchoolHubAccess?.viewer()?.name||'Demo teacher';
   const flagMap={
     S001:['EAL'],S003:['SEN'],S004:['SEN'],S005:['EAL'],
     S007:['EAL'],S011:['SEN'],S012:['EAL'],S014:['EAL'],S018:['EAL']
@@ -369,7 +369,7 @@
     output.status=core.publishState(output,pupils);
     output.version=(w.original?.version||0)+1;
     const exclusionNote=exclusionChange?' Exclusion settings reviewed and acknowledged.':'';
-    output.history=[...(w.original?.history||[]),{when:'22 Nov 2026',who:roleName,
+    output.history=[...(w.original?.history||[]),{when:'22 Nov 2026',who:roleName(),
       change:(w.original?'Revised assessment':'Created assessment')+'.'+exclusionNote}];
     const index=all.findIndex(x=>x.id===output.id);
     if(index>=0)all.splice(index,1,output);else all.push(output);
