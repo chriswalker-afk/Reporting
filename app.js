@@ -58,6 +58,12 @@
   const avatar = (name,size='',color='') => '<span class="avatar '+size+' '+color+'" aria-hidden="true">'+escape(initials(name))+'</span>';
   const student = id => students.find(s=>s.id===id);
   const group = id => classes.find(c=>c.id===id);
+  const tutorGroupTag = pupil => {
+    const record=fixture.tutorGroups.find(t=>t.id===pupil.tutorGroupId);
+    const assigned=Access.profiles.find(p=>p.id===record?.tutorId);
+    const description='Tutor group '+pupil.tutorGroupId+(assigned?' · Tutor: '+assigned.name:'');
+    return '<span class="tutor-group-tag" title="'+escape(description)+'" aria-label="'+escape(description)+'">TG '+escape(pupil.tutorGroupId)+'</span>';
+  };
   const studentName = id => student(id)?.name || 'Unknown student';
   const className = id => group(id)?.name || id;
   const assignedTasks=()=>tasks.filter(t=>{
@@ -181,7 +187,7 @@
       '<div class="page-toolbar"><label class="filter-field">'+icon('search',16)+'<input id="person-filter" placeholder="Filter by name, tutor group or class..." value="'+escape(store.personFilter)+'" aria-label="Filter students"></label><span class="small-muted">'+results.length+' fictional students</span></div>'+
       '<section class="surface table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Year / tutor group</th><th>Class</th><th>Latest assessment</th><th>Academic follow-up</th><th></th></tr></thead><tbody>'+
       results.map(s=>'<tr><td><span class="person">'+avatar(s.name,'sm',s.year===10?'lavender':s.year===12?'green':'')+'<span><strong>'+escape(s.name)+'</strong><small>'+escape(s.id)+'</small></span></span></td>'+
-      '<td>Year '+s.year+' · '+escape(s.tutorGroupId)+'</td><td>'+escape(s.classId)+'</td><td><strong>'+s.score+'%</strong></td><td><span class="tag '+(s.status==='Review'?'amber':'teal')+'">'+escape(s.status)+'</span></td>'+
+      '<td>Year '+s.year+' · '+tutorGroupTag(s)+'</td><td>'+escape(s.classId)+'</td><td><strong>'+s.score+'%</strong></td><td><span class="tag '+(s.status==='Review'?'amber':'teal')+'">'+escape(s.status)+'</span></td>'+
       '<td><button class="table-action" data-action="open-student" data-id="'+s.id+'">Open profile '+icon('chevron',13)+'</button></td></tr>').join('')+
       '</tbody></table>'+(results.length?'':'<div class="empty-state">No matching students.</div>')+'</section>';
   }
@@ -192,7 +198,7 @@
       '<section class="surface table-wrap"><table class="data-table"><thead>'+
       '<tr><th>Student</th><th>Tutor group</th><th>Subject class</th><th>Flags in your scope</th><th></th></tr></thead><tbody>'+
       members.map(s=>'<tr><td><span class="person">'+avatar(s.name,'sm')+'<span><strong>'+escape(s.name)+
-        '</strong><small>'+escape(s.id)+'</small></span></span></td><td>'+escape(s.tutorGroupId)+'</td>'+
+        '</strong><small>'+escape(s.id)+'</small></span></span></td><td>'+tutorGroupTag(s)+'</td>'+
         '<td>'+escape(s.classId)+'</td><td><span class="flag-group">'+
         Classroom.flags(s).map(f=>'<span class="class-flag flag-'+f.toLowerCase()+'">'+escape(f)+'</span>').join('')+
         '</span></td><td><button class="table-action" data-action="open-student" data-id="'+s.id+'">Profile '+
@@ -282,7 +288,7 @@
     }
     return '<div class="inner-intro"><button class="back-btn" data-action="student-back" aria-label="Back to previous view">'+icon('back')+'</button><div><p class="eyebrow">People / Student profile</p><h1 class="page-title">Student profile</h1></div></div>'+
       '<section class="surface student-header"><div class="student-intro">'+avatar(s.name,'lg',s.year===10?'lavender':s.year===12?'green':'')+
-      '<div><h2 class="student-title">'+escape(s.name)+'</h2><div class="student-sub"><span>Year '+s.year+'</span><span class="inline-dot"></span><span>Tutor group '+escape(s.tutorGroupId)+'</span><span class="inline-dot"></span><span>'+escape(s.house)+' House</span><span class="inline-dot"></span><span>'+escape(s.classId)+'</span><span class="inline-dot"></span><span>'+escape(s.id)+'</span></div></div></div>'+
+      '<div><h2 class="student-title">'+escape(s.name)+'</h2><div class="student-sub"><span>Year '+s.year+'</span><span class="inline-dot"></span>'+tutorGroupTag(s)+'<span class="inline-dot"></span><span>'+escape(s.house)+' House</span><span class="inline-dot"></span><span>'+escape(s.classId)+'</span><span class="inline-dot"></span><span>'+escape(s.id)+'</span></div></div></div>'+
       '<div class="student-actions">'+button(icon('file',14)+' Add note','new-note','light')+
       button(icon('plus',14)+' Intervention','new-intervention','light')+button(icon('tasks',14)+' Assign task','new-task','primary')+'</div></section>'+
       '<div class="tab-bar" role="tablist" aria-label="Student profile sections">'+tabs.map(([id,label])=>
