@@ -83,7 +83,7 @@ test('unmarked assessments remain drafts, so they are excluded from rollups',()=
 function createBrowserHarness() {
   const context={window:{},document:{querySelector:()=>null},Date,console};
   vm.createContext(context);
-  for(const file of ['data.js','assessment-core.js','classroom.js']) {
+  for(const file of ['data.js','access.js','support-core.js','support-ui.js','assessment-core.js','classroom.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),context,{filename:file});
   }
   return context.window;
@@ -132,6 +132,10 @@ test('index loads all modules before app and class UI has CSS',()=>{
   assert.ok(html.indexOf('assessment-core.js')<html.indexOf('classroom.js'));
   assert.ok(html.indexOf('classroom.js')<html.indexOf('app.js'));
   assert.ok(html.includes('classroom.css'));
+  assert.ok(html.includes('support.css'));
+  assert.ok(html.includes('access.js'));
+  assert.ok(html.indexOf('access.js')<html.indexOf('support-core.js'));
+  assert.ok(html.indexOf('support-ui.js')<html.indexOf('classroom.js'));
 });
 
 
