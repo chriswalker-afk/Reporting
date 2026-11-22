@@ -397,7 +397,7 @@
         '<div class="form-field"><label for="task-title">What needs to happen?</label><input id="task-title" name="title" placeholder="e.g. Review next assessment outcome" maxlength="120" required autofocus></div>'+
         '<div class="form-field"><label for="task-detail">Context</label><textarea id="task-detail" name="detail" maxlength="600" placeholder="Add a short explanation so the recipient knows what to do."></textarea></div>'+
         '<div class="form-field"><label for="task-student">Related student (optional)</label><select id="task-student" name="studentId"><option value="">No student</option>'+sorted(students).map(p=>'<option value="'+p.id+'" '+(p.id===defaultTarget?'selected':'')+'>'+escape(p.name)+'</option>').join('')+'</select></div>'+
-        '<div class="form-field"><label for="task-owner">Assigned to</label><select id="task-owner" name="assignee">'<option>'+escape(viewer().name)+'</option><option>Maths Faculty</option><option>Year Team</option>'</select></div>'+
+        '<div class="form-field"><label for="task-owner">Assigned to</label><select id="task-owner" name="assignee"><option>'+escape(viewer().name)+'</option><option>Maths Faculty</option><option>Year Team</option></select></div>'+
         '<div class="form-field"><label for="task-date">Due date</label><input id="task-date" name="due" type="date" value="2026-11-27" required></div>'+
         '<p class="form-hint">Prototype only: tasks are stored in browser memory and disappear on refresh.</p></form>';
       foot=close+' <button class="btn btn-primary" type="submit" form="task-form">'+icon('check',14)+' Create task</button>';
