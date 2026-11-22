@@ -286,7 +286,16 @@
    }else if(kind==='review'){
      result=Support.review(v,state.caseId,{outcome:val('outcome'),note:val('note'),close:fd.get('close')==='on'});
    }
-   if(!result?.ok){state.error=result?.error||'Unable to record this action.';ctx.render();return true;}
+   if(!result?.ok){
+     state.error=result?.error||'Unable to record this action.';
+     const body=document.querySelector('#support-form .support-form-body');
+     if(body){
+       const existing=body.querySelector('.support-form-error');
+       if(existing)existing.textContent=state.error;
+       else body.insertAdjacentHTML('afterbegin','<div class="support-form-error" role="alert">'+clean(state.error)+'</div>');
+     }
+     return true;
+   }
    state.caseId=result.case.id;state.studentId=result.case.studentId;state.classId=result.case.classId;
    state.form=null;state.error='';state.modal='detail';
    ctx.render();ctx.notify(result.message);return true;
