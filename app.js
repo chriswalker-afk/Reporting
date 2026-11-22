@@ -2,7 +2,9 @@
   'use strict';
   const fixture = window.SchoolHubData;
   const Classroom = window.SchoolHubClassroom;
-  if (!fixture || !Classroom) { document.getElementById('app').textContent = 'Demo data unavailable.'; return; }
+  const Access = window.SchoolHubAccess;
+  const SupportUI = window.SchoolHubSupportUI;
+  if (!fixture || !Classroom || !Access || !SupportUI) { document.getElementById('app').textContent = 'Demo data unavailable.'; return; }
   const { students, classes, tasks, interventions, messages, notes, resources, events } = fixture;
   const store = {
     page: 'home', lastPage:'home', selectedStudent:'S002', selectedClass:'11MA1',
@@ -10,8 +12,12 @@
     search:'', searchIndex:0, mobileNav:false, roleMenu:false, taskFilter:'open', personFilter:'',
     flashTimer:0, toast:'', taskContext:null, actionForm:null
   };
-  const roleNames = {faculty:'Head of Faculty',teacher:'Class teacher',pastoral:'Head of Year',senior:'Senior leader'};
-  const roleNamesShort = {faculty:'Faculty',teacher:'Teacher',pastoral:'Pastoral',senior:'Leadership'};
+  const viewer=()=>Access.viewer();
+  const visibleClasses=()=>Access.visibleClasses(viewer(),classes);
+  const accessibleStudents=()=>students.filter(s=>Access.canViewStudent(viewer(),s,classes));
+  const teachingClasses=()=>classes.filter(c=>Access.classOwned(viewer(),c));
+  const roleMatches={faculty:'faculty',teacher:'teacher',pastoral:'house',senior:'leadership'};
+  const titleCaseName=()=>viewer().name.split(' ')[0];
   const icons = {
     home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
     people:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -54,13 +60,24 @@
   const group = id => classes.find(c=>c.id===id);
   const studentName = id => student(id)?.name || 'Unknown student';
   const className = id => group(id)?.name || id;
-  const assignedTasks = () => tasks.filter(t=>t.roles.includes(store.role));
+  const assignedTasks=()=>tasks.filter(t=>{
+    const v=viewer();
+    if(!t.roles.some(role=>v.roles.includes(roleMatches[role]||role)))return false;
+    if(t.classId&&!Access.canViewClass(v,group(t.classId)))return false;
+    if(t.studentId&&!Access.canViewStudent(v,student(t.studentId),classes))return false;
+    return t.assignee===v.name ||
+      (t.assignee==='Maths Faculty'&&Access.has(v,'faculty')&&v.faculties.includes('Mathematics'))||
+      (t.assignee==='Year Team'&&Access.has(v,'house'))||
+      Access.has(v,'leadership');
+  });
   const pending = () => assignedTasks().filter(t=>t.status==='Open');
   const classPupils = id => students.filter(s=>s.classId===id);
   const avg = values => Math.round(values.reduce((a,b)=>a+b,0)/(values.length||1));
   const sorted = items => [...items].sort((a,b)=>a.name.localeCompare(b.name));
   const button = (label,action,kind='light',extra='') => '<button class="btn btn-'+kind+'" data-action="'+escape(action)+'" '+extra+'>'+label+'</button>';
-  const navItems = [['home','home','Home'],['people','people','People'],['tasks','tasks','My tasks'],['school','calendar','School'],['resources','info','Information']];
+  const navItems=[['home','home','Home'],['people','people','People'],
+    ['tutor','users','Tutor group'],['support','flag','Interventions'],
+    ['tasks','tasks','My tasks'],['school','calendar','School'],['resources','info','Information']];
   const takeFocus = ()=>document.getElementById('global-search')?.focus();
   const saveDemo = () => { /* Demo intentionally lives in memory: refresh resets all sample changes. */ };
   function notify(message) {
@@ -80,19 +97,37 @@
       '<div class="top-actions"><span class="preview-chip">Fictional data · Preview</span>'+
       '<button class="icon-button" data-action="notifications" aria-label="Show outstanding notifications">'+icon('bell',18)+(pending().length?'<span class="dot"></span>':'')+'</button>'+
       '<button class="role-trigger" data-action="role-menu" aria-label="Change demo staff role" aria-expanded="'+store.roleMenu+'">'+
-      '<span class="avatar sm">ST</span><span class="role-name"><strong>Sam Taylor</strong><small>'+escape(roleNames[store.role])+'</small></span>'+icon('down',13)+'</button></div></header>';
+      '<span class="avatar sm">'+escape(viewer().initials)+'</span><span class="role-name"><strong>'+escape(viewer().name)+'</strong><small>'+escape(Access.roleSummary(viewer()))+'</small></span>'+icon('down',13)+'</button></div></header>';
   }
   function sidebar() {
     return '<aside class="sidebar '+(store.mobileNav?'is-open':'')+'" aria-label="Primary navigation">'+
-      '<div class="nav-label">Workspace</div><nav class="nav-list">'+navItems.map(([id,ic,label])=>
+      '<div class="nav-label">Workspace</div><nav class="nav-list">'+navItems.filter(([id])=>id!=='tutor'||viewer().tutorForms?.length).map(([id,ic,label])=>
       '<button class="nav-button '+(store.page===id||store.page==='student'&&id==='people'||store.page==='class'&&id==='people'?'active':'')+
       '" data-action="navigate" data-page="'+id+'" '+(store.page===id?'aria-current="page"':'')+'>'+icon(ic,17)+
       '<span>'+label+'</span>'+(id==='tasks'?'<span class="nav-count">'+pending().length+'</span>':'')+'</button>').join('')+'</nav>'+
       '<div class="sidebar-spacer"></div><div class="sidebar-bottom"><div class="sidebar-identity"><span class="avatar sm green">SH</span><span><strong>School Hub V1</strong><small>Exploration prototype</small></span></div>'+
       '<div class="sidebar-note">Sample records only. No SIMS, Google login or school systems connected.</div></div></aside>';
   }
-  const roleMenu = () => store.roleMenu ? '<div class="role-menu"><div class="role-menu-title">Explore different staff views</div>'+Object.keys(roleNames).map(k=>
-    '<button class="role-option '+(store.role===k?'active':'')+'" data-action="set-role" data-role="'+k+'">'+escape(roleNames[k])+(store.role===k?icon('check',15):'')+'</button>').join('')+'</div>':'';
+  const roleMenu = () => {
+    if(!store.roleMenu)return '';
+    const v=viewer();
+    return '<div class="role-menu"><div class="role-menu-title">Preview a staff member</div>'+
+      '<div class="role-picker-hint">Fictional people and role assignments. Multiple roles work together; they do not replace one another.</div>'+
+      Access.profiles.map(p=>'<button class="role-option '+(p.id===v.id?'active':'')+
+        '" data-action="set-persona" data-id="'+p.id+'"><span><strong>'+escape(p.name)+
+        '</strong><small>'+escape(p.roles.map(r=>Access.labels[r]).join(' · '))+'</small></span>'+
+        (p.id===v.id?icon('check',15):'')+'</button>').join('')+
+      '<div class="role-divider"></div><div class="role-menu-title">Active roles for '+escape(v.name)+'</div>'+
+      Object.keys(Access.labels).map(role=>
+        '<label class="role-toggle"><input type="checkbox" data-action="toggle-role" data-id="'+role+'" '+
+        (v.roles.includes(role)?'checked':'')+' aria-label="'+escape(Access.labels[role])+'">'+
+        '<span>'+escape(Access.labels[role])+'</span></label>').join('')+
+      '<div class="role-scope">Teaching: '+escape(v.taughtClasses.join(', ')||'None')+
+      ' · Tutor: '+escape(v.tutorForms.join(', ')||'None')+
+      ' · Faculty: '+escape(v.faculties.join(', '))+
+      ' · House: '+escape(v.houses.join(', '))+
+      '<br><strong>Role changes are a demo preview, not authentication.</strong></div></div>';
+  };
   function topIntro(label,title,subtitle,actions='') {
     return '<div class="page-intro"><div><p class="eyebrow">'+escape(label)+'</p><h1 class="page-title">'+escape(title)+'</h1><p class="subtitle">'+escape(subtitle)+'</p></div><div class="page-controls">'+actions+'</div></div>';
   }
