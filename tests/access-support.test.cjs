@@ -20,7 +20,7 @@ test('teaching, tutor, faculty, house and leadership scopes are additive',()=>{
   const hof=cloned('sam',['teacher','faculty']);
   const house=cloned('morgan',['house']);
   const leader=cloned('priya',['leadership']);
-  const allIds=v=>Access.visibleClasses(v,data.classes).map(c=>c.id);
+  const allIds=v=>Array.from(Access.visibleClasses(v,data.classes),c=>c.id);
   assert.deepEqual(allIds(teacher).sort(),['11MA1','12MA1']);
   assert.deepEqual(allIds(hof).sort(),['10MA2','11MA1','12MA1']);
   assert.equal(allIds(house).length,data.classes.length);
@@ -50,8 +50,8 @@ test('multi-role users get a union of powers, never role replacement',()=>{
 
 test('House staff see all classes but only cases in their assigned house',()=>{
   const model=cases(),morgan=cloned('morgan',['house']);
-  const matching=model.findCase('SOC-003'); // S011 belongs to Willow House
-  const notMatching=model.findCase('SOC-002'); // S004 belongs to Cedar House
+  const matching=model.cases.find(c=>c.studentId==='S011'); // Willow House
+  const notMatching=model.cases.find(c=>c.studentId==='S004'); // Cedar House
   assert.equal(Access.canViewClass(morgan,group('11MA1')),true);
   assert.equal(Access.canViewCase(morgan,matching,person(matching.studentId),group(matching.classId)),true);
   assert.equal(Access.canViewCase(morgan,notMatching,person(notMatching.studentId),group(notMatching.classId)),false);
@@ -106,12 +106,12 @@ test('House action belongs to pupil House, Wave 3 escalation to HoF or HsM, SLT 
   const c=model.startWave1(teacher,'S017','10SC1',{focus:'Review',description:'Targeted tasks',reviewDate:'2026-12-02'}).case;
   model.requestWave2(teacher,c.id,{trigger:'A singular more serious concern',reason:'Needs faculty review'});
   model.activateWave2(faculty,c.id,{plan:'Shared review',houseRequest:'Discuss with tutor',reviewDate:'2026-12-10'});
-  assert.equal(model.respondHouse(hsmWillow,c.id,{response:'Not my house',complete:true}).ok,false);
-  assert.equal(model.respondHouse(hsmCedar,c.id,{response:'Tutor contacted and response agreed',complete:true}).ok,true);
+  assert.equal(model.respondHouse(hsmCedar,c.id,{response:'Not my house',complete:true}).ok,false);
+  assert.equal(model.respondHouse(hsmWillow,c.id,{response:'Tutor contacted and response agreed',complete:true}).ok,true);
   assert.equal(c.houseResponse.complete,true);
   assert.equal(model.requestWave3(teacher,c.id,{reason:'Still needs help'}).ok,false);
-  assert.equal(model.requestWave3(hsmCedar,c.id,{reason:''}).ok,false);
-  assert.equal(model.requestWave3(hsmCedar,c.id,
+  assert.equal(model.requestWave3(hsmWillow,c.id,{reason:''}).ok,false);
+  assert.equal(model.requestWave3(hsmWillow,c.id,
     {reason:'Wider concern requires SLT coordination.'}).ok,true);
   assert.equal(c.state,'wave3_requested');
   assert.equal(model.respondLeadership(faculty,c.id,{plan:'Coordinate',reviewDate:'2026-12-21'}).ok,false);
