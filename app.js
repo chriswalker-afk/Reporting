@@ -1,11 +1,12 @@
 (() => {
   'use strict';
   const fixture = window.SchoolHubData;
-  if (!fixture) { document.getElementById('app').textContent = 'Demo data unavailable.'; return; }
+  const Classroom = window.SchoolHubClassroom;
+  if (!fixture || !Classroom) { document.getElementById('app').textContent = 'Demo data unavailable.'; return; }
   const { students, classes, tasks, interventions, messages, notes, resources, events } = fixture;
   const store = {
     page: 'home', lastPage:'home', selectedStudent:'S002', selectedClass:'11MA1',
-    studentTab:'overview', classTab:'students', role:'faculty', drawer:null, searchOpen:false,
+    studentTab:'overview', classTab:'register', role:'faculty', drawer:null, searchOpen:false,
     search:'', searchIndex:0, mobileNav:false, roleMenu:false, taskFilter:'open', personFilter:'',
     flashTimer:0, toast:'', taskContext:null, actionForm:null
   };
@@ -113,9 +114,9 @@
       '<span class="action-content"><span class="action-title">'+escape(t.title)+'</span><span class="action-detail">'+escape(t.category)+'<span class="inline-dot"></span>'+escape(t.due)+'</span></span>'+
       (t.priority==='high'?'<span class="tag amber">Priority</span>':'')+icon('chevron',14)+'</button>').join('') || '<div class="empty-help">No outstanding actions in this demo role.</div>';
     const classTiles=topClasses.map(c=>{
-      const people=classPupils(c.id),score=avg(people.map(p=>p.score));
+      const people=classPupils(c.id),score=Classroom.metrics(c.id).mean;
       return '<button class="class-tile" data-action="open-class" data-id="'+c.id+'"><div class="class-code">'+escape(c.id)+'</div><div class="class-details">'+escape(c.shortName)+' · '+people.length+' students</div><div class="class-bottom">'+
-        '<span class="mini-bars" aria-hidden="true"><i style="height:7px"></i><i style="height:12px"></i><i style="height:10px"></i><i style="height:17px"></i><i style="height:20px"></i></span><span class="stat-small">'+score+'% avg</span></div></button>';
+        '<span class="mini-bars" aria-hidden="true"><i style="height:7px"></i><i style="height:12px"></i><i style="height:10px"></i><i style="height:17px"></i><i style="height:20px"></i></span><span class="stat-small">'+(score===null?'—':score+'%')+' summary</span></div></button>';
     }).join('');
     const activities=[
       {icon:'chart',title:'November checkpoints available',detail:'Year 11 analysis is ready to review',time:'18 Nov',action:'open-class',id:'11MA1'},
@@ -149,44 +150,46 @@
   function renderClasses(){
     return '<div class="inner-intro"><button class="back-btn" data-action="navigate" data-page="people" aria-label="Back to people">'+icon('back')+'</button><div><p class="eyebrow">People / Classes</p><h1 class="page-title">My classes</h1></div></div>'+
     '<div class="class-cards-large">'+classes.map(c=>{
-      const pupils=classPupils(c.id),mean=avg(pupils.map(s=>s.score));
+      const pupils=classPupils(c.id),mean=Classroom.metrics(c.id).mean;
       return '<button class="class-big" data-action="open-class" data-id="'+c.id+'"><div class="class-big-name">'+escape(c.id)+'</div><div class="class-big-detail">'+escape(c.name)+'</div><div class="class-big-detail">'+escape(c.course)+' · '+pupils.length+' sample students</div>'+
-      '<div class="big-progress"><span style="width:'+mean+'%"></span></div><div class="class-big-foot"><strong>'+mean+'% latest mean</strong><span>Open class '+icon('arrow',14)+'</span></div></button>';
+      '<div class="big-progress"><span style="width:'+(mean===null?0:mean)+'%"></span></div><div class="class-big-foot"><strong>'+(mean===null?'—':mean+'%')+' summary mean</strong><span>Open class '+icon('arrow',14)+'</span></div></button>';
     }).join('')+'</div>';
   }
   function renderClass(){
-    const c=group(store.selectedClass)||classes[0],pupils=classPupils(c.id),mean=avg(pupils.map(s=>s.score)),prior=avg(pupils.map(s=>s.previous)),review=pupils.filter(p=>p.status==='Review');
-    const tabs=[['students','Students'],['analysis','Assessment analysis'],['actions','Follow-ups']];
-    let body='';
-    if(store.classTab==='students'){
-      body='<section class="surface table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Latest result</th><th>Previous</th><th>Change</th><th>Support</th><th></th></tr></thead><tbody>'+
-        sorted(pupils).map(s=>{const diff=s.score-s.previous;return '<tr><td><span class="person">'+avatar(s.name,'sm')+'<span><strong>'+escape(s.name)+'</strong><small>'+escape(s.form)+'</small></span></span></td>'+
-        '<td><strong>'+s.score+'%</strong></td><td>'+s.previous+'%</td><td style="color:'+(diff>=0?'#32817e':'#ab6960')+'">'+(diff>=0?'+':'')+diff+'pp</td>'+
-        '<td><span class="tag '+(s.status==='Review'?'amber':'teal')+'">'+escape(s.status)+'</span></td><td><button class="table-action" data-action="open-student" data-id="'+s.id+'">View '+icon('chevron',13)+'</button></td></tr>';}).join('')+'</tbody></table></section>';
-    }else if(store.classTab==='analysis'){
-      body='<div class="split-grid">'+panel('Class assessment snapshot',
-        '<div class="metric-grid"><div class="metric"><div class="number">'+mean+'%</div><div class="caption">Latest class mean</div></div><div class="metric"><div class="number">'+prior+'%</div><div class="caption">Previous mean</div></div><div class="metric"><div class="number">'+(mean-prior>=0?'+':'')+(mean-prior)+'pp</div><div class="caption">Mean change</div></div></div>'+
-        '<p class="tiny-copy">Illustrative summary from a small fictional group. No real assessment data has been imported.</p>')+
-        panel('Students to review',
-        review.length?review.map(s=>'<div class="list-row"><span><strong class="row-title">'+escape(s.name)+'</strong><span class="row-sub">'+s.score+'% latest · '+s.previous+'% previous</span></span>'+button('Open profile','open-student','soft','data-id="'+s.id+'"')+'</div>').join(''):'<div class="empty-help">No current review flags.</div>')+
-        '</div>';
-    }else{
-      const groupTasks=assignedTasks().filter(t=>t.classId===c.id||pupils.some(s=>s.id===t.studentId));
-      body=panel('Class follow-up actions',groupTasks.map(t=>taskRow(t)).join('')||'<div class="empty-help">No actions for this class yet.</div>',
-       button(icon('plus',14)+' Add task','new-task','soft'));
-    }
-    return '<div class="inner-intro"><button class="back-btn" data-action="go-classes" aria-label="Back to classes">'+icon('back')+'</button><div><p class="eyebrow">Classes / '+escape(c.id)+'</p><h1 class="page-title">'+escape(c.name)+'</h1><p class="subtitle">'+escape(c.course)+' · '+escape(c.room)+' · '+pupils.length+' sample students</p></div></div>'+
-      '<div class="student-header surface"><div class="student-intro"><span class="avatar lg green">'+icon('users',25)+'</span><div><h2 class="student-title">'+escape(c.id)+'</h2><div class="student-sub"><span>'+mean+'% class mean</span><span class="inline-dot"></span><span>'+review.length+' academic follow-ups</span></div></div></div>'+
-      '<div class="student-actions">'+button(icon('plus',14)+' Follow-up task','new-task','primary')+'</div></div>'+
-      '<div class="tab-bar" role="tablist" aria-label="Class sections">'+tabs.map(([id,label])=>'<button class="tab-btn '+(store.classTab===id?'active':'')+'" role="tab" aria-selected="'+(store.classTab===id)+'" data-action="class-tab" data-id="'+id+'">'+label+'</button>').join('')+'</div>'+body;
+    const c=group(store.selectedClass)||classes[0],pupils=classPupils(c.id);
+    const summary=Classroom.metrics(c.id);
+    const tabs=[['register','Class register'],['assessments','Assessments'],['analysis','Analysis'],['actions','Follow-ups']];
+    const body=Classroom.render({
+      classId:c.id, tab:store.classTab, pupils, icon, avatar, button, escape,
+      panel, assignedTasks, taskRow
+    });
+    return '<div class="inner-intro"><button class="back-btn" data-action="go-classes" aria-label="Back to classes">'+
+      icon('back')+'</button><div><p class="eyebrow">Classes / '+escape(c.id)+'</p>'+
+      '<h1 class="page-title">'+escape(c.name)+'</h1><p class="subtitle">'+escape(c.course)+
+      ' · '+escape(c.room)+' · '+pupils.length+' sample students</p></div></div>'+
+      '<div class="surface student-header"><div class="student-intro"><span class="avatar lg green">'+icon('users',25)+
+      '</span><div><h2 class="student-title">'+escape(c.id)+'</h2><div class="student-sub"><span>'+
+      pupils.length+' students</span><span class="inline-dot"></span><span>'+
+      (summary.usedAssessments?summary.mean+'% summary mean':'No included assessments')+
+      '</span></div></div></div><div class="student-actions">'+
+      button(icon('plus',14)+' New assessment','class-new-assessment','primary')+'</div></div>'+
+      '<div class="tab-bar" role="tablist" aria-label="Class sections">'+
+      tabs.map(([id,label])=>'<button class="tab-btn '+(store.classTab===id?'active':'')+
+      '" role="tab" aria-selected="'+(store.classTab===id)+'" data-action="class-tab" data-id="'+id+'">'+
+      label+'</button>').join('')+'</div>'+body;
   }
   function renderStudent(){
     const s=student(store.selectedStudent)||students[0];
     const tabs=[['overview','Overview'],['academic','Academic'],['support','Support & actions'],['activities','Activities & meetings']];
     let body='';
-    const insight=(s.score-s.previous>=0?'+':'')+(s.score-s.previous)+' percentage points vs previous';
-    const perf='<div class="metric-grid"><div class="metric"><div class="number">'+s.score+'%</div><div class="caption">Latest assessment</div></div><div class="metric"><div class="number">'+s.grade+'</div><div class="caption">Indicative grade</div></div><div class="metric"><div class="number">'+s.attendance+'%</div><div class="caption">Demo attendance</div></div></div>'+
-      '<div class="subject-list">'+s.subjects.map(a=>'<div class="subject-row"><strong>'+escape(a.name)+'</strong><div class="track" aria-label="'+escape(a.name)+': '+a.latest+' percent"><span style="width:'+a.latest+'%"></span></div><span class="score">'+a.latest+'%</span></div>').join('')+'</div>';
+    const academicAssessments=Classroom.studentAssessments(s.id);
+    const marked=academicAssessments.filter(a=>a.result.status==='scored');
+    const currentScore=marked.length?marked[0].result.percent:s.score;
+    const priorScore=marked.length>1?marked[1].result.percent:s.previous;
+    const delta=Math.round((currentScore-priorScore)*10)/10;
+    const insight=(delta>=0?'+':'')+delta+' percentage points vs previous';
+    const perf='<div class="metric-grid"><div class="metric"><div class="number">'+currentScore+'%</div><div class="caption">Latest Maths assessment</div></div><div class="metric"><div class="number">'+s.grade+'</div><div class="caption">Indicative grade</div></div><div class="metric"><div class="number">'+s.attendance+'%</div><div class="caption">Demo attendance</div></div></div>'+
+      '<div class="subject-list">'+s.subjects.map(a=>{const value=a.name==='Mathematics'?currentScore:a.latest;return '<div class="subject-row"><strong>'+escape(a.name)+'</strong><div class="track" aria-label="'+escape(a.name)+': '+value+' percent"><span style="width:'+value+'%"></span></div><span class="score">'+value+'%</span></div>';}).join('')+'</div>';
     const supportItems=(interventions[s.id]||[]);
     const supportHTML=supportItems.map(a=>'<div class="intervention"><div class="head"><strong>'+escape(a.title)+'</strong><span class="tag teal">'+escape(a.status)+'</span></div><p>'+escape(a.description)+'</p><small>'+escape(a.owner)+' · '+escape(a.date)+'</small></div>').join('')||'<div class="empty-help">No academic interventions are recorded in this fictional profile.</div>';
     const notesHTML=(notes[s.id]||[]).map(n=>'<div class="note-line"><div class="note-heading"><h4>'+escape(n.title)+'</h4><small>'+escape(n.date)+'</small></div><p>'+escape(n.body)+'</p><small>'+escape(n.author)+' · '+escape(n.audience)+'</small></div>').join('')||'<div class="empty-help">No academic notes in this demo profile.</div>';
@@ -205,8 +208,8 @@
         panel('Staff conversation',threadUI)+'</div></div>';
     }else if(store.studentTab==='academic'){
       body='<div class="student-grid"><div class="stack">'+panel('Academic profile',perf)+
-        panel('Assessment history','<div class="table-wrap"><table class="data-table"><thead><tr><th>Assessment</th><th>Topic</th><th>Result</th></tr></thead><tbody>'+s.assessments.map(a=>'<tr><td><strong>'+escape(a.name)+'</strong><div class="small-muted">'+escape(a.date)+'</div></td><td>'+escape(a.topic)+'</td><td><strong>'+a.score+'%</strong></td></tr>').join('')+'</tbody></table></div>')+
-        '</div><div class="stack">'+panel('Interpretation','<p class="tiny-copy">Latest mathematics result: <strong>'+s.score+'%</strong>. Change: '+insight+'. Academic patterns should be reviewed by a teacher, not interpreted as automated risk decisions.</p>')+
+        panel('Assessment history','<div class="table-wrap"><table class="data-table"><thead><tr><th>Assessment</th><th>Topic</th><th>Result</th></tr></thead><tbody>'+academicAssessments.map(a=>'<tr><td><strong>'+escape(a.title)+'</strong><div class="small-muted">'+escape(a.date)+'</div></td><td>'+escape(a.mode==='questions'?'Question analysis':'Topic analysis')+(a.includeInSummary?'':' · Excluded from summaries')+'</td><td><strong>'+(a.result.status==='scored'?a.result.percent+'%':a.result.status==='excluded'?'Excluded':a.result.status==='unmarked'?'—':'Incomplete')+'</strong></td></tr>').join('')+'</tbody></table></div>')+
+        '</div><div class="stack">'+panel('Interpretation','<p class="tiny-copy">Latest mathematics result: <strong>'+currentScore+'%</strong>. Change: '+insight+'. Academic patterns should be reviewed by a teacher, not interpreted as automated risk decisions.</p>')+
         panel('Notes',notesHTML,button(icon('plus',13)+' Add note','new-note','soft'))+'</div></div>';
     }else if(store.studentTab==='support'){
       body='<div class="student-grid"><div class="stack">'+panel('Academic interventions',supportHTML,button(icon('plus',13)+' Add intervention','new-intervention','soft'))+
@@ -368,10 +371,13 @@
   function render(opts={}){
     const workspace=document.getElementById('workspace');
     const oldScroll=workspace?.scrollTop||0;
+    const wizardScroll=document.querySelector('.assessment-wizard-scroll')?.scrollTop||0;
     document.getElementById('app').innerHTML='<div class="app-frame">'+header()+'<div class="body-grid">'+sidebar()+
       '<main id="workspace" class="workspace" tabindex="-1"><div class="workspace-inner">'+body()+'</div></main></div>'+
-      searchLayer()+roleMenu()+drawerHTML()+'<div id="toast-slot" aria-live="polite"></div></div>';
+      searchLayer()+roleMenu()+drawerHTML()+Classroom.wizardHTML()+'<div id="toast-slot" aria-live="polite"></div></div>';
     if(!opts.scrollTop) document.getElementById('workspace').scrollTop=oldScroll;
+    const wizardPane=document.querySelector('.assessment-wizard-scroll');
+    if(wizardPane && !opts.wizardTop)wizardPane.scrollTop=wizardScroll;
     if(opts.focusSearch)takeFocus();
     if(store.drawer){window.setTimeout(()=>document.querySelector('.drawer [autofocus], .drawer .icon-button')?.focus(),0);}
     renderToast();
@@ -388,7 +394,8 @@
   }
   function openClass(id){
     if(!group(id))return;
-    store.selectedClass=id;store.classTab='students';store.search='';
+    store.selectedClass=id;store.classTab='register';store.search='';
+    Classroom.resetFilter();
     route('class');
   }
   function openDrawer(type,id){
@@ -396,6 +403,7 @@
     store.roleMenu=false;render();
   }
   function dispatch(action,el){
+    if(Classroom.onAction(action,el,{render,notify,store}))return;
     const id=el?.dataset.id || '';
     switch(action){
       case 'navigate':case 'home': route(action==='home'?'home':el.dataset.page);break;
@@ -438,6 +446,7 @@
     else if(store.roleMenu&&!event.target.closest('.role-menu')){store.roleMenu=false;render();}
   });
   document.addEventListener('input',event=>{
+    if(Classroom.onInput(event))return;
     if(event.target.id==='global-search'){
       const value=event.target.value;const selection=event.target.selectionStart;
       store.search=value;store.searchOpen=true;store.searchIndex=0;
@@ -466,7 +475,16 @@
       }
     }
   });
+  document.addEventListener('change',event=>{
+    Classroom.onChange(event,{render,notify});
+  });
   document.addEventListener('keydown',event=>{
+    if(Classroom.wizardOpen()){
+      if(event.key==='Escape'){
+        event.preventDefault();Classroom.askClose();render();
+      }
+      return;
+    }
     const active=document.activeElement;
     const typing=active&&(['INPUT','TEXTAREA','SELECT'].includes(active.tagName)||active.isContentEditable);
     if(event.key==='Escape'){
