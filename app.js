@@ -397,7 +397,7 @@
         '<div class="form-field"><label for="task-title">What needs to happen?</label><input id="task-title" name="title" placeholder="e.g. Review next assessment outcome" maxlength="120" required autofocus></div>'+
         '<div class="form-field"><label for="task-detail">Context</label><textarea id="task-detail" name="detail" maxlength="600" placeholder="Add a short explanation so the recipient knows what to do."></textarea></div>'+
         '<div class="form-field"><label for="task-student">Related student (optional)</label><select id="task-student" name="studentId"><option value="">No student</option>'+sorted(students).map(p=>'<option value="'+p.id+'" '+(p.id===defaultTarget?'selected':'')+'>'+escape(p.name)+'</option>').join('')+'</select></div>'+
-        '<div class="form-field"><label for="task-owner">Assigned to</label><select id="task-owner" name="assignee"><option>Sam Taylor</option><option>Maths Faculty</option><option>Year Team</option></select></div>'+
+        '<div class="form-field"><label for="task-owner">Assigned to</label><select id="task-owner" name="assignee">'<option>'+escape(viewer().name)+'</option><option>Maths Faculty</option><option>Year Team</option>'</select></div>'+
         '<div class="form-field"><label for="task-date">Due date</label><input id="task-date" name="due" type="date" value="2026-11-27" required></div>'+
         '<p class="form-hint">Prototype only: tasks are stored in browser memory and disappear on refresh.</p></form>';
       foot=close+' <button class="btn btn-primary" type="submit" form="task-form">'+icon('check',14)+' Create task</button>';
@@ -604,21 +604,21 @@
       if(!val('title')||!val('due'))return;
       const created={id:'T'+(100+tasks.length),title:val('title'),detail:val('detail')||'Follow-up action',
         studentId:val('studentId')||undefined,category:'Follow-up',due:val('due'),priority:'medium',
-        assignee:val('assignee'),status:'Open',roles:Object.keys(roleNames)};
+        assignee:val('assignee'),status:'Open',roles:['teacher','faculty','pastoral','senior']};
       tasks.unshift(created);store.drawer=null;render();notify('Demo follow-up task created');
     }else if(event.target.id==='note-form'){
       if(!val('title')||!val('body'))return;
       const id=val('studentId');if(!student(id))return;
-      (notes[id] ||= []).unshift({title:val('title'),body:val('body'),author:'Sam Taylor',date:'22 Nov',audience:'Relevant academic staff'});
+      (notes[id] ||= []).unshift({title:val('title'),body:val('body'),author:viewer().name,date:'22 Nov',audience:'Relevant academic staff'});
       store.drawer=null;openStudent(id);notify('Demo academic note saved');
     }else if(event.target.id==='intervention-form'){
       if(!val('title')||!val('description'))return;
       const id=val('studentId');if(!student(id))return;
-      (interventions[id] ||= []).unshift({title:val('title'),description:val('description'),owner:'Sam Taylor',date:'22 Nov',status:'Active'});
+      (interventions[id] ||= []).unshift({title:val('title'),description:val('description'),owner:viewer().name,date:'22 Nov',status:'Active'});
       store.drawer=null;openStudent(id);notify('Demo intervention saved');
     }else if(event.target.id==='message-form'){
       if(!val('message'))return;
-      const id=store.selectedStudent;(messages[id] ||= []).push({author:'Sam Taylor',initials:'ST',date:'Just now',text:val('message')});
+      const id=store.selectedStudent;(messages[id] ||= []).push({author:viewer().name,initials:viewer().initials,date:'Just now',text:val('message')});
       const searchFocused=document.activeElement?.id==='global-search';
       render();notify('Demo staff update posted locally');
     }
