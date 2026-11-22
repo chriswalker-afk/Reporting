@@ -101,7 +101,7 @@
   }
   function sidebar() {
     return '<aside class="sidebar '+(store.mobileNav?'is-open':'')+'" aria-label="Primary navigation">'+
-      '<div class="nav-label">Workspace</div><nav class="nav-list">'+navItems.filter(([id])=>id!=='tutor'||viewer().tutorForms?.length).map(([id,ic,label])=>
+      '<div class="nav-label">Workspace</div><nav class="nav-list">'+navItems.filter(([id])=>id!=='tutor'||(Access.has(viewer(),'teacher')&&viewer().tutorForms?.length)).map(([id,ic,label])=>
       '<button class="nav-button '+(store.page===id||store.page==='student'&&id==='people'||store.page==='class'&&id==='people'?'active':'')+
       '" data-action="navigate" data-page="'+id+'" '+(store.page===id?'aria-current="page"':'')+'>'+icon(ic,17)+
       '<span>'+label+'</span>'+(id==='tasks'?'<span class="nav-count">'+pending().length+'</span>':'')+'</button>').join('')+'</nav>'+
@@ -186,7 +186,7 @@
       '</tbody></table>'+(results.length?'':'<div class="empty-state">No matching students.</div>')+'</section>';
   }
   function renderTutor(){
-    const v=viewer(),members=sorted(students.filter(s=>v.tutorForms.includes(s.form)));
+    const v=viewer(),members=sorted(students.filter(s=>Access.has(v,'teacher')&&v.tutorForms.includes(s.form)&&Access.canViewStudent(v,s,classes)));
     return topIntro('Your pastoral group','Tutor group',members.length+' fictional students in '+v.tutorForms.join(', '),
       button(icon('users',14)+' Find student','navigate','light','data-page="people"'))+
       '<section class="surface table-wrap"><table class="data-table"><thead>'+
