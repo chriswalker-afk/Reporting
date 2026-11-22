@@ -133,42 +133,45 @@
   }
   const panel = (title,body,action='',extra='')=>'<section class="surface panel-pad '+extra+'"><div class="surface-top"><h2 class="section-title">'+title+'</h2>'+action+'</div>'+body+'</section>';
   function renderHome(){
-    const date='Sunday, 22 November 2026';
-    const agenda = [
-      ['08:00','Year 11 Mathematics','T11','11MA1'],
-      ['10:20','Year 12 Mathematics','T12','12MA1'],
-      ['13:10','Year 10 Mathematics','T11','10MA2']
-    ];
-    const topClasses = store.role==='senior' ? classes : classes;
-    const lesson = '<div class="highlight-lesson"><span class="lesson-symbol">'+icon('book',20)+'</span><div><div class="lesson-time">NEXT TEACHING DAY · 08:00</div><div class="lesson-title">Year 11 Mathematics</div><div class="lesson-meta">Room T11 · IGCSE Higher · '+classPupils('11MA1').length+' sample students</div></div>'+
-      '<button class="icon-button lesson-arrow" data-action="open-class" data-id="11MA1" aria-label="Open Year 11 Mathematics">'+icon('chevron')+'</button></div>';
-    const agendaHTML=agenda.map(([time,name,room,id])=>
-      '<button class="agenda-item click-row" data-action="open-class" data-id="'+id+'"><span class="agenda-time">'+time+'</span><span class="agenda-name">'+name+'</span><span class="agenda-place">'+room+'</span>'+icon('chevron',13)+'</button>').join('');
-    const actionsHTML=pending().slice(0,3).map(t=>'<button class="action-line click-row" data-action="open-task" data-id="'+t.id+'">'+
+    const available=visibleClasses(),taught=teachingClasses(),topClasses=[...taught,...available.filter(x=>!taught.some(y=>y.id===x.id))].slice(0,3);
+    const agenda=taught.length?taught:topClasses;
+    const next=agenda[0];
+    const lesson=next?'<div class="highlight-lesson"><span class="lesson-symbol">'+icon('book',20)+'</span>'+
+      '<div><div class="lesson-time">'+(taught.length?'YOUR NEXT TEACHING DAY':'CLASS OVERVIEW')+' · '+escape(next.next)+'</div>'+
+      '<div class="lesson-title">'+escape(next.name)+'</div><div class="lesson-meta">'+escape(next.room)+' · '+escape(next.course)+
+      ' · '+classPupils(next.id).length+' fictional students</div></div>'+
+      '<button class="icon-button lesson-arrow" data-action="open-class" data-id="'+next.id+'" aria-label="Open class">'+icon('chevron')+'</button></div>':
+      '<div class="empty-help">No classes in your current demo scope.</div>';
+    const agendaHTML=agenda.slice(0,3).map(c=>
+      '<button class="agenda-item click-row" data-action="open-class" data-id="'+c.id+'">'+
+      '<span class="agenda-time">'+escape(c.next)+'</span><span class="agenda-name">'+escape(c.name)+'</span>'+
+      '<span class="agenda-place">'+escape(c.room)+'</span>'+icon('chevron',13)+'</button>').join('');
+    const outstanding=pending().slice(0,3);
+    const actionsHTML=outstanding.map(t=>'<button class="action-line click-row" data-action="open-task" data-id="'+t.id+'">'+
       '<span class="action-icon '+(t.priority==='high'?'amber':t.studentId?'teal':'')+'">'+icon(t.studentId?'people':t.category==='Parent meetings'?'calendar':'tasks',16)+'</span>'+
-      '<span class="action-content"><span class="action-title">'+escape(t.title)+'</span><span class="action-detail">'+escape(t.category)+'<span class="inline-dot"></span>'+escape(t.due)+'</span></span>'+
-      (t.priority==='high'?'<span class="tag amber">Priority</span>':'')+icon('chevron',14)+'</button>').join('') || '<div class="empty-help">No outstanding actions in this demo role.</div>';
+      '<span class="action-content"><span class="action-title">'+escape(t.title)+'</span>'+
+      '<span class="action-detail">'+escape(t.category)+'<span class="inline-dot"></span>'+escape(t.due)+'</span></span>'+
+      (t.priority==='high'?'<span class="tag amber">Priority</span>':'')+icon('chevron',14)+'</button>').join('')||
+      '<p class="tiny-copy">No outstanding general tasks for this demo user.</p>';
     const classTiles=topClasses.map(c=>{
-      const people=classPupils(c.id),score=Classroom.metrics(c.id).mean;
-      return '<button class="class-tile" data-action="open-class" data-id="'+c.id+'"><div class="class-code">'+escape(c.id)+'</div><div class="class-details">'+escape(c.shortName)+' · '+people.length+' students</div><div class="class-bottom">'+
-        '<span class="mini-bars" aria-hidden="true"><i style="height:7px"></i><i style="height:12px"></i><i style="height:10px"></i><i style="height:17px"></i><i style="height:20px"></i></span><span class="stat-small">'+(score===null?'—':score+'%')+' summary</span></div></button>';
+      const score=Classroom.metrics(c.id).mean;
+      return '<button class="class-tile" data-action="open-class" data-id="'+c.id+'"><div class="class-code">'+escape(c.id)+'</div>'+
+        '<div class="class-details">'+escape(c.faculty)+' · '+classPupils(c.id).length+' students</div>'+
+        '<div class="class-bottom"><span class="mini-bars" aria-hidden="true"><i style="height:7px"></i><i style="height:12px"></i><i style="height:10px"></i><i style="height:17px"></i><i style="height:20px"></i></span>'+
+        '<span class="stat-small">'+(score===null?'—':score+'%')+' summary</span></div></button>';
     }).join('');
-    const activities=[
-      {icon:'chart',title:'November checkpoints available',detail:'Year 11 analysis is ready to review',time:'18 Nov',action:'open-class',id:'11MA1'},
-      {icon:'people',title:'New academic follow-up',detail:'Daniel Tan · Algebra support',time:'18 Nov',action:'open-student',id:'S002'},
-      {icon:'calendar',title:'PTM availability reminder',detail:'Booking preparation is approaching',time:'17 Nov',action:'open-task',id:'T003'}
-    ];
-    return topIntro('Your workspace','Good morning, Sam','A clear view of your priorities · '+date,
-      button(icon('plus',15)+' Quick action','quick-action','primary'))+
+    return topIntro('Your workspace','Good morning, '+titleCaseName(),
+      'Sunday, 22 November 2026 · '+Access.roleSummary(viewer()),button(icon('plus',15)+' Quick action','quick-action','primary'))+
       '<div class="home-top-grid">'+
-      panel('Next teaching day',lesson+agendaHTML,button('View classes '+icon('arrow',13),'go-classes','light','style="border:0"'))+
-      panel('Needs your attention',actionsHTML,button('All tasks '+icon('arrow',13),'go-tasks','light','style="border:0"'))+
-      '</div><div class="home-bottom-grid">'+
-      panel('Your classes','<div class="class-grid">'+classTiles+'</div>',
-      button('View all '+icon('arrow',13),'go-classes','light','style="border:0"'))+
-      panel('Recent activity',activities.map(a=>'<button class="activity-item click-row" data-action="'+a.action+'" data-id="'+a.id+'">'+
-      '<span class="activity-pin">'+icon(a.icon,15)+'</span><span class="activity-copy"><strong>'+escape(a.title)+'</strong><small>'+escape(a.detail)+'</small></span><span class="activity-time">'+a.time+'</span></button>').join(''))+
-      '</div>';
+      panel(taught.length?'Your next teaching day':'Classes in your scope',lesson+agendaHTML,
+        button('View classes '+icon('arrow',13),'go-classes','light','style="border:0"'))+
+      panel('General actions',actionsHTML,
+        button('All tasks '+icon('arrow',13),'go-tasks','light','style="border:0"'))+'</div>'+
+      '<div class="home-bottom-grid">'+
+      panel(taught.length?'Your classes':'Classes you can view','<div class="class-grid">'+classTiles+'</div>',
+        button('View all '+icon('arrow',13),'go-classes','light','style="border:0"'))+
+      panel('Student support · your next steps',SupportUI.homeQueue({icon}),
+        button('Intervention overview '+icon('arrow',13),'go-support','light','style="border:0"'))+'</div>';
   }
   function renderPeople(){
     const q=store.personFilter.trim().toLowerCase();
