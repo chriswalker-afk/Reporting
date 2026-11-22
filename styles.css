@@ -377,3 +377,44 @@ svg { display:inline-block; flex:none; vertical-align:middle; }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation-duration:.01ms !important; scroll-behavior:auto !important; transition-duration:.01ms !important; }
 }
+
+/* Tutor-group identity is neutral metadata, separate from EAL / SEN / SOC flags. */
+.tutor-group-tag{
+  display:inline-flex;
+  align-items:center;
+  white-space:nowrap;
+  border-radius:6px;
+  padding:4px 7px;
+  background:#eef3f7;
+  border:1px solid #e1e9ef;
+  color:#536a80;
+  font-size:10px;
+  font-weight:780;
+  line-height:1.25;
+  letter-spacing:.01em;
+  vertical-align:middle;
+}
+.tutor-filter{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  color:#708396;
+  font-size:10px;
+  font-weight:730;
+  white-space:nowrap;
+}
+.tutor-filter select{
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:#fff;
+  min-height:34px;
+  padding:6px 9px;
+  font:inherit;
+  color:#476176;
+  cursor:pointer;
+}
+.tutor-filter select:focus-visible{outline:3px solid rgba(39,123,130,.36);outline-offset:2px;}
+@media(max-width:700px){
+  .class-subtoolbar{flex-wrap:wrap;}
+  .tutor-filter{margin-left:auto;}
+}
