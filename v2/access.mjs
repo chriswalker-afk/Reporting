@@ -80,22 +80,33 @@ export function createAccess(data,staffId){
       data.classes.some(c=>leads(c.id)&&ix.courses.get(c.courseId)?.year===audience.id);
     return false;
   };
+  const canStartWave1=enrolmentId=>{
+    const e=ix.enrolments.get(enrolmentId);
+    return Boolean(e&&teaches(e.classId)&&!data.interventions.some(c=>c.enrolmentId===e.id&&c.state!=='closed'));
+  };
   const caseActions=caseId=>{
     if(!canViewCase(caseId))return [];
     const c=ix.interventions.get(caseId),e=ix.enrolments.get(c.enrolmentId);
     if(c.state==='closed')return [];
-    const actions=['view'];
-    if(teaches(e.classId)||leads(e.classId)||isHouse(e.studentId)||has('leadership'))actions.push('review');
-    if(c.state==='wave1'&&teaches(e.classId))actions.push('requestWave2');
-    if(c.state==='wave2_requested'&&leads(e.classId))actions.push('activateWave2');
-    if(['wave2','wave3_requested','wave3'].includes(c.state)&&isHouse(e.studentId))actions.push('respondHouse');
-    if(c.state==='wave2'&&(leads(e.classId)||isHouse(e.studentId)))actions.push('requestWave3');
-    if(['wave3_requested','wave3'].includes(c.state)&&has('leadership'))actions.push('respondLeadership');
+    const teacher=teaches(e.classId),faculty=leads(e.classId),house=isHouse(e.studentId),leadership=has('leadership');
+    const active=['wave1','wave2','wave3'].includes(c.state);
+    const review=c.state==='wave1'&&teacher||c.state==='wave2'&&(teacher||faculty)||c.state==='wave3'&&leadership;
+    const actions=['view','update'];
+    if(review)actions.push('review');
+    if(c.state==='wave1'&&teacher)actions.push('requestWave2');
+    if(c.state==='wave2_requested'&&faculty&&(!c.wave2Referral||c.ownerStaffId===staffId))actions.push('activateWave2');
+    if(['wave2','wave3_requested','wave3'].includes(c.state)&&house&&c.houseRequest&&(!c.houseOwnerStaffId||c.houseOwnerStaffId===staffId))actions.push('respondHouse');
+    if(c.state==='wave2'&&(faculty||house))actions.push('requestWave3');
+    if(c.state==='wave3_requested'&&leadership&&(!c.wave3Referral||c.ownerStaffId===staffId))actions.push('respondLeadership');
+    const plan=data.studyPlans.find(p=>p.interventionId===c.id);
+    const planContributor=active&&(c.wave===1?teacher:c.wave===2?teacher||faculty||house:teacher||faculty||house||leadership);
+    if(planContributor)actions.push('saveStudyPlan');
+    if(planContributor&&plan&&!plan.completedDate&&(plan.ownerStaffId===staffId||c.ownerStaffId===staffId))actions.push('reviewStudyPlan');
     return actions;
   };
   return {staff,has,facultyOf,teaches,leads,isTutor,isHouse,canViewClass,canViewEnrolment,canViewStudent,
     canEditResult,canManageAssessment,canEditPrediction,canEditMinimumTarget,canViewCase,canViewNote,canAddSubjectNote,canEditSubjectNote,
-    canStartWave1:enrolmentId=>teaches(ix.enrolments.get(enrolmentId)?.classId),
+    canStartWave1,
     scopeClasses,scopeStudents,scopeEnrolments,audienceMatches,caseActions,
     availableScopes:['teaching','faculty','tutor','house','school'].filter(scope=>scopeEnrolments(scope).length>0)};
 }
