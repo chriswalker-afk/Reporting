@@ -4,7 +4,7 @@
 
 ## Roadmap
 
-Based on the supplied visual mock-up: [JIS Hub plan](https://docs.google.com/presentation/d/1cuU2s-utebJggQRodu65GPoKwim3lCGBTwwr9YGR820/edit). This is a fresh implementation alongside the legacy site, not a migration of its mock statistics.
+Based on the supplied visual mock-up: [JIS Hub plan](https://docs.google.com/presentation/d/1cuU2s-utebJggQRodu65GPoKwim3lCGBTwwr9YGR820/edit). This is a fresh implementation, not a migration of the legacy mock statistics. V2-02 replaces the default site; the previous prototype is preserved at /legacy.html.
 
 | Pass | Deliverable |
 |---|---|
@@ -99,4 +99,8 @@ Run from repository root:
 
     node --test tests/*.test.cjs tests/v2-*.test.mjs
 
-The tests must establish relational integrity, permissions and denial cases, exact grade thresholds, missing and zero handling, weighting, common assessment comparisons, exclusion safeguards, persistence/reset and the propagation of a mark edit through all future views' data selectors. V2-02 onwards must bind their UI to the selectors and add interaction tests. This foundation does not yet change the visual prototype.
+The tests must establish relational integrity, permissions and denial cases, exact grade thresholds, missing and zero handling, weighting, common assessment comparisons, exclusion safeguards, persistence/reset and the propagation of a mark edit through all future views' data selectors. V2-02 onwards must bind their UI to the selectors and add interaction tests. V2-01 did not change the interface. V2-02 introduces the default V2 interface.
+
+## V2-02 — Design system and connected preview
+
+The root and v2/index.html use the same hub.mjs controller and hub.css design system. workspace.mjs builds scoped projections from the V2 store; views.mjs renders the five priority destinations, shared table controls, role-aware global search, tooltips and detail drawers. Future modules and future class-analysis tabs are explicitly inactive. The prototype defaults to Sam Taylor (Teacher + HoF + Tutor), with real demo assignment scopes, not privilege-changing toggles. All visible values derive from the current store snapshot. Assigned teachers can edit a prediction as a small end-to-end demonstration; the full markbook, notices and intervention mutations remain in their roadmap passes. Use / or Ctrl/Cmd+K for search, Escape to close a drawer, and Reset demo data to restore the baseline. Scope switching changes filters, not underlying permissions. Tutor/House class slices show the selected members only, with explicit partial-class coverage. Native modal dialogs provide keyboard focus containment. Keep all data fictional; no production security is implemented.
