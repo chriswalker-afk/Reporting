@@ -218,7 +218,7 @@ document.addEventListener('click',event=>{
   case 'student-exclusion':openDetail('student-exclusion',id);break;
   case 'assessment-exclusion':openDetail('assessment-exclusion',id);break;
   case 'reset-boundaries':{
-    const b=w.markbook(unpackBookId(detail.id)[0]);detailDialog.querySelectorAll('[name="boundary"]').forEach((el,i)=>el.value=b.defaultBands[i].min);break;
+    const b=w.markbook(unpackBookId(detail.id)[0]);detailDialog.querySelectorAll('[name="boundary"]').forEach((el,i)=>el.value=b.defaultBands[i].min);formDirty=true;break;
   }
   case 'preview-mark-import':try{grid.previewImport();grid.error('');}catch(error){grid.error(error.message);notify(error.message);}break;
   case 'apply-mark-import':try{grid.applyImport();grid.error('');}catch(error){grid.error(error.message);}break;
@@ -295,6 +295,14 @@ document.addEventListener('click',event=>{
   case 'filter-closed':state.caseFilter='closed';render();break;
   case 'clear-case-class':state.caseClass=null;render();break;
   case 'sort':{const [name,key]=id.split(':');const previous=state.sorts[name];state.sorts[name]={key,direction:previous?.key===key&&previous.direction==='asc'?'desc':'asc'};render();main.querySelector('[data-action="sort"][data-id="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});break;}
+  case 'demo-guide':openDetail('demo-guide','');break;
+  case 'demo-scenario':{
+    const scenarios={faculty:{staff:'sam',scope:'faculty',page:'classes',classId:'11-maths-1',classTab:'markbook'},tutor:{staff:'jordan',scope:'tutor',page:'students'},house:{staff:'morgan',scope:'house',page:'intervention'},leadership:{staff:'avery',scope:'school',page:'home'}};
+    const scenario=scenarios[id];if(!scenario||!closeDetail(false))break;
+    state.staffId=scenario.staff;state.scope=scenario.scope;state.columnGroups=loadColumns(state.staffId);
+    navigate(scenario.page,{classId:scenario.classId??null,classTab:scenario.classTab??'information'});
+    break;
+  }
   case 'reset-demo':confirmReset();break;
   case 'cancel-reset':resetDialog.close();break;
   case 'confirm-reset':try{store.reset({confirmed:true});resetDialog.close();notify('Fictional demo data restored.');}catch(error){notify(String(error.message||error));}break;
@@ -473,6 +481,7 @@ for(const eventName of ['pointerover','focusin'])document.addEventListener(event
 document.addEventListener('pointerout',event=>{if(helpAnchor&&!helpPinned&&helpAnchor.contains(event.target)&&!helpAnchor.contains(event.relatedTarget)&&document.activeElement!==helpAnchor)hideHelp();});
 document.addEventListener('focusout',event=>{if(helpAnchor&&!helpPinned&&event.target===helpAnchor)hideHelp();});
 window.addEventListener('resize',hideHelp);document.addEventListener('scroll',hideHelp,true);
+window.addEventListener('storage',event=>{if(event.key==='jis-hub-v2-synthetic-schema-'+store.snapshot().schemaVersion||event.key===null)notify('Demo data changed in another tab. Reload before making further edits.');});
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
 detailDialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
 for(const d of [searchDialog,detailDialog])d.addEventListener('click',event=>{if(event.target===d){const rect=d.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)d===detailDialog?closeDetail():closeSearch();}});
