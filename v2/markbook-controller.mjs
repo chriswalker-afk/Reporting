@@ -2,6 +2,7 @@ import {cellMark,previewRow,parseDelimited,importPreview} from './markbook.mjs';
 import {unpackBookId} from './markbook-views.mjs';
 import {pct} from './workspace.mjs';
 import {markBufferSummary,nextMarkCell} from './assessment-refinement.mjs';
+import {formItems,itemTotal,boundaryPercent} from './assessment-editor.mjs';
 
 const byId=id=>document.getElementById(id);
 export function parseItemLines(text){
@@ -14,8 +15,10 @@ export function parseItemLines(text){
 }
 export function definitionInput(form,book,old){
  const get=k=>String(form.get(k)??''),ids=old?.locked?old.assessment.classIds:[...new Set([book.classId,...form.getAll('assigned').map(String)])];
- return {title:get('title'),date:get('date'),unitId:get('unitId'),classIds:ids,mode:get('mode'),items:parseItemLines(get('items')),weight:Number(get('weight')),
-  bands:book.defaultBands.map((b,i)=>({grade:b.grade,min:Number(form.getAll('boundary')[i])})),confirmed:form.has('confirmed'),reason:get('reason')};
+ const items=form.has('items')?parseItemLines(get('items')):formItems(form,old);
+ return {title:get('title'),date:get('date'),unitId:get('unitId'),classIds:ids,mode:get('mode'),items,weight:Number(get('weight')),
+  bands:boundaryPercent(form.getAll('boundary'),get('boundary-unit')||'percent',itemTotal(items),book.defaultBands),
+  initialStatus:old?undefined:get('initialStatus')||'draft',confirmed:form.has('confirmed'),reason:get('reason')};
 }
 /** The mark grid is an unsaved buffer. No mark changes are persisted until its single explicit save. */
 export function createGridController({dialog,getDetail,getWorkspace,getStore,getStaff,notify}){
