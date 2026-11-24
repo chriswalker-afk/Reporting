@@ -19,11 +19,14 @@ const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWor
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
 function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
-let storageIssue='',suspendDetailRefresh=false;
+let storageIssue='',suspendDetailRefresh=false,formDirty=false;
 function boot(){
  try{store=createStore({storage:window.localStorage});}
  catch(error){storageIssue='Saved demo data could not be loaded. This session uses fresh fictional data; existing storage was not overwritten. '+String(error.message||error);store=createStore();}
  state.columnGroups=loadColumns(state.staffId);
+ state.classTab=parseRoute(location.hash).classTab??'information';
+ const initial=createWorkspace(store,state.staffId,state.scope);state.scope=initial.scope;
+ if(state.classId&&!initial.scopedClassIds.has(state.classId)&&initial.accessibleClassIds.has(state.classId))state.scope='accessible';
  render({top:true});
  if(storageIssue)notify('Local storage unavailable or invalid. See workspace notice.');
  store.subscribe(()=>render());
@@ -38,13 +41,13 @@ function render({top=false,keepFocus=false}={}){
  hideHelp();
  const key=JSON.stringify([state.staffId,state.scope,store.revision()]);
  if(!w||workspaceKey!==key){w=createWorkspace(store,state.staffId,state.scope);state.scope=w.scope;workspaceKey=JSON.stringify([state.staffId,state.scope,store.revision()]);}
- if(state.page==='classes'&&state.classId&&!w.scopedClassIds.has(state.classId)){state.classId=null;history.replaceState(null,'',routeHash('classes'));}
+ if(state.page==='classes'&&state.classId&&!w.scopedClassIds.has(state.classId)){state.classId=null;state.classTab='information';history.replaceState(null,'',routeHash('classes'));}
  nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  if(oldId){const next=byId(oldId);next?.focus({preventScroll:true});if(caret!==null&&next?.type==='search')try{next.setSelectionRange(caret,caret);}catch{}}
- if(detail&&detailDialog.open&&!suspendDetailRefresh)try{refreshDetail();}catch{closeDetail();}
+ if(detail&&detailDialog.open&&!suspendDetailRefresh&&!formDirty&&!grid.isDirty())try{refreshDetail();}catch{closeDetail();}
 }
 function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
 function clearAnalysis(){state.analysisStudent='';state.analysisAssessment='';state.analysisCommon='';state.analysisUnit='';state.analysisFrom='';state.analysisTo='';}
@@ -54,7 +57,7 @@ function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=n
  if(!closeDetail(false))return;closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
  state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';state.analysisStudent=analysisStudent;
- const hash=routeHash(page,classId);if(location.hash!==hash)history.pushState(null,'',hash);
+ const hash=routeHash(page,classId,state.classTab);if(location.hash!==hash)history.pushState(null,'',hash);
  render({top:true});main.focus({preventScroll:true});
 }
 function openClass(id,below=false){
@@ -68,12 +71,17 @@ function restoreFocus(token){
  const node=token.element?.isConnected?token.element:token.id?byId(token.id):token.action?document.querySelector('[data-action="'+CSS.escape(token.action)+'"]'+(token.record!==undefined?'[data-id="'+CSS.escape(token.record)+'"]':'')):null;
  node?.focus({preventScroll:true});
 }
+function canLeaveDetail(){
+ if(formDirty&&!window.confirm('Discard unsaved form changes? Saved records will not change.'))return false;
+ if(!grid.canLeave())return false;
+ formDirty=false;return true;
+}
 function openDetail(kind,id,options={}){
  hideHelp();
  const next={kind,id,...options};
  try{
   const markup=renderDetail(w,next);
-  if(!grid.canLeave())return;
+  if(!canLeaveDetail())return;
   detailDialog.classList.toggle('wide-markbook',kind==='mark-grid');
   detailDialog.classList.toggle('wide-profile',kind==='student');
   if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
@@ -88,6 +96,7 @@ function addBack(){
  }
 }
 function refreshDetail(markup=null){
+ hideHelp();formDirty=false;
  const scroll=detailDialog.querySelector('.drawer-body')?.scrollTop||0;
  detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
  detailDialog.classList.toggle('wide-profile',detail.kind==='student');
@@ -96,14 +105,16 @@ function refreshDetail(markup=null){
 }
 function detailBack(){
  if(!detailStack.length){closeDetail();return;}
- if(!grid.canLeave())return;
- const old=detailStack.pop(),{scroll,...previous}=old;detail=previous;refreshDetail();
+ if(!canLeaveDetail())return;
+ const old=detailStack.pop(),{scroll,...previous}=old;detail=previous;
+ if(['case-action','case-new'].includes(detail.kind))detail.revision=store.revision();
+ refreshDetail();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=old.scroll;
  detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
 }
 function closeDetail(restore=true){
- if(!grid.canLeave())return false;
- detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
+ if(!canLeaveDetail())return false;
+ hideHelp();detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
  if(restore)restoreFocus(drawerReturn);
  drawerReturn=null;detailDialog.classList.remove('wide-markbook','wide-profile');return true;
 }
@@ -165,7 +176,8 @@ function hideHelp(){
  if(tooltip.parentNode!==document.body)document.body.appendChild(tooltip);
 }
 function confirmReset(){
- resetDialog.innerHTML='<div class="dialog-head"><h2 id="reset-title">Reset fictional demo data?</h2></div><div class="drawer-body"><p>This will restore the original fictional marks and predictions and remove local demo edits. It does not affect the archived prototype.</p></div><div class="drawer-footer"><button class="btn" data-action="cancel-reset">Cancel</button><button class="btn btn-danger" data-action="confirm-reset">Reset demo</button></div>';
+ if(!closeDetail(false))return;closeSearch(false);
+ resetDialog.innerHTML='<div class="dialog-head"><h2 id="reset-title">Reset fictional demo data?</h2></div><div class="drawer-body"><p>This restores the original fictional school records, including assessments, notices, comments and interventions. All local demo edits will be lost. The archived prototype is unaffected.</p></div><div class="drawer-footer"><button class="btn" data-action="cancel-reset">Cancel</button><button class="btn btn-danger" data-action="confirm-reset">Reset demo</button></div>';
  resetDialog.showModal();resetDialog.querySelector('button')?.focus();
 }
 document.addEventListener('click',event=>{
@@ -186,9 +198,11 @@ document.addEventListener('click',event=>{
   case 'search-result':pickSearch(id);break;
   case 'open-class':openClass(id);break;
   case 'class-tab':
-    state.classTab=['markbook',...ANALYSIS_TABS].includes(id)?id:'information';render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
+    state.classTab=['markbook',...ANALYSIS_TABS].includes(id)?id:'information';
+    {const hash=routeHash('classes',state.classId,state.classTab);if(location.hash!==hash)history.pushState(null,'',hash);}
+    render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
   case 'analysis-evidence':openDetail('analysis-evidence',id);break;
-  case 'analysis-select-assessment':state.analysisAssessment=id;state.classTab='class-analysis';render({top:true});byId('analysis-assessment')?.focus();break;
+  case 'analysis-select-assessment':state.analysisAssessment=id;state.classTab='class-analysis';history.replaceState(null,'',routeHash('classes',state.classId,state.classTab));render({top:true});byId('analysis-assessment')?.focus();break;
   case 'analysis-print':window.print();break;
   case 'analysis-reset':clearAnalysis();render({top:true});byId('analysis-unit')?.focus();break;
   case 'new-unit':openDetail('unit-form',id);break;
@@ -287,15 +301,17 @@ document.addEventListener('click',event=>{
  }
 });
 document.addEventListener('paste',event=>grid.paste(event));
-window.addEventListener('beforeunload',event=>{if(grid.isDirty()){event.preventDefault();event.returnValue='';}});
+window.addEventListener('beforeunload',event=>{if(grid.isDirty()||formDirty){event.preventDefault();event.returnValue='';}});
 document.addEventListener('input',event=>{
  if(grid.onInput(event.target))return;
+ if(detailDialog.contains(event.target)&&event.target.closest('form')&&event.target.closest('form').id!=='mark-grid-form')formDirty=true;
  if(event.target.id==='global-query'){byId('search-results').innerHTML=renderSearchResults(w,event.target.value);return;}
  if(event.target.id==='page-query'){state.query=event.target.value;render({keepFocus:true});}
 });
 document.addEventListener('change',event=>{
  const el=event.target;
  if(grid.onChange(el))return;
+ if(detailDialog.contains(el)&&el.closest('form')&&el.closest('form').id!=='mark-grid-form')formDirty=true;
  if(el.id==='profile-pupil'){switchProfile(el.value);return;}
  if(el.id==='profile-subject'){changeProfile({subjectId:el.value},'profile-subject');return;}
  if(el.id==='profile-comment-subject'){changeProfile({commentSubject:el.value},'profile-comment-subject');return;}
@@ -309,7 +325,7 @@ document.addEventListener('change',event=>{
   render({keepFocus:true});return;
  }
  if(el.id==='staff'){if(!closeDetail(false)){el.value=state.staffId;return;}clearFilters();state.staffId=el.value;state.columnGroups=loadColumns(state.staffId);state.scope=null;state.classId=null;state.page='home';history.replaceState(null,'',routeHash('home'));render({top:true});byId('staff')?.focus({preventScroll:true});}
- if(el.id==='scope'){state.scope=el.value;clearFilters();render({top:true});byId('scope')?.focus({preventScroll:true});}
+ if(el.id==='scope'){if(!closeDetail(false)){el.value=state.scope;return;}state.scope=el.value;clearFilters();render({top:true});byId('scope')?.focus({preventScroll:true});}
  if(el.id==='quick-class'){if(el.value)openClass(el.value);else navigate('classes');}
  if(el.id==='flag-filter'){state.flag=el.value;render({keepFocus:true});}
  const registerFilters={'tutor-filter':'tutorFilter','house-filter':'houseFilter','track-filter':'trackFilter','support-filter':'supportFilter','class-year':'classYear','class-faculty':'classFaculty'};
@@ -329,7 +345,7 @@ document.addEventListener('submit',event=>{
     if(record.kind!=='case-new')throw Error('No selected pupil');
     const id=String(form.get('enrolmentId')??'');
     const next={kind:'case-new',id,revision:store.revision()},markup=renderDetail(w,next);
-    detail=next;refreshDetail(markup);detailDialog.querySelector('.drawer-body').scrollTop=0;return;
+    formDirty=false;detail=next;refreshDetail(markup);detailDialog.querySelector('.drawer-body').scrollTop=0;return;
    }
    let id;
    if(record.kind==='case-new'){
@@ -341,7 +357,7 @@ document.addEventListener('submit',event=>{
    }else throw Error('Unknown intervention form');
    // Keep the caller on the stack (pupil profile, class, or Home); don't add a stale form.
    if(detailStack.at(-1)?.kind==='case'&&detailStack.at(-1).id===id)detailStack.pop();
-   detail={kind:'case',id};refreshDetail();detailDialog.querySelector('.drawer-body').scrollTop=0;
+   formDirty=false;detail={kind:'case',id};refreshDetail();detailDialog.querySelector('.drawer-body').scrollTop=0;
    detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
    notify('Intervention record saved. Student profiles and staff action queues updated.');
   }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=error.message;}else notify(error.message);}
@@ -349,7 +365,9 @@ document.addEventListener('submit',event=>{
   return;
  }
  if(event.target.id==='mark-grid-form'){
-  event.preventDefault();try{grid.save(event.target);grid.error('');}catch(error){grid.error(error.message);}return;
+  event.preventDefault();suspendDetailRefresh=true;
+  try{if(grid.save(event.target)){refreshDetail();detailDialog.querySelector('#mark-grid-form button[type=submit]')?.focus({preventScroll:true});}grid.error('');}
+  catch(error){grid.error(error.message);}finally{suspendDetailRefresh=false;}return;
  }
  if(['unit-form','assessment-form','assessment-guard-form'].includes(event.target.id)){
   event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
@@ -359,13 +377,13 @@ document.addEventListener('submit',event=>{
    const [classId,assessmentId,enrolmentId]=unpackBookId(record.id),book=w.markbook(classId);
    if(record.kind==='unit-form'){
     const saved=store.addUnit(state.staffId,classId,String(form.get('title')??''));
-    state.unitId=saved.id;closeDetail();render();notify('Curriculum unit added.');return;
+    formDirty=false;state.unitId=saved.id;closeDetail();render();notify('Curriculum unit added.');return;
    }
    if(['assessment-new','assessment-copy','assessment-edit'].includes(record.kind)){
     const old=record.kind==='assessment-edit'?book.detail(assessmentId):null;
     const input=definitionInput(form,book,old);
     const saved=store.saveAssessment(state.staffId,classId,old?assessmentId:null,input);
-    state.unitId=input.unitId;render();
+    formDirty=false;state.unitId=input.unitId;render();
     if(old&&detailStack.length)detailBack();else{closeDetail();openDetail('mark-grid',bookId(classId,saved.id));}
     notify(old?'Assessment definition updated.':'Draft created. Enter marks or publish when ready.');return;
    }
@@ -376,7 +394,7 @@ document.addEventListener('submit',event=>{
     const row=d.rows.find(r=>r.enrolmentId===enrolmentId);if(!row)throw Error('Student outside current register');
     store.setStudentExclusion(state.staffId,assessmentId,enrolmentId,{excluded:!row.exclusionReason,reason,confirmed});
    }else throw Error('Unknown assessment action');
-   if(detailStack.length)detailBack();else closeDetail();
+   formDirty=false;if(detailStack.length)detailBack();else closeDetail();
    notify('Assessment updated. All dependent summaries recalculated.');
   }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=error.message;}else notify(error.message);}
   finally{suspendDetailRefresh=false;}
@@ -389,13 +407,13 @@ document.addEventListener('submit',event=>{
    if(record.kind==='target'){
     if(!form.has('confirmed'))throw Error('Confirm the revised target');
     store.setMinimumTarget(state.staffId,record.id,byId('minimum-target').value);
-    if(detailStack.length)detailBack();else closeDetail();notify('Minimum target saved; target comparisons updated.');
+    formDirty=false;if(detailStack.length)detailBack();else closeDetail();notify('Minimum target saved; target comparisons updated.');
    }else if(record.kind==='subject-comments'||record.kind==='comment-edit'){
     const existing=record.kind==='comment-edit'?w.noteDetail(record.id):null;
     const enrolmentId=existing?existing.enrolmentId:record.id;
     store.saveSubjectNote(state.staffId,enrolmentId,existing?.id??null,String(form.get('text')??''));
-    if(existing&&detailStack.length)detailBack();else if(existing){closeDetail();}
-    else{byId('comment-text').value='';byId('comment-text')?.focus({preventScroll:true});}
+    formDirty=false;if(existing&&detailStack.length)detailBack();else if(existing){closeDetail();}
+    else{refreshDetail();byId('comment-text')?.focus({preventScroll:true});}
     notify('Subject comment saved.');
    }else throw Error('Unknown subject form');
   }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=String(error.message||error);}else notify(String(error.message||error));}
@@ -411,7 +429,7 @@ document.addEventListener('submit',event=>{
     if(record.kind==='archive-notice')store.archiveNotice(state.staffId,record.id,{confirmed});
     else if(record.kind==='archive-deadline')store.archiveDeadline(state.staffId,record.id,{confirmed});
     else throw Error('Unknown archive record');
-    closeDetail();notify('Record archived. Active views and reminders updated.');return;
+    formDirty=false;closeDetail();notify('Record archived. Active views and reminders updated.');return;
    }
    const get=name=>String(form.get(name)??''),common={title:get('title'),audience:JSON.parse(get('audience')),confirmed:form.has('confirmed')};
    if(record.kind==='notice-form'){
@@ -423,7 +441,7 @@ document.addEventListener('submit',event=>{
     store.saveDeadline(state.staffId,record.id||null,{...common,event:get('event'),dueDate:get('dueDate'),details:get('details')});
     notify('Reporting schedule updated for the relevant staff.');
    }else throw Error('Unknown communication form');
-   if(detailStack.length)detailBack();else closeDetail();
+   formDirty=false;if(detailStack.length)detailBack();else closeDetail();
   }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=String(error.message||error);}else notify(String(error.message||error));}
   return;
  }
@@ -433,7 +451,7 @@ document.addEventListener('submit',event=>{
   if(detail?.kind!=='prediction')throw Error('No prediction selected');
   const value=byId('prediction').value;
   store.setPrediction(state.staffId,detail.id,value||null);
-  if(detailStack.length)detailBack();else closeDetail();
+  formDirty=false;if(detailStack.length)detailBack();else closeDetail();
   notify('Predicted grade saved. All relevant views are updated.');
  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=String(error.message||error);}else notify(String(error.message||error));}
 });
@@ -458,5 +476,5 @@ window.addEventListener('resize',hideHelp);document.addEventListener('scroll',hi
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
 detailDialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
 for(const d of [searchDialog,detailDialog])d.addEventListener('click',event=>{if(event.target===d){const rect=d.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)d===detailDialog?closeDetail():closeSearch();}});
-window.addEventListener('popstate',()=>{const route=parseRoute(location.hash);if(!closeDetail(false)){history.pushState(null,'',routeHash(state.page,state.classId));return;}clearFilters();state.classTab='information';state.unitId='';Object.assign(state,route);if(route.classId&&!w.scopedClassIds.has(route.classId)&&w.accessibleClassIds.has(route.classId))state.scope='accessible';render({top:true});});
+window.addEventListener('popstate',()=>{const route=parseRoute(location.hash);if(!closeDetail(false)){history.pushState(null,'',routeHash(state.page,state.classId,state.classTab));return;}closeSearch(false);clearFilters();state.classTab=route.classTab??'information';state.unitId='';Object.assign(state,route);if(route.classId&&!w.scopedClassIds.has(route.classId)&&w.accessibleClassIds.has(route.classId))state.scope='accessible';render({top:true});});
 boot();
