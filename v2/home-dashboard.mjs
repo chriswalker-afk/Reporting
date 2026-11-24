@@ -1,3 +1,4 @@
+import {noticePriority} from './communication-layout.mjs';
 // Presentation-only Home projection. All counts come from the existing scoped
 // directory / class selectors and the all-responsibilities personal queues.
 const unique=xs=>[...new Set(xs)].sort((a,b)=>String(a).localeCompare(String(b),'en',{numeric:true}));
@@ -48,6 +49,8 @@ export function homeDashboard(w){
  const reportingRows=w.scope==='school'?comm.deadlines.filter(d=>!d.archived&&(!d.recipient||!d.completed)):comm.openDeadlines;
  return {kind,context,counts,classes,priorityPupils:[...pupils].sort(pupilPriority),groups,groupKey,queue,shown,
   notices:comm.activeNotices.filter(n=>!shownNotices.has(n.id)),reportingRows,
+  urgentNotices:comm.activeNotices.filter(n=>n.priority==='urgent'&&!shownNotices.has(n.id)).sort(noticePriority),
+  reportingOverdue:reportingRows.filter(d=>d.status==='overdue').length,reportingToday:reportingRows.filter(d=>d.status==='today').length,
   overdue:actions.filter(a=>a.reviewDate<w.asOf).length,actionCount:actions.length,ackCount:comm.pendingAcknowledgements.length};
 }
 export function groupFilter(key,value,below=false){

@@ -333,3 +333,18 @@ Student profiles retain the pupil name, house, tutor group and flags, with expan
 Tests cover distinct panel identifiers, original evidence actions, responsive profile fields and drawer display state. Browser regressions cover expanded charts, evidence drilldown, dirty form preservation, mobile/tablet/desktop resizing, guarded close and profile expansion. The prototype continues to use fictional data and the existing scope and permission checks.
 
 Next: PR33 — Home and noticeboard responsive refinement; PR34 — comprehensive responsive and accessibility audit.
+
+
+## Home and noticeboard responsive refinement (PR33)
+
+Home is now task-first: personal actions and reporting reminders precede the academic overview. Urgent active notices not in the visible action preview get their own prominent section, including urgent information that does not require acknowledgement. Overdue and due-today reporting counts remain visible; the preview keeps the existing date order and links to the full schedule. The first five personal actions retain the established ordering, with additional actions available under More outstanding actions. The existing queue counts and all-responsibilities scope are unchanged.
+
+At a glance, role-specific cohort summaries and latest ordinary notices use the shared disclosure controls. Compact mode defaults secondary sections closed, retains headline counts and hides the decorative campus image. Standard mode defaults them open. Explicit choices are retained during the session and the existing display reset restores defaults. On narrow screens, dashboard preview tables use the same cells as labelled stacked rows.
+
+The corkboard remains grouped by audience, with weekly dates on briefing papers. A priority section contains each matching active urgent or pending-acknowledgement notice once; all other matching notices and briefings retain their ordinary sections. The priority filter, persistent communication counts and reporting shortcut make important records easy to reach, even when viewing archived or scheduled notices. Compact mode shortens paper previews; Expand board uses a wider grid and longer previews without replacing the board DOM or resetting the filters. Expand notice opens the existing detail drawer. Acknowledgement remains personal and versioned, and publisher-only counts and controls retain existing access checks.
+
+The reporting schedule now presents labelled stacked rows on phones, including the audience, date, event and status. Leadership oversight is explicitly distinguished from personal completion and still displays due/overdue status. No external reporting submission or change to the underlying communication model is introduced.
+
+Regression coverage checks priority ordering, unique board records, audience access, acknowledgement updates, deadline counts, task-first layout, compact disclosure defaults, mobile schedule and board expansion across viewport sizes.
+
+Next: PR34 — comprehensive responsive and accessibility audit, including all roles, pages, viewport sizes, orientations and zoom levels.
