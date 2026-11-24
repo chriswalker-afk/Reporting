@@ -27,7 +27,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(context!==key){if(dirty()){error('Unsaved changes belong to a different gradebook. Return to that view.');return;}context=key;anchor=end=null;history.reset();revision=getStore().revision();}
   if(!dirty())revision=getStore().revision();
   book=w.markbook(node.dataset.classId);overview=book.overview(node.dataset.unitId);
-  projection=projectGradebook(overview,book.units,JSON.parse(node.dataset.layout??'{}'),JSON.parse(node.dataset.expanded??'[]'),w.asOf);
+  projection=projectGradebook(overview,book.units,JSON.parse(node.dataset.layout??'{}'),JSON.parse(node.dataset.expanded??'[]'),w.asOf,node.dataset.entryView==='single'?{assessmentId:node.dataset.entryAssessment,itemId:node.dataset.entryItem}:null);
   columns=projection.columns;
   const nextLayout=JSON.stringify([projection.layout.display,columns.map(c=>c.kind==='group'?['group',c.group.id]:[c.assessment.id,c.item?.id??null])]);
   if(layout!==nextLayout){anchor=end=null;layout=nextLayout;}
@@ -103,7 +103,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   for(const node of root.querySelectorAll('[data-gradebook-coverage]'))node.textContent=coverage.get(node.dataset.gradebookCoverage)+'/'+overview.rows.length+' scored';
   const invalid=[...edits.values()].filter(c=>!c.entry).length,status=root.querySelector('#gradebook-save-status');
   if(status)status.textContent=dirty()?edits.size+' unsaved result'+(edits.size===1?'':'s')+(invalid?' · '+invalid+' invalid':''):'All changes saved';
-  const hidden=root.querySelector('[data-gradebook-hidden-edits]');if(hidden){const count=[...edits.keys()].filter(key=>!projection.shownIds.has(records.get(key)?.a.id)).length;hidden.textContent=count?count+' unsaved result'+(count===1?'':'s')+' in hidden assessments — Show all to review':'';}
+  const hidden=root.querySelector('[data-gradebook-hidden-edits]');if(hidden){const count=[...edits.keys()].filter(key=>!projection.shownIds.has(records.get(key)?.a.id)).length;hidden.textContent=count?count+' unsaved result'+(count===1?'':'s')+(projection.single?' in other assessments — switch assessment or return to spreadsheet to review':' in hidden assessments — Show all to review'):'';}
   const save=root.querySelector('[data-action="gradebook-save"]'),discard=root.querySelector('[data-action="gradebook-discard"]');
   if(save)save.disabled=!dirty()||invalid>0;if(discard)discard.disabled=!dirty();
   paintSelection();
