@@ -207,3 +207,12 @@ The default assessment form asks for a title, date, curriculum unit and maximum 
 Topic and question-level formats use structured rows for item label, maximum mark, topic and optional AO, with a live total. Advanced settings contain class assignment, weight and grade boundaries; boundary inputs can be expressed as percentage thresholds or equivalent raw marks, with percentages stored as before.
 
 Each assessment header offers Settings to authorised staff, with edit, duplicate, publish (draft only), exclude/re-include, and delete (empty draft only). Duplicating copies configuration but never results, publication state or exclusion state. When results already exist, item identity/order and assignments remain locked; maximum-mark corrections require a reason and confirmation, and cannot reduce a maximum below any recorded mark in any assigned class. The original marks and audit records are retained.
+
+
+## Expandable assessment columns (PR23)
+
+Topic and question-level assessments are collapsed into a single calculated result column by default. Expand any assessment header to show its individual mark columns followed by the calculated total; several assessments can be expanded independently. New topic/QLA assessments open expanded in the main gradebook. The expansion preference is retained within the current session for each class.
+
+Item entries and status changes use one unsaved draft per assessment and pupil, keyed by stable IDs rather than column positions. Collapse/re-expand preserves all edits (including invalid values), and a collapsed invalid result is explicitly flagged. An incomplete result displays its partial sum and entered-item count, not a final grade; the total, percentage and course grade become available when all items are entered. Entering zero is distinct from leaving a mark blank. For structured results use the status control to record absence or missing work; changing to either clears marks in the draft and clearing recorded marks still requires confirmation on save.
+
+Paste operates on the visible editable mark columns, with validation against each individual item maximum; it cannot silently cross calculated totals or read-only cells. One atomic gradebook save handles total-only and structured assessments together. Permissions, exclusions, revision checks, published/included eligibility rules and the existing analytics engine are retained. Individual assessment detail drawers remain available for advanced operations.
