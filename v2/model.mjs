@@ -3,11 +3,12 @@
  * These browser-compatible modules do not authenticate users.
  */
 import {supportedGradeLabels} from './grade-scales.mjs';
+import {validMethod,reportApplies} from './calculation-policy.mjs';
 export const SCHEMA_VERSION = 2;
 export const TABLES = [
   'staff','faculties','houses','tutorGroups','students','subjects','gradeSchemes',
   'courses','classes','enrolments','units','assessments','results','targets',
-  'notes','interventions','studyPlans','notices','deadlines','audit'
+  'notes','interventions','studyPlans','notices','deadlines','reportGrades','audit'
 ];
 export const ROLES = ['teacher','tutor','faculty','house','leadership'];
 export const RESULT_STATES = ['present','absent','missing'];
@@ -21,7 +22,7 @@ export const isDate = x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x
   Number.isFinite(Date.parse(x)) && new Date(x).toISOString().slice(0,10) === x;
 
 export function indexData(data) {
-  const index = Object.fromEntries(TABLES.map(t => [t,new Map(data[t].map(r=>[r.id,r]))]));
+  const index = Object.fromEntries(TABLES.map(t => [t,new Map((data[t]??[]).map(r=>[r.id,r]))]));
   const group = (rows,field) => {
     const m = new Map();
     for(const row of rows) {
@@ -48,6 +49,7 @@ export function validateData(data) {
     return ['Only schema version '+SCHEMA_VERSION+' explicitly synthetic demo data is supported.'];
   if(!isDate(data.asOf)||!isText(data.academicYear))return ['Invalid demo reference date or academic year.'];
   for(const table of TABLES) {
+    if(table==='reportGrades'&&data[table]===undefined)continue; // additive schema-2 compatibility
     if(!Array.isArray(data[table])) err(table,'expected array');
     else {
       const ids=new Set();
@@ -59,7 +61,7 @@ export function validateData(data) {
     }
   }
   if(errors.length)return errors;
-  const maps=Object.fromEntries(TABLES.map(t=>[t,new Map(data[t].map(r=>[r.id,r]))]));
+  const maps=Object.fromEntries(TABLES.map(t=>[t,new Map((data[t]??[]).map(r=>[r.id,r]))]));
   const ref=(where,t,id)=>{if(!maps[t].has(id)){err(where,'unknown '+t+' ID '+id);return false;}return true;};
   const refs=(where,t,ids,{nonempty=false}={})=>{
     if(!Array.isArray(ids)||(nonempty&&!ids.length)){err(where,'invalid '+t+' list');return false;}
@@ -73,7 +75,7 @@ export function validateData(data) {
     if(!isText(s.name)||!Array.isArray(s.roles)||!s.roles.length||new Set(s.roles).size!==s.roles.length||
       s.roles.some(r=>!ROLES.includes(r)))err(s.id,'invalid staff identity or roles');
   }
-  for(const f of data.faculties)roleRefs(f.id,f.headIds,'faculty');
+  for(const f of data.faculties){roleRefs(f.id,f.headIds,'faculty');if(f.calculationMethod!==undefined&&!validMethod(f.calculationMethod))err(f.id,'invalid faculty calculation method');}
   for(const h of data.houses)roleRefs(h.id,h.headIds,'house');
   for(const g of data.tutorGroups) {
     roleRefs(g.id,g.tutorIds,'tutor');ref(g.id,'houses',g.houseId);
@@ -99,6 +101,7 @@ export function validateData(data) {
     if(!supportedGradeLabels(schemeLabels(c.gradeSchemeId)))err(c.id,'course must use an ordered 9–1/U, A*–G/U or A*–E/U grading scale');
     if(!Number.isInteger(c.year)||c.year<7||c.year>13||!isText(c.academicYear))err(c.id,'invalid course year');
     if(!finite(c.defaultWeight)||c.defaultWeight<=0)err(c.id,'invalid default assessment weight');
+    if(c.calculationMethod!==undefined&&c.calculationMethod!==null&&!validMethod(c.calculationMethod))err(c.id,'invalid course calculation method');
   }
   for(const c of data.classes) {
     ref(c.id,'courses',c.courseId);roleRefs(c.id,c.teacherIds,'teacher');
@@ -253,6 +256,27 @@ export function validateData(data) {
     if(d.details!==undefined&&typeof d.details!=='string')err(d.id,'invalid instructions');
     if(d.archived!==undefined&&typeof d.archived!=='boolean')err(d.id,'invalid archived state');
     staffResponses(d,d.completions);
+  }
+  const reportKeys=new Set();
+  for(const r of data.reportGrades??[]){
+    ref(r.id,'enrolments',r.enrolmentId);ref(r.id,'deadlines',r.periodId);ref(r.id,'staff',r.updatedBy);
+    const en=maps.enrolments.get(r.enrolmentId),course=maps.courses.get(maps.classes.get(en?.classId)?.courseId),pupil=maps.students.get(en?.studentId),period=maps.deadlines.get(r.periodId);
+    const labels=schemeLabels(course?.gradeSchemeId),pair=key(r.periodId,r.enrolmentId);
+    if(reportKeys.has(pair))err(r.id,'duplicate report grade');reportKeys.add(pair);
+    if(!reportApplies(period,course,maps.subjects.get(course?.subjectId)?.facultyId,pupil))err(r.id,'report period does not apply to enrolment');
+    if(!labels.includes(r.grade)||!['draft','submitted'].includes(r.status)||!isDate(r.updatedDate)||typeof r.reason!=='string'||r.reason.length>1000)err(r.id,'invalid report grade');
+    if(r.status==='submitted'){
+      ref(r.id,'staff',r.submittedBy);
+      const e=r.evidence;
+      if(!isDate(r.submittedDate)||!e||!isDate(e.cutoff)||!isDate(e.periodDueDate)||e.cutoff>r.submittedDate||e.cutoff>e.periodDueDate||
+        !validMethod(e.method)||!['default','faculty','course'].includes(e.source)||
+        e.average!==null&&(!finite(e.average)||e.average<0||e.average>100)||
+        [e.calculatedGrade,e.predictedGrade,e.minimumGrade].some(g=>g!==null&&!labels.includes(g))||
+        !Number.isInteger(e.scored)||!Number.isInteger(e.eligible)||e.scored<0||e.eligible<e.scored||
+        !Array.isArray(e.assessmentIds)||e.assessmentIds.length!==e.scored||new Set(e.assessmentIds).size!==e.scored||
+        e.assessmentIds.some(id=>!maps.assessments.has(id))||
+        (e.calculatedGrade!==r.grade&&!isText(r.reason)))err(r.id,'invalid submitted report evidence');
+    }else if(r.evidence!==null||r.submittedBy!==null||r.submittedDate!==null)err(r.id,'draft report must not have submission evidence');
   }
   for(const a of data.audit){ref(a.id,'staff',a.actorStaffId);if(!isText(a.action)||!isText(a.recordId)||!isText(a.timestamp)||!Number.isFinite(Date.parse(a.timestamp)))err(a.id,'invalid audit event');}
   return errors;
