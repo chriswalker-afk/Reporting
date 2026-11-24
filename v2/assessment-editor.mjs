@@ -30,7 +30,7 @@ export const itemTotal=items=>items.reduce((s,i)=>s+i.maxMarks,0);
 export function boundaryPercent(values,unit,total,labels){
  if(values.length!==labels.length||values.some(v=>String(v).trim()==='')||!Number.isFinite(total)||total<=0)throw Error('Enter all grade boundaries and a valid maximum mark');
  if(!['marks','percent'].includes(unit))throw Error('Choose a valid boundary unit');
- return labels.map((b,i)=>({grade:b.grade,min:unit==='marks'?n(values[i])*100/total:n(values[i])}));
+ return labels.map((b,i)=>({grade:b.grade,min:unit==='marks'?n(values[i])/total*100:n(values[i])}));
 }
 function modeOf(form){return form.querySelector('[name="mode"]').value;}
 function maxOf(form){
@@ -79,7 +79,7 @@ export function changeEditorRows(form,action,target){
  if(form.querySelector('#assessment-format').dataset.locked==='true'||modeOf(form)==='total')return;
  if(action==='add-assessment-item'){
   if(rows.children.length>=100)throw Error('Maximum 100 assessment items');
-  const label=modeOf(form)==='questions'?'Q'+(rows.children.length+1):'';
+  let label='';if(modeOf(form)==='questions'){const used=new Set([...rows.querySelectorAll('[name="item-label"]')].map(el=>el.value.toLowerCase()));let index=1;while(used.has('q'+index))index++;label='Q'+index;}
   rows.insertAdjacentHTML('beforeend',assessmentItemRow({label,maxMarks:10},rows.children.length));
   rows.lastElementChild.querySelector('[name="item-label"]').focus();
  }else if(action==='remove-assessment-item'){
