@@ -377,3 +377,94 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 .home-attention .list-row:has(.house-badge) .list-icon{display:none}
 .home-attention .list-row>.house-badge{flex:none}
 .home-metric .metric-action:hover,.home-group-progress:hover{color:var(--accent-dark);text-decoration:underline;text-underline-offset:2px}
+
+/* Class and pupil workspace refinement: compact, data-led, shared JIS design. */
+.class-heading .page-heading{align-items:center;gap:10px;margin-bottom:9px}
+.class-heading .page-heading h1{font-size:clamp(24px,2.3vw,30px)}
+.class-switcher{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.class-switcher .btn{min-height:32px;font-size:11px;padding:5px 8px}
+.class-switcher .select{max-width:235px;height:32px;font-size:11px}
+.class-heading+.tabs{margin-bottom:10px}
+.class-metrics{gap:8px;margin-bottom:10px}
+.class-metrics .metric{padding:8px 11px}
+.class-metrics .metric-value{font-size:24px}
+.class-register{min-width:0}
+.register-heading{padding:9px 12px;align-items:center;flex-wrap:wrap;gap:8px}
+.register-heading h2{margin-bottom:2px}
+.register-mark-shortcut{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0}
+.register-mark-shortcut .btn{min-height:31px;font-size:11px}
+.register-mark-shortcut .small{max-width:240px;overflow-wrap:anywhere}
+.register-toolbar,.register-layout-bar{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.register-search{flex:1;min-width:155px;max-width:250px}
+.register-search .input{width:100%;height:32px;font-size:12px}
+.register-focus,.profile-focus-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.register-chip{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border:1px solid var(--border);border-radius:6px;min-height:30px;padding:4px 8px;background:white;color:var(--muted);font-size:11px;font-weight:650}
+.register-chip strong{font-variant-numeric:tabular-nums;color:var(--ink)}
+.register-chip[aria-pressed=true]{background:var(--accent-soft);border-color:#ca97ac;color:var(--accent-dark)}
+.register-chip[aria-pressed=true] strong{color:var(--accent-dark)}
+.register-chip:hover{border-color:var(--accent);color:var(--accent-dark)}
+.register-filter-actions{display:flex;gap:4px;align-items:center;margin-left:auto}
+.register-options-button,.register-filter-actions .btn{min-height:29px;padding:4px 7px;font-size:11px}
+.register-extra-filters{background:#fdfafa}
+.register-extra-filters[hidden],#register-column-options[hidden]{display:none!important}
+.register-layout-bar{background:#fcf9fa;gap:6px;padding-block:5px}
+.register-layout-bar [role=group]{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.register-layout-note{font-size:10px;color:var(--muted);margin-left:auto}
+.register-layout-bar .column-toggle[aria-pressed=true],.class-register .column-toggle[aria-pressed=true]{border-color:#ca97ac}
+.class-register .roster-table{max-height:min(62vh,660px)}
+.class-register[data-register-layout=daily] .data-table th,.class-register[data-register-layout=daily] .data-table td{padding:6px 8px}
+.class-register[data-register-layout=daily] .data-table .sticky-first{min-width:172px;max-width:228px}
+.class-register .register-pupil-meta{display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-top:2px}
+.register-pupil-meta .cell-sub{margin:0 2px 0 0;white-space:nowrap}
+.register-pupil-meta .tag{font-size:9px;padding:1px 4px}
+.class-register .register-score .inline-link{font-weight:740;color:var(--accent-dark);font-variant-numeric:tabular-nums}
+.class-register[data-register-layout=daily] .num .cell-sub{white-space:nowrap}
+.class-index-tracker{font-size:11px;min-height:28px;padding:4px 8px}
+.profile-top{display:grid;gap:7px}
+.profile-top .profile-identity{padding:10px 12px;gap:12px;background:#fcf8f9}
+.profile-top .profile-identity-main{gap:9px}
+.profile-top .profile-identity-staff .drawer-summary{gap:8px}
+.profile-top .profile-navigation{margin:0;padding:0;border:0;align-items:center;gap:6px}
+.profile-top .profile-navigation .analysis-field{display:flex;align-items:center;gap:6px}
+.profile-top .profile-navigation .select{height:32px}
+.profile-top .profile-navigation .btn{min-height:32px;font-size:11px}
+.profile-top .profile-scope-note{margin:0;font-size:11px}
+.profile-tabs{padding-top:8px;margin:0 0 8px}
+.profile-tabs .tab{gap:6px}
+.profile-tab-count{font-size:10px;font-variant-numeric:tabular-nums;background:#f1e9ed;color:var(--muted);border-radius:5px;padding:1px 5px}
+.profile-tabs .tab[aria-pressed=true] .profile-tab-count{background:var(--accent-soft);color:var(--accent-dark)}
+.profile-tab-body{padding-top:4px}
+.profile-metrics .metric{min-height:0;padding:8px 10px}
+.profile-metrics .metric-value{font-size:24px;line-height:1.15}
+.profile-section{margin-bottom:10px}
+.profile-section .profile-section-head{background:#faf6f7}
+.profile-section .profile-section-head h3{padding:8px 11px}
+.profile-section .content{padding:9px 11px;gap:7px;line-height:1.45}
+.profile-target-strip{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;background:#efedef}
+.target-segment,.target-dot{display:block;min-width:0}
+.target-segment.on,.target-dot.on{background:#25816c}
+.target-segment.below,.target-dot.below{background:#bc872d}
+.target-segment.unknown,.target-dot.unknown{background:#9da2ab}
+.profile-target-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:11px}
+.profile-target-legend span{display:inline-flex;align-items:center;gap:5px}
+.target-dot{width:8px;height:8px;border-radius:2px;flex:none}
+.profile-focus-bar{padding-top:3px}
+.profile-focus-bar .register-chip{min-height:28px}
+.profile-table-caption{margin:0}
+.profile-table .data-table th,.profile-table .data-table td{padding:7px 8px}
+.profile-table[aria-label="Cross-subject attainment"] .data-table{white-space:normal;min-width:660px}
+.profile-table[aria-label="Cross-subject attainment"] .data-table th,.profile-table[aria-label="Cross-subject attainment"] .data-table td{vertical-align:middle}
+.profile-subject-name{min-width:115px;max-width:200px}
+.profile-subject-name>.inline-link{font-size:13px;font-weight:730}
+.profile-current-grade{font-size:17px;font-weight:760;color:var(--ink);font-variant-numeric:tabular-nums}
+.profile-current-percent{font-variant-numeric:tabular-nums;white-space:nowrap}
+.profile-target-gap{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.profile-target-gap>.negative,.profile-target-gap>.positive{font-size:14px}
+.profile-row-actions{min-width:92px}
+.profile-row-actions>.inline-link{font-size:11px;font-weight:700}
+.profile-row-actions .cell-sub{margin-top:3px}
+.profile-analysis-grid{gap:10px}
+.profile-section .profile-topic-list{gap:6px}
+@media(max-width:1080px){.class-switcher .select{max-width:185px}.register-layout-note{display:none}.register-search{max-width:none;flex:1 1 160px}.register-filter-actions{margin-left:0}.register-mark-shortcut .small{max-width:200px}}
+@media(max-width:760px){.class-heading .page-heading{gap:7px}.class-switcher{width:100%;gap:4px}.class-switcher .select{max-width:100%;flex:1 1 140px}.class-switcher .btn{min-height:32px}.class-metrics .metric{padding:8px}.class-metrics .metric-value{font-size:22px}.register-toolbar{gap:6px}.register-search{flex-basis:100%;max-width:none}.register-focus{gap:4px}.register-chip{font-size:10px;padding:4px 6px}.register-filter-actions{margin-left:auto}.register-mark-shortcut .small{max-width:none}.register-heading{padding:8px 10px}.class-register[data-register-layout=daily] .data-table .sticky-first{min-width:145px;max-width:185px}.class-register .roster-table{max-height:56dvh}.profile-top .profile-identity{padding:9px}.profile-top .profile-navigation .analysis-field{flex:1;min-width:110px;max-width:none}.profile-top .profile-navigation .analysis-field>select{min-width:0}.profile-top .profile-navigation .analysis-field{font-size:0}.profile-top .profile-navigation .analysis-field .select{font-size:11px}.profile-top .profile-navigation>.small{flex-basis:100%}.profile-tabs{padding-top:5px}.profile-tabs .tab{padding:7px 8px}.profile-metrics .metric-value{font-size:21px}.profile-section .content{padding:8px}.profile-table[aria-label="Cross-subject attainment"] .data-table .sticky-first{min-width:110px;max-width:150px}}
+@media print{.register-toolbar,.register-layout-bar,.register-extra-filters,.register-mark-shortcut,.column-toolbar,.class-switcher{display:none!important}}

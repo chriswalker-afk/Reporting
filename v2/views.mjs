@@ -2,8 +2,8 @@ import {assetUrl,houseBadge,pupilIdentity,HOUSES} from './branding.mjs';
 import {homeDashboard,HOME_PREVIEW} from './home-dashboard.mjs';
 import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,displayDate,gradeGap,matchText,sortRows,routeHash} from './workspace.mjs';
 import {EVENTS,safeLink} from './communications.mjs';
-import {GROUPS,DEFAULT_GROUPS,registerColumns,filterRegister} from './class-overview.mjs';
-import {classTabs,renderMarkbook,renderBookDetail} from './markbook-views.mjs';
+import {GROUPS,DEFAULT_GROUPS,displayedRegisterColumns,registerLayout,registerFocusCounts,registerFocus,visibleRegisterRows} from './class-overview.mjs';
+import {classTabs,renderMarkbook,renderBookDetail,bookId} from './markbook-views.mjs';
 import {renderAcademicAnalysis,renderAnalysisEvidence} from './analysis-views.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,profileCounts} from './student-profiles.mjs';
@@ -41,7 +41,8 @@ const note=text=>'<p class="stage-note">'+icon('info')+esc(text)+'</p>';
 const metric=(label,value,foot='',hint='',action='')=>'<div class="metric"><div class="metric-head">'+esc(label)+(hint?help(hint,label):'')+'</div><div class="metric-value">'+esc(value)+'</div>'+(action?'<button class="metric-action" data-action="'+esc(action)+'">'+esc(foot)+' '+icon('arrow')+'</button>':'<div class="metric-foot">'+esc(foot)+'</div>')+'</div>';
 const listRow=(title,subtitle,action,id,ic='arrow',right='')=>'<button type="button" class="list-row" data-action="'+esc(action)+'" data-id="'+esc(id)+'"><span class="list-icon">'+icon(ic)+'</span><span class="row-text"><strong>'+esc(title)+'</strong><small>'+esc(subtitle)+'</small></span>'+right+icon('arrow')+'</button>';
 const sortHeader=(column,table,state)=>{
- const [key,label,info]=column,sort=state.sorts[table],active=sort?.key===key;
+ const [key,label,info,sortable=true]=column,sort=state.sorts[table],active=sortable&&sort?.key===key;
+ if(!sortable)return '<th scope="col">'+esc(label)+(info?help(info,label):'')+'</th>';
  const sticky=key===tableFirst[table]?' sticky-first':'';
  return '<th scope="col" class="'+sticky.trim()+'" '+(active?'aria-sort="'+(sort.direction==='desc'?'descending':'ascending')+'"':'')+'><button class="sort" data-action="sort" data-id="'+esc(table+':'+key)+'">'+esc(label)+'<span class="sort-glyph">'+(active?(sort.direction==='asc'?'↑':'↓'):'↕')+'</span></button>'+(info?help(info,label):'')+'</th>';
 };
@@ -52,13 +53,14 @@ function table(name,columns,rows,cell,state,{compact=false}={}){
  return '<div class="table-scroll '+(compact?'home-table':name==='roster'?'roster-table':'')+'" role="region" tabindex="0" aria-label="'+esc(name==='roster'?'Class register':name+' table')+'"><table class="data-table"><thead><tr>'+columns.map(c=>sortHeader(c,name,state)).join('')+'</tr></thead><tbody>'+
  ordered.map(row=>'<tr>'+columns.map(([key])=>'<td class="'+(key===tableFirst[name]?'sticky-first ':'')+(['mean','average','below','scored','students','cases','gapToTarget','subjects','latestPercent','nextGradePoints','coverageCount','gapToPrediction','noteCount'].includes(key)?'num':'')+'">'+cell(row,key)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 }
-const classColumns=[['code','Class'],['students','Pupils'],['mean','Mean','average'],['scored','Coverage','coverage'],['below','Below MTG','target'],['cases','Cases','intervention']];
+const classColumns=[['code','Class'],['students','Pupils'],['mean','Mean','average'],['scored','Coverage','coverage'],['below','Below MTG','target'],['cases','Cases','intervention'],['tracker','Assessments',null,false]];
 function classCell(r,key){
  if(key==='code')return link(r.code,'open-class',r.id)+'<span class="cell-sub">'+esc(r.subject.name+' · '+r.teacher.replace(/ \(demo\)/g,''))+(r.partial?' · Scoped':'')+'</span>';
  if(key==='mean')return pct(r.mean);
  if(key==='scored')return esc(r.scored+'/'+r.students);
  if(key==='below')return r.below?link(r.below,'open-below',r.id):'0';
  if(key==='cases')return r.cases?link(r.cases,'class-cases',r.id):'0';
+ if(key==='tracker')return btn('Tracker','home-markbook',r.id,'btn-quiet class-index-tracker','arrow');
  return esc(r[key]);
 }
 export function sidebar(page,w){
@@ -169,13 +171,13 @@ export function renderClasses(w,s){
   filter('class-year',s.classYear,'All years',unique(all,'year'))+filter('class-faculty',s.classFaculty,'All faculties',[...new Set(all.map(c=>c.faculty.name))].sort())+
   '<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Classes with pupils below target</label>'+btn('Clear filters','clear-register-filters','','btn-quiet')+'<span class="count">'+rows.length+' classes</span></div>'+table('classes',classColumns,rows,classCell,s)+'</section>'+note('Means and coverage use the selected pupil scope. Select a class to open its Student Information tracker.');
  }
- const r=w.classRecord(s.classId),selected=filterRegister(r.roster,s,matchText),groups=s.columnGroups??DEFAULT_GROUPS;
- const headingMarkup=heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,quick+previous+next+btn('All classes','go-classes','','','back'),'Classes');
+ const r=w.classRecord(s.classId),groups=s.columnGroups??DEFAULT_GROUPS,layout=registerLayout(groups),daily=layout==='daily',selected=visibleRegisterRows(r.roster,s,matchText,sortRows);
+ const headingMarkup='<div class="class-heading">'+heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,'<div class="class-switcher">'+btn('All classes','go-classes','','btn-quiet','back')+previous+quick+next+'</div>','Classes')+'</div>';
  if(s.classTab==='markbook')return headingMarkup+classTabs('markbook')+renderMarkbook(w,s,r);
  if(ANALYSIS_TABS.includes(s.classTab))return headingMarkup+classTabs(s.classTab)+renderAcademicAnalysis(w,s,r);
- const cols=registerColumns(groups),gap=v=>'<span class="'+(v!==null&&v<0?'negative':v!==null&&v>=0?'positive':'')+'">'+esc(gradeGap(v))+'</span>';
+ const cols=displayedRegisterColumns(groups),gap=v=>'<span class="'+(v!==null&&v<0?'negative':v!==null&&v>=0?'positive':'')+'">'+esc(gradeGap(v))+'</span>';
  const cell=(p,k)=>{
-  if(k==='name')return pupilIdentity(link(p.name,'open-student',p.studentId),p);
+  if(k==='name')return pupilIdentity(link(p.name,'open-student',p.studentId)+(daily?'<span class="register-pupil-meta"><span class="cell-sub">TG '+esc(p.tutorGroupId)+'</span>'+p.tags.map(t=>tag(t==='Access arrangements'?'AA':t)).join('')+'</span>':''),p);
   if(k==='tutorGroupId')return tag(p.tutorGroupId);
   if(k==='flags')return '<div class="tags">'+(p.tags.length?p.tags.map(t=>tag(t==='Access arrangements'?'AA':t)).join(''):'<span class="muted">—</span>')+'</div>';
   if(k==='wave'){
@@ -183,11 +185,11 @@ export function renderClasses(w,s){
    const start=w.access.canStartWave1(p.enrolmentId)?link('+ W1','new-case',p.enrolmentId):'';
    return p.soc||start?'<div class="tags">'+(p.soc?tag('SOC','tag-warning')+(subject||link('Other','open-student-support',p.studentId)):'')+start+'</div>':'—';
   }
-  if(k==='average')return link(pct(p.average),'subject-summary',p.enrolmentId);
-  if(k==='latestPercent')return p.latestPercent===null?'—':link(pct(p.latestPercent)+' · '+p.latestGrade,'subject-summary',p.enrolmentId);
+  if(k==='average')return '<span class="register-score">'+link(pct(p.average),'subject-summary',p.enrolmentId)+'</span>'+(daily?'<span class="cell-sub">Grade '+esc(p.grade??'—')+' · '+esc(p.coverage.scored+'/'+p.coverage.eligible)+' scored</span>':'');
+  if(k==='latestPercent')return p.latestPercent===null?'—':link(pct(p.latestPercent)+' · '+p.latestGrade,'open-pupil-history',p.enrolmentId)+(daily?'<span class="cell-sub register-latest-date">'+esc(displayDate(p.latestDate))+'</span>':'');
   if(k==='latestTitle')return p.latestTitle?'<span class="cell-title">'+esc(p.latestTitle)+'</span><span class="cell-sub">'+esc(displayDate(p.latestDate))+'</span>':'—';
   if(k==='coverageCount')return link(p.coverage.scored+'/'+p.coverage.eligible,'subject-summary',p.enrolmentId);
-  if(k==='gapToTarget'||k==='gapToPrediction')return gap(p[k]);
+  if(k==='gapToTarget'||k==='gapToPrediction')return gap(p[k])+(daily&&k==='gapToTarget'?'<span class="cell-sub">'+esc(p.track)+'</span>':'');
   if(k==='nextGradePoints')return p.nextGradePoints===null?'—':esc(p.nextGradePoints.toFixed(1)+' pp → '+p.nextGradeLabel);
   if(k==='minimumGrade')return p.targetEditable?link(p.minimumGrade??'Set','edit-target',p.enrolmentId):esc(p.minimumGrade??'—');
   if(k==='predictedGrade')return p.editable?link(p.predictedGrade??'Set grade','edit-prediction',p.enrolmentId):esc(p.predictedGrade??'—');
@@ -195,17 +197,27 @@ export function renderClasses(w,s){
   if(k==='track')return tag(p.track,p.onTrack===null?'':p.onTrack?'tag-success':'tag-warning');
   return esc(p[k]??'—');
  };
+ const counts=registerFocusCounts(r.roster),focus=registerFocus(s),advancedCount=[s.tutorFilter,s.houseFilter,s.flag].filter(v=>v&&v!=='all').length+(focus===null?1:0);
+ const latest=w.markbook(r.id).assessments.filter(a=>a.status==='published'&&a.date<=w.asOf).at(-1);
+ const focusButton=(id,label)=>'<button type="button" class="register-chip" data-action="register-focus" data-id="'+id+'" aria-pressed="'+(focus===id)+'">'+esc(label)+' <strong>'+counts[id]+'</strong></button>';
+ const filtersOpen=Boolean(s.registerFiltersOpen),columnsOpen=Boolean(s.registerColumnsOpen);
+ const toggle=(label,action,expanded,controls)=>'<button type="button" class="btn btn-quiet register-options-button" data-action="'+action+'" aria-expanded="'+expanded+'" aria-controls="'+controls+'">'+esc(label)+' <span aria-hidden="true">'+(expanded?'▴':'▾')+'</span></button>';
+ const preset=(id,label)=>'<button type="button" class="column-toggle register-preset" data-action="register-preset" data-id="'+id+'" aria-pressed="'+(layout===id)+'">'+esc(label)+'</button>';
  return headingMarkup+classTabs('information')+
- '<div class="metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>'+
+ '<div class="metrics class-metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>'+
  (r.partial?'<div class="info-box">This register is restricted to pupils in your selected scope. '+help('partial','partial class')+'</div>':'')+
- '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil or tutor group')+
+ '<section class="surface class-register" data-register-layout="'+layout+'"><div class="panel-head register-heading"><div><h2>Class register '+help('registerViews','register views')+'</h2><p class="small muted">'+selected.length+' of '+r.students+' pupils · '+(daily?'Daily view':layout==='full'?'Full detail':'Custom columns')+'</p></div>'+
+ (latest?'<div class="register-mark-shortcut">'+btn('Latest published assessment','open-markbook',bookId(r.id,latest.id),'btn-primary','book')+'<span class="small muted">'+esc(latest.title+' · '+displayDate(latest.date))+'</span></div>':'')+'</div>'+
+ '<div class="register-toolbar"><div class="register-search">'+field('page-query',s.query,'Filter pupil or tutor group')+'</div><div class="register-focus" role="group" aria-label="Register focus">'+focusButton('all','All')+focusButton('below','Below MTG')+focusButton('unknown','Unknown')+focusButton('soc','SOC')+'</div><div class="register-filter-actions">'+toggle('Filters'+(advancedCount?' ('+advancedCount+')':''),'toggle-register-filters',filtersOpen,'register-extra-filters')+btn('Clear','clear-register-filters','','btn-quiet')+'</div></div>'+
+ '<div id="register-extra-filters" class="toolbar register-filters register-extra-filters" '+(filtersOpen?'':'hidden')+'>'+
  filter('tutor-filter',s.tutorFilter,'All tutor groups',unique(r.roster,'tutorGroupId'))+filter('house-filter',s.houseFilter,'All Houses',unique(r.roster,'house'))+
  select('flag-filter',s.flag??'all',[['all','All flags'],...['EAL','SEN','HLP','Access arrangements','SOC'].map(t=>[t,t])],'Filter student tags')+
  select('track-filter',s.below?'below':s.trackFilter??'all',[['all','Any attainment'],['on','On track'],['below','Below target'],['unknown','Unknown']],'Target status')+
- select('support-filter',s.supportFilter??'all',[['all','Any support'],['soc','SOC'],['w1','Subject Wave 1'],['w2','Subject Wave 2'],['w3','Subject Wave 3'],['none','No visible active case']],'Intervention filter')+
- btn('Clear','clear-register-filters','','btn-quiet')+'<span class="count">'+selected.length+' of '+r.students+' pupils</span></div>'+
- '<div class="column-toolbar" role="group" aria-label="Visible register column groups"><span class="field-label">Columns</span>'+GROUPS.map(g=>'<button class="column-toggle" type="button" data-action="toggle-columns" data-id="'+esc(g.id)+'" aria-pressed="'+groups.includes(g.id)+'">'+esc(g.label)+'</button>').join('')+btn('Reset columns','reset-columns','','btn-quiet')+'</div>'+
- table('roster',cols,selected,cell,s)+'</section>'+note('Select a mark summary for its assessment evidence. Click MTG, prediction or comments to edit where authorised. SOC is derived from visible active cases; AA denotes access arrangements. Open Assessment tracker for marks and definitions.');
+ select('support-filter',s.supportFilter??'all',[['all','Any support'],['soc','SOC'],['w1','Subject Wave 1'],['w2','Subject Wave 2'],['w3','Subject Wave 3'],['none','No visible active case']],'Intervention filter')+'</div>'+
+ '<div class="register-layout-bar"><span class="field-label">View</span><div role="group" aria-label="Register layout">'+preset('daily','Daily')+preset('full','Full detail')+(layout==='custom'?'<span class="tag">Custom</span>':'')+'</div>'+toggle('Columns','toggle-register-columns',columnsOpen,'register-column-options')+
+ '<span class="register-layout-note">'+(daily?'Grade and coverage grouped · click a result for evidence':'Individual sortable fields')+'</span></div>'+
+ '<div id="register-column-options" class="column-toolbar" role="group" aria-label="Visible register column groups" '+(columnsOpen?'':'hidden')+'><span class="field-label">Columns</span>'+GROUPS.map(g=>'<button class="column-toggle" type="button" data-action="toggle-columns" data-id="'+esc(g.id)+'" aria-pressed="'+groups.includes(g.id)+'">'+esc(g.label)+'</button>').join('')+btn('Reset columns','reset-columns','','btn-quiet')+'</div>'+
+ table('roster',cols,selected,cell,s)+'</section>'+note('Click attainment for contributing marks, latest result for the pupil’s subject history, or MTG, prediction and comments to edit where authorised. SOC reflects visible active cases; AA denotes access arrangements.');
 }
 export function renderStudents(w,s){
  const all=w.studentRows(),rows=filterStudents(all,s,matchText),c=profileCounts(all);
@@ -351,7 +363,7 @@ export function renderDetail(w,detail){
   return drawer(d.student.name,r.classInfo.code+' · Assessment summary',
    facts([['Overall percentage',pct(r.average)],['Current grade',r.grade],['Most recent',r.latest?pct(r.latest.percent)+' · '+r.latest.grade:'—'],['Minimum target',r.minimumGrade],['Prediction',r.predictedGrade],['Next grade',r.nextGrade?r.nextGrade.percentagePoints.toFixed(1)+' pp → '+r.nextGrade.grade:'—']])+
    section('Calculation coverage','<p>'+esc(c.scored+' of '+c.eligible+' eligible results scored · '+c.absent+' absent · '+c.missing+' missing · '+c.incomplete+' incomplete · '+c.excluded+' excluded')+'</p><p class="muted">'+esc(HELP.studentAverage)+'</p>')+
-   section('Contributing assessment records',resultRows+'<p class="small muted">Drafts and whole-assessment exclusions are not included in this summary.</p>'),btn('Subject comments','subject-comments',id,'btn-quiet'));
+   section('Contributing assessment records',resultRows+'<p class="small muted">Drafts and whole-assessment exclusions are not included in this summary.</p>'),btn('Full assessment history','open-pupil-history',id,'btn-primary')+btn('Subject comments','subject-comments',id,'btn-quiet'));
  }
  if(kind==='subject-comments'){
   const d=w.subjectDetail(id);

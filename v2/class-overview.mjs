@@ -9,6 +9,35 @@ export const GROUPS=[
 ];
 export const DEFAULT_GROUPS=GROUPS.filter(g=>g.id!=='detail').map(g=>g.id);
 export const registerColumns=groups=>[['name','Student'],...GROUPS.filter(g=>(groups??DEFAULT_GROUPS).includes(g.id)).flatMap(g=>g.columns)];
+export const FULL_GROUPS=GROUPS.map(g=>g.id);
+const sameGroups=(a,b)=>a.length===b.length&&b.every(g=>a.includes(g));
+export function registerLayout(groups=DEFAULT_GROUPS){
+ return sameGroups(groups,DEFAULT_GROUPS)?'daily':sameGroups(groups,FULL_GROUPS)?'full':'custom';
+}
+// Daily view groups flags/TG into the identity cell and grade/coverage into
+// attainment. The custom/full modes retain every individually sortable field.
+export function displayedRegisterColumns(groups=DEFAULT_GROUPS){
+ const columns=registerColumns(groups);
+ return registerLayout(groups)==='daily'?columns.filter(c=>!['tutorGroupId','flags','grade'].includes(c[0])).map(c=>c[0]==='average'?['average','Attainment','studentAverage']:c):columns;
+}
+export function registerFocusCounts(rows){
+ return {all:rows.length,below:rows.filter(p=>p.onTrack===false).length,
+  unknown:rows.filter(p=>p.onTrack===null).length,soc:rows.filter(p=>p.soc).length};
+}
+export function registerFocus(state){
+ const track=state.below?'below':state.trackFilter??'all',support=state.supportFilter??'all';
+ if(support==='all'&&['below','unknown'].includes(track))return track;
+ if(track==='all'&&support==='soc')return 'soc';
+ return track==='all'&&support==='all'?'all':null;
+}
+export function registerFocusFilter(key){
+ if(!['all','below','unknown','soc'].includes(key))throw Error('Unknown register focus');
+ return {below:false,trackFilter:key==='below'||key==='unknown'?key:'all',supportFilter:key==='soc'?'soc':'all'};
+}
+export function visibleRegisterRows(rows,state,matchText,sortRows){
+ const filtered=filterRegister(rows,state,matchText),sort=state.sorts?.roster;
+ return sort&&displayedRegisterColumns(state.columnGroups).some(c=>c[0]===sort.key)?sortRows(filtered,sort.key,sort.direction):filtered;
+}
 export function projectRegisterRow(summary,student,{cases,subjectCases,notes,grades,editable,targetEditable,canComment}){
  const rank=label=>label===null||label===undefined?null:grades.includes(label)?grades.indexOf(label):null;
  const soc=cases.length>0;

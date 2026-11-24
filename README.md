@@ -154,3 +154,5 @@ Initial exploratory prototype, November 2026. All names, tasks, scores and recor
 The V2 branding pass uses the supplied JIS crest and campus photo, local House badge artwork and the user-supplied House colours. See [visual identity notes](v2/README.md#jis-visual-identity).
 
 Home refinement: scope-specific faculty/teaching, tutor, House and school overviews, direct filtered navigation, prioritised personal action queue, and consistent compact JIS typography and layout.
+
+Class/profile refinement: daily and full register layouts, quick cohort filters, direct tracker/assessment-history access, filtered pupil navigation and compact cross-subject profiles with connected support and attainment evidence.
