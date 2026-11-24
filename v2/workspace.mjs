@@ -70,8 +70,10 @@ export function createWorkspace(store,staffId,requestedScope){
   const scopeStudentIds=new Set(access.scopeStudents(scope));
   const visibleCases=read.cases();
   const scopedCases=visibleCases.filter(c=>scopeIds.has(c.enrolmentId));
-  const allHome=()=>read.home('accessible');
-  const home=()=>read.home(scope);
+  const homes=new Map();
+  const getHome=id=>{if(!homes.has(id))homes.set(id,read.home(id));return homes.get(id);};
+  const allHome=()=>getHome('accessible');
+  const home=()=>getHome(scope);
   const classInfo=id=>{
     const c=get('classes',id);if(!c)return null;
     const course=get('courses',c.courseId),subject=get('subjects',course.subjectId),faculty=get('faculties',subject.facultyId);
