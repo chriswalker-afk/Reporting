@@ -33,3 +33,17 @@ jobs:
         run: node --check tests/browser-smoke.mjs
       - name: Browser integration and responsive smoke test
         run: node tests/browser-smoke.mjs
+
+
+  responsive-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate responsive audit script
+        run: node --check tests/browser-responsive-audit.mjs
+      - name: Responsive and accessibility browser matrix
+        run: node tests/browser-responsive-audit.mjs
