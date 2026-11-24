@@ -3,6 +3,7 @@ import {createAccess} from './access.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {createDemoData} from './demo-data.mjs';
 import {normalizeDefinition,resultInput} from './markbook.mjs';
+import {startCase,changeCase,changeStudyPlan,pendingCaseActions} from './interventions.mjs';
 import {communicationPolicy,communicationView,noticeFields,deadlineFields,noticeVersion} from './communications.mjs';
 
 export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
@@ -24,14 +25,7 @@ export function createReadModel(data,staffId){
   function home(scope='accessible',options={}){
     const es=new Set(access.scopeEnrolments(scope));
     const cases=data.interventions.filter(c=>es.has(c.enrolmentId)&&access.canViewCase(c.id));
-    const actions=cases.flatMap(c=>{
-      const acts=access.caseActions(c.id),action=[];
-      if(c.state==='wave2_requested'&&acts.includes('activateWave2'))action.push('activateWave2');
-      if(c.state==='wave2'&&c.houseRequest&&!c.houseResponse?.complete&&acts.includes('respondHouse'))action.push('respondHouse');
-      if(c.state==='wave3_requested'&&acts.includes('respondLeadership'))action.push('respondLeadership');
-      if(c.reviewDate<=data.asOf&&acts.includes('review'))action.push('review');
-      return action.map(type=>({caseId:c.id,type,reviewDate:c.reviewDate}));
-    });
+    const actions=cases.flatMap(c=>pendingCaseActions(data,access,c));
     actions.sort((a,b)=>a.reviewDate.localeCompare(b.reviewDate)||a.caseId.localeCompare(b.caseId)||a.type.localeCompare(b.type));
     const comm=communications();
     return {scope,cohort:cohort(scope,options),actions,
@@ -228,6 +222,18 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       r.minimumGrade=minimumGrade;return {before,after:r};
     });
   }
+  function startIntervention(staffId,enrolmentId,input){
+    const id=nextId('interventions','I-new-');
+    const result=transaction(staffId,'startWave1',id,(d,a)=>startCase(d,a,staffId,id,enrolmentId,input));
+    return {...result,id};
+  }
+  function interventionAction(staffId,id,action,input,{expectedRevision=null}={}){
+    must(expectedRevision===null||expectedRevision===revision,'Case changed since this form was opened; reopen it before saving');
+    return transaction(staffId,action,id,(d,a)=>{
+      if(['saveStudyPlan','reviewStudyPlan'].includes(action))return changeStudyPlan(d,a,staffId,id,nextId('studyPlans','SP-new-'),action,input);
+      return changeCase(d,a,staffId,id,action,input);
+    });
+  }
   function saveSubjectNote(staffId,enrolmentId,id,text){
     const recordId=id??nextId('notes','N');
     return transaction(staffId,id?'editSubjectNote':'addSubjectNote',recordId,(d,a)=>{
@@ -335,6 +341,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    addUnit,saveAssessment,publishAssessment,saveResultBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,setDemoDate,
+    addUnit,saveAssessment,publishAssessment,saveResultBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
     saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }
