@@ -77,7 +77,7 @@ try{
  const heading=()=>text('#workspace h1');
  const detail=()=>text('#detail-title');
  const close=()=>action('close-detail',undefined,'#detail-dialog ');
- const open=async(path='')=>{await send('Page.navigate',{url:origin+'/'+path});await until(()=>q('#workspace h1'),'workspace ready');};
+ const open=async(path='')=>{await send('Page.navigate',{url:origin+'/'+path});await until(()=>evaluate(url=>location.href===url&&document.readyState==='complete'&&Boolean(document.querySelector('#workspace h1')),origin+'/'+path),'workspace ready');};
  const viewport=async(width,height)=>{
   await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
   await delay(80);
@@ -85,7 +85,7 @@ try{
   assert.ok(dimensions.body<=dimensions.viewport+1,'Page overflows viewport: '+JSON.stringify(dimensions));
   assert.ok(dimensions.main>0);
  };
- await viewport(1440,900).catch(()=>{}); // Before navigation only the blank page exists.
+ await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
  await open();
  assert.match(await heading(),/Welcome, Sam/);
  for(const page of ['notices','classes','students','intervention','home']){
@@ -145,7 +145,8 @@ try{
  await click('#intervention-form button[type=submit]');
  assert.match(await text('#detail-dialog'),/Demo browser smoke academic observation/);
  await close();
- // Reload validates local persistence and both entrypoints.
+ // Reload validates local persistence, not just a hash change in the same document.
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded previous document');
  await open('#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
  await evaluate(id=>[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id).click(),markbookId);
