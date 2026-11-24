@@ -259,3 +259,6 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
  .table-scroll{max-height:none!important;overflow:visible!important}
  .data-table{white-space:normal}
 }
+
+.footer-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.footer-actions .inline-link{font-size:inherit;white-space:nowrap}
