@@ -4,6 +4,8 @@ import {GROUPS,DEFAULT_GROUPS,registerColumns,filterRegister} from './class-over
 import {classTabs,renderMarkbook,renderBookDetail} from './markbook-views.mjs';
 import {renderAcademicAnalysis,renderAnalysisEvidence} from './analysis-views.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
+import {filterStudents,profileCounts} from './student-profiles.mjs';
+import {renderStudentProfile,renderProfileResult} from './student-profile-views.mjs';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={
  home:'M3 10 12 3l9 7v10h-6v-7H9v7H3z',notice:'M4 11V8l15-5v14L4 13z M7 14l2 6h4l-2-5 M19 8h2',
@@ -57,7 +59,7 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Academic analysis</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Student profiles</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
  return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
@@ -161,16 +163,33 @@ export function renderClasses(w,s){
  table('roster',cols,selected,cell,s)+'</section>'+note('Select a mark summary for its assessment evidence. Click MTG, prediction or comments to edit where authorised. SOC is derived from visible active cases; AA denotes access arrangements. The full markbook follows in V2-05.');
 }
 export function renderStudents(w,s){
- const all=w.studentRows(),rows=all.filter(p=>matchText(s.query,p.name,p.id,p.year,p.tutorGroupId,p.house,p.tags)&&(s.flag==='all'||p.tags.includes(s.flag)));
- return heading('Students',SCOPE_LABELS[w.scope]+' · '+all.length+' unique pupils','','Student directory')+
- '<section class="surface"><div class="toolbar">'+field('page-query',s.query,'Filter name, year, House or tutor group')+select('flag-filter',s.flag,[['all','All flags'],...['EAL','SEN','HLP','Access arrangements'].map(t=>[t,t])],'Filter student tags')+'<span class="count">'+rows.length+' of '+all.length+' pupils</span></div>'+
- table('students',[['name','Student'],['year','Year'],['tutorGroupId','Tutor group','tutor'],['house','House'],['tags','Flags','flags'],['subjects','Subjects in scope'],['cases','Active cases','intervention']],rows,(p,k)=>{
+ const all=w.studentRows(),rows=filterStudents(all,s,matchText),c=profileCounts(all);
+ const options=(values,label)=>[['all',label],...values.map(v=>[String(v),String(v)])];
+ const unique=key=>[...new Set(all.map(p=>p[key]))].sort((a,b)=>String(a).localeCompare(String(b),'en',{numeric:true}));
+ return heading('Students',SCOPE_LABELS[w.scope]+' · '+all.length+' unique pupils',help('profileScope','student directory scope'),'Student directory')+
+ '<div class="metrics">'+metric('Pupils in scope',c.pupils,'Clear directory filters','profileScope','students-reset')+
+ metric('Below target',c.below,c.severe+' with a subject at least two grades below','profileTargets','students-below')+
+ metric('Active SOC',c.soc,'Pupils with visible active cases','soc','students-soc')+
+ metric('Reviews due',c.due,'Pupils with due or overdue cases','due','students-due')+'</div>'+
+ '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter name, ID, year or tutor group')+
+ select('student-year',s.studentYear??'all',options(unique('year'),'All years'),'Year group')+
+ select('tutor-filter',s.tutorFilter??'all',options(unique('tutorGroupId'),'All tutor groups'),'Tutor group')+
+ select('house-filter',s.houseFilter??'all',options(unique('house'),'All Houses'),'House')+
+ select('flag-filter',s.flag??'all',[['all','All flags'],...['EAL','SEN','HLP','Access arrangements','SOC'].map(t=>[t,t])],'Student flags')+
+ select('student-attainment',s.studentAttainment??'all',[['all','Any attainment'],['below','At least one subject below MTG'],['severe','At least two grades below MTG'],['on','All subjects on / above MTG'],['unknown','Unknown subject status']],'Attainment status')+
+ select('student-support',s.studentSupport??'all',[['all','Any support'],['active','Active SOC'],['due','Reviews due'],['none','No active case']],'Support status')+
+ btn('Clear','students-reset','','btn-quiet')+'<span class="count">'+rows.length+' of '+all.length+' pupils</span></div>'+
+ table('students',[['name','Student'],['year','Year'],['tutorGroupId','Tutor group','tutor'],['house','House'],['directoryFlags','Flags','flags'],['subjects','Subjects','profileScope'],['below','Below MTG','profileTargets'],['unknown','Unknown','profileTargets'],['cases','Active cases','intervention'],['due','Reviews due','due']],rows,(p,k)=>{
   if(k==='name')return link(p.name,'open-student',p.id)+'<span class="cell-sub">'+esc(p.id)+'</span>';
-  if(k==='tutorGroupId')return tag('TG '+p.tutorGroupId);
-  if(k==='tags')return tags(p);
-  if(k==='cases')return p.cases?link(p.cases+' · W'+p.wave,'open-student',p.id):'—';
+  if(k==='tutorGroupId')return tag(p.tutorGroupId);
+  if(k==='directoryFlags')return tags({...p,tags:p.flags});
+  if(k==='subjects')return esc(p.scored+'/'+p.subjects)+'<span class="cell-sub">Scored / visible</span>';
+  if(k==='below')return p.below?link(String(p.below),'open-student',p.id)+(p.severe?' '+tag(p.severe+' ≥2 below','tag-warning'):''):'0';
+  if(k==='unknown')return esc(p.unknown);
+  if(k==='cases')return p.cases?link(p.cases+' · W'+p.wave,'open-student-support',p.id):'—';
+  if(k==='due')return p.due?link(String(p.due),'open-student-support',p.id)+(p.overdue?' '+tag(p.overdue+' overdue','tag-danger'):''):'—';
   return esc(p[k]);
- },s)+'</section>'+note('Open a pupil for a cross-subject preview. Full four-tab student profiles follow in V2-07.');
+ },s)+'</section>'+note('Directory counts use the selected cohort and subject scope. Open a profile to see all records permitted by your combined responsibilities. No cross-subject average or automatic SOC classification is calculated.');
 }
 export function renderIntervention(w,s){
  const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),h=w.home();
@@ -199,11 +218,9 @@ export function renderDetail(w,detail){
  if(['unit-form','assessment-new','assessment-copy','assessment-edit','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
   const d=renderBookDetail(w,detail);return drawer(d.title,d.sub,d.body,d.footer??'');
  }
- if(kind==='student'){
-  const d=w.studentDetail(id),p=d.student;
-  const academics=d.subjects.length?'<div class="table-scroll"><table class="data-table"><thead><tr><th>Subject / class</th><th>Average</th><th>Grade</th><th>MTG</th><th>Pred.</th></tr></thead><tbody>'+d.subjects.map(r=>'<tr><td>'+link(r.classInfo.subject.name,'open-class',r.classId)+'<span class="cell-sub">'+esc(r.classInfo.code)+'</span></td><td>'+pct(r.average)+'</td><td>'+esc(r.grade??'—')+'</td><td>'+esc(r.minimumGrade??'—')+'</td><td>'+(r.editable?link(r.predictedGrade??'Set','edit-prediction',r.enrolmentId):esc(r.predictedGrade??'—'))+'</td></tr>').join('')+'</tbody></table></div>':empty('No academic results in your scope');
-  return drawer(p.name,'Student profile preview',facts([['Year',p.year],['Tutor group',p.tutorGroupId],['House',p.house]])+tags(p)+'<div style="height:12px"></div>'+section('Academic overview',academics+ '<p class="small muted">Only subjects permitted by your assigned responsibilities are shown.</p>')+section('Interventions',d.cases.length?d.cases.map(c=>listRow(c.status,c.classInfo.subject.name+' · '+displayDate(c.reviewDate),'open-case',c.id,'support')).join(''):empty('No accessible interventions'))+section('Recent notes',d.notes.length?d.notes.map(n=>'<div><strong>'+esc(n.classInfo.subject.name)+'</strong><p>'+esc(n.text)+'</p><p class="muted small">'+esc(n.author+' · '+displayDate(n.date))+'</p></div>').join(''):empty('No notes in scope')));
- }
+ if(kind==='student'){const d=renderStudentProfile(w,detail);return drawer(d.title,d.sub,d.body);}
+ if(kind==='profile-result'){const d=renderProfileResult(w,id);return drawer(d.title,d.sub,d.body);}
+
  if(kind==='case'){
   const c=w.caseDetail(id);
   return drawer(c.studentName,c.classInfo.name+' · '+c.id,facts([['Tutor group',c.student.tutorGroupId],['House',c.house],['Review date',displayDate(c.reviewDate)],['Stage',c.status],['Case owner',c.owner],['Updated',displayDate(c.updatedDate)]])+section('Wave 1 · Classroom intervention','<p>'+esc(c.reason)+'</p><div class="tags">'+(c.strategies||[]).map(x=>tag(x)).join('')+'</div>')+(c.wave>=2?section('Wave 2 · Faculty and House','<strong>Faculty plan</strong><p>'+esc(c.facultyPlan||'Awaiting faculty plan')+'</p><strong>House request</strong><p>'+esc(c.houseRequest||'Not yet assigned')+'</p><strong>House response</strong><p>'+esc(c.houseResponse?.response||'No response recorded')+'</p>'):'')+(c.wave>=3?section('Wave 3 · Leadership','<p>'+esc(c.leadershipPlan||'Awaiting leadership plan')+'</p>'):'')+section('History',(c.history||[]).map(h=>'<p><strong>'+esc(displayDate(h.date))+'</strong> · '+esc(h.text)+'</p>').join(''))+(c.evaluation?section('Evaluation','<p>'+esc(c.evaluation)+'</p>'):'')+note('View only in V2-02. Intervention actions are implemented in V2-08.'),btn('Student profile','open-student',c.student.id,'btn-quiet'));

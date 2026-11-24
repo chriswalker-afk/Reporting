@@ -148,3 +148,38 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
  .analysis-bar,.frequency-fill,.boxplot,.trend-chart{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .academic-analysis:before{content:"JIS Hub — Fictional demonstration data";font-size:11px;font-weight:700}
 }
+
+/* V2-07 student directory and holistic profile */
+.detail-dialog.wide-profile{width:min(1130px,100vw)}
+.profile-controls{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.profile-navigation{margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.profile-navigation .analysis-field{flex:1;min-width:150px;max-width:280px}
+.profile-navigation .analysis-field .select{width:100%}
+.profile-identity{display:grid;grid-template-columns:minmax(220px,1fr) minmax(340px,1.5fr);gap:16px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:8px;background:#f7f9fa}
+.profile-identity-main{display:flex;gap:12px;align-items:center;min-width:0}
+.profile-avatar{width:46px;height:46px;display:grid;place-items:center;border-radius:12px;background:#e1eeed;color:var(--accent-dark);font-weight:750;font-size:19px;flex-shrink:0}
+.profile-identity-main strong{font-size:15px;color:var(--ink)}
+.profile-identity-main .tags{margin-top:5px}
+.profile-identity-staff .drawer-summary{margin:0;grid-template-columns:repeat(3,minmax(0,1fr))}
+.profile-scope-note{margin:8px 0}
+.profile-tabs{position:sticky;top:-18px;background:white;z-index:4;padding-top:5px;border-bottom:1px solid var(--line)}
+.profile-tab-body{padding-top:12px}
+.profile-metrics{margin-bottom:12px;grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}
+.profile-metrics .metric{padding:10px;min-height:95px}
+.profile-metrics .metric-value{font-size:23px}
+.profile-section-head{display:flex;align-items:center;justify-content:space-between;background:#f7f9fa;border-bottom:1px solid var(--line)}
+.profile-section .profile-section-head h3{display:flex;align-items:center;gap:5px;background:none;border:0}
+.profile-table{max-height:330px;border:1px solid var(--border);border-radius:5px}
+.profile-table .data-table td,.profile-table .data-table th{padding:7px 9px}
+.profile-table .data-table td{vertical-align:top}
+.profile-table .data-table .sticky-first{min-width:110px}
+.profile-attention-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:7px 0}
+.profile-attention-row:last-child{border-bottom:0}
+.profile-attention-row .muted{margin-left:auto}
+.profile-analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.profile-topic-list{display:grid;gap:7px}
+.profile-topic{display:grid;grid-template-columns:minmax(85px,1fr) minmax(40px,1fr) auto auto;gap:7px;align-items:center;font-size:11px}
+.profile-topic>span:first-child{overflow-wrap:anywhere}
+.profile-topic strong{text-align:right}
+@media(max-width:900px){.profile-identity,.profile-analysis-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.profile-identity-staff .drawer-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-tabs{top:-12px}.profile-table{max-height:45dvh}.profile-navigation .analysis-field{min-width:120px}.profile-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-identity{padding:9px}.profile-attention-row .muted{margin-left:0}}

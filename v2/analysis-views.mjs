@@ -49,7 +49,7 @@ function boxPlot(s,label){
 function statistics(s,label){
  return s.n?boxPlot(s,label)+'<div class="five-number">'+[['Min',s.minimum],['Q1',s.q1],['Median',s.median],['Q3',s.q3],['Max',s.maximum]].map(([k,v])=>'<div><span>'+k+'</span><strong>'+num(v)+'</strong></div>').join('')+'</div><p class="small muted">Mean '+num(s.mean)+'% · Population SD '+num(s.populationSD)+' pp · n = '+s.n+'</p>':empty('No scored results');
 }
-function trendChart(s){
+export function trendChart(s){
  const points=s.cumulative;
  if(!points.length)return empty('No eligible scored assessments','Record and publish complete marks to see attainment over time.');
  const x=i=>points.length===1?254:40+i*(428/(points.length-1)),y=v=>140-1.12*v;
