@@ -250,11 +250,11 @@ document.addEventListener('click',event=>{
  if(disclosures.click(event))return;
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-close-panel','gradebook-entry-view','drawer-expand','expand-panel','toggle-workspace-topbar','page-zoom-in','page-zoom-out','page-zoom-reset'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-close-panel','gradebook-header-toggle','gradebook-entry-view','drawer-expand','expand-panel','toggle-workspace-topbar','page-zoom-in','page-zoom-out','page-zoom-reset'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
-  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);gradebookFocus.fitPanel();break;
+  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);gradebookFocus.syncHeaders();gradebookFocus.fitPanel();break;
   case 'drawer-expand':drawerDisplay.toggle();break;
   case 'expand-panel':(detailDialog.contains(el)?drawerPanels:analysisPanels).toggle(el);break;
   case 'gradebook-entry-view':{
@@ -272,6 +272,15 @@ document.addEventListener('click',event=>{
   case 'gradebook-focus-toggle':gradebookFocus.toggle();break;
   case 'gradebook-focus-panel':gradebookFocus.togglePanel(id);break;
   case 'gradebook-close-panel':gradebookFocus.closePanel();break;
+  case 'gradebook-header-toggle':{
+   const node=byId('gradebook-surface');if(!node||node.dataset.entryView==='single')break;
+   const layout=updateLayout(personalLayout(),{headerDetails:node.dataset.headerDetails!=='true'});
+   // Presentation-only: preserve the live grid, input nodes, selection and history.
+   gradebookLayouts.set(currentLayoutKey(),layout);state.gradebookLayout=layout;
+   let storage;try{storage=window.localStorage;}catch{}
+   if(!saveLayout(storage,state.staffId,state.classId,layout))notify('Header preference saved for this session only.');
+   gradebookFocus.setHeaderDetails(layout.headerDetails);break;
+  }
   case 'gradebook-save':gradebook.save();break;
   case 'gradebook-discard':gradebook.discard();break;
   case 'gradebook-undo':case 'gradebook-redo':case 'gradebook-copy':case 'gradebook-fill':case 'gradebook-clear':case 'gradebook-export':case 'gradebook-import-preview':case 'gradebook-import-apply':gradebook.bulkAction(action);break;
