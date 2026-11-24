@@ -1,10 +1,11 @@
 import {entryKey,canEnter,canEditStructured,entryValue,gradebookColumns,draftFromResult,draftValue,editDraftItem,editDraftStatus,decodeDraft,isChanged,structuredPreview,liveSummary,blockEntries,selectionBounds} from './gradebook-entry.mjs';
 import {createEditHistory,selectedRectangle,copyRectangle,planRangeEdit,exportGradebook,planKeyedImport} from './gradebook-bulk.mjs';
+import {projectGradebook,groupSummary,targetGap,markDisplay,itemDisplay} from './gradebook-layout.mjs';
 import {nextMarkCell} from './assessment-refinement.mjs';
 import {pct} from './workspace.mjs';
 
 export function createGradebookController({root,getWorkspace,getStore,getStaff,notify}){
- let context=null,layout=null,book=null,overview=null,columns=[],records=new Map(),revision=null,edits=new Map(),anchor=null,end=null,saving=false;
+ let context=null,layout=null,book=null,overview=null,columns=[],projection=null,records=new Map(),revision=null,edits=new Map(),anchor=null,end=null,saving=false;
  const history=createEditHistory();let stagedImport=null;
  const surface=()=>root.querySelector('#gradebook-surface');
  const cells=()=>[...root.querySelectorAll('.gradebook-cell')];
@@ -17,7 +18,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(!dirty())return true;
   error('Save or discard gradebook changes before leaving this view.');return false;
  }
- function reset(){edits.clear();history.reset();stagedImport=null;anchor=end=null;context=layout=null;overview=book=null;columns=[];records.clear();revision=null;}
+ function reset(){edits.clear();history.reset();stagedImport=null;anchor=end=null;context=layout=null;overview=book=projection=null;columns=[];records.clear();revision=null;}
  function mount(){
   const node=surface();
   if(!node){if(!dirty())reset();return;}
@@ -26,8 +27,9 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(context!==key){if(dirty()){error('Unsaved changes belong to a different gradebook. Return to that view.');return;}context=key;anchor=end=null;history.reset();revision=getStore().revision();}
   if(!dirty())revision=getStore().revision();
   book=w.markbook(node.dataset.classId);overview=book.overview(node.dataset.unitId);
-  columns=gradebookColumns(overview,JSON.parse(node.dataset.expanded??'[]'));
-  const nextLayout=JSON.stringify(columns.map(c=>[c.assessment.id,c.item?.id??null]));
+  projection=projectGradebook(overview,book.units,JSON.parse(node.dataset.layout??'{}'),JSON.parse(node.dataset.expanded??'[]'),w.asOf);
+  columns=projection.columns;
+  const nextLayout=JSON.stringify([projection.layout.display,columns.map(c=>c.kind==='group'?['group',c.group.id]:[c.assessment.id,c.item?.id??null])]);
   if(layout!==nextLayout){anchor=end=null;layout=nextLayout;}
   records=new Map();
   for(const p of overview.rows)for(const a of overview.assessments)records.set(entryKey(a.id,p.enrolmentId),{a,r:p.results[a.id]});
@@ -58,14 +60,15 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
  function refresh(){
   if(!overview||!surface())return;
   const coverage=new Map(overview.assessments.map(a=>[a.id,0])),byAssessment=new Map();
-  columns.forEach((c,j)=>{if(!byAssessment.has(c.assessment.id))byAssessment.set(c.assessment.id,[]);byAssessment.get(c.assessment.id).push({c,j});});
+  columns.forEach((c,j)=>{if(c.kind==='group')return;if(!byAssessment.has(c.assessment.id))byAssessment.set(c.assessment.id,[]);byAssessment.get(c.assessment.id).push({c,j});});
   const tableCells=new Map([...root.querySelectorAll('td[data-gradebook-row][data-gradebook-col]')].map(td=>[td.dataset.gradebookRow+':'+td.dataset.gradebookCol,td]));
+  const groupCells=new Map([...root.querySelectorAll('[data-gradebook-group]')].map(td=>[td.dataset.gradebookPupilIndex+':'+td.dataset.gradebookGroup,td]));
   for(const [i,p] of overview.rows.entries()){
-   const previews=new Map();let invalid=false;
+   const previews=new Map(),invalidIds=new Set();let invalid=false;
    for(const a of overview.assessments){
     const r=p.results[a.id],change=edits.get(entryKey(a.id,p.enrolmentId)),bad=Boolean(change&&!change.entry);
     const preview=structuredPreview(a,r,change?.entry??null);
-    if(bad){invalid=true;}
+    if(bad){invalid=true;invalidIds.add(a.id);}
     else if(change?.entry)previews.set(a.id,preview);
     if(!bad&&preview.state==='scored')coverage.set(a.id,coverage.get(a.id)+1);
     for(const {c,j} of byAssessment.get(a.id)??[]){
@@ -79,9 +82,11 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
       if(c.kind==='item')label.textContent=message?'Invalid mark':preview.status==='absent'?'Absent':'';
       else label.textContent=bad?'Invalid mark':preview.state==='scored'?pct(preview.percent)+' · '+preview.grade:preview.state==='absent'?'Absent':preview.state==='incomplete'?'Incomplete':'—';
      }
+     const itemValue=td.querySelector('[data-item-display]'),itemMeta=td.querySelector('[data-item-meta]');
+     if(itemValue&&itemMeta){const marks=change?.entry?.marks??r.marks;itemValue.textContent=bad?'—':itemDisplay(marks[c.item.id],c.item,projection.layout.display,pct);itemMeta.textContent=bad?'Invalid mark':preview.state==='excluded'?'Excluded':preview.status==='absent'?'Absent':change?'Unsaved':'';}
      const value=td.querySelector('[data-result-value]'),meta=td.querySelector('[data-result-meta]');
      if(value&&meta){
-      value.textContent=bad?'—':preview.total!==null?preview.total+'/'+preview.maxMarks:preview.entered?preview.partial+'/'+preview.maxMarks:'—';
+      value.textContent=bad?'—':markDisplay(preview,projection.layout.display,pct);
       meta.textContent=bad?'Invalid marks · expand to fix':preview.state==='scored'?pct(preview.percent)+' · '+preview.grade:preview.state==='incomplete'?preview.entered+'/'+a.items.length+' entered · Incomplete':preview.state==='excluded'?'Excluded · marks retained':preview.state==='absent'?'Absent':'Missing';
       if(change)meta.textContent+=' · Unsaved';
       const button=value.closest('.tracker-cell');
@@ -89,13 +94,16 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
      }
     }
    }
-   const output=root.querySelector('[data-gradebook-summary="'+i+'"]');
-   if(output){const summary=liveSummary(p.summary,previews,{bands:book.defaultBands});output.querySelector('strong').textContent=invalid?'—':pct(summary.average);
+   const scheme={bands:book.defaultBands},summary=liveSummary(p.summary,previews,scheme),output=root.querySelector('[data-gradebook-summary="'+i+'"]');
+   if(output){output.querySelector('strong').textContent=invalid?'—':pct(summary.average);
     output.querySelector('.cell-sub').textContent=invalid?'Fix invalid marks':(summary.grade??'—')+' · '+summary.scored+'/'+summary.eligible;}
+   const gap=root.querySelector('[data-gradebook-gap="'+i+'"]');if(gap)gap.textContent=invalid?'—':targetGap(p.summary,summary.grade,scheme);
+   for(const g of projection.groups){const node=groupCells.get(i+':'+g.id);if(!node)continue;const gs=groupSummary(p.summary,g,previews,scheme),bad=g.all.some(id=>invalidIds.has(id));node.querySelector('strong').textContent=bad?'—':pct(gs.average);node.querySelector('.cell-sub').textContent=bad?'Fix invalid marks':(gs.grade??'—')+' · '+gs.scored+'/'+gs.eligible;}
   }
   for(const node of root.querySelectorAll('[data-gradebook-coverage]'))node.textContent=coverage.get(node.dataset.gradebookCoverage)+'/'+overview.rows.length+' scored';
   const invalid=[...edits.values()].filter(c=>!c.entry).length,status=root.querySelector('#gradebook-save-status');
   if(status)status.textContent=dirty()?edits.size+' unsaved result'+(edits.size===1?'':'s')+(invalid?' · '+invalid+' invalid':''):'All changes saved';
+  const hidden=root.querySelector('[data-gradebook-hidden-edits]');if(hidden){const count=[...edits.keys()].filter(key=>!projection.shownIds.has(records.get(key)?.a.id)).length;hidden.textContent=count?count+' unsaved result'+(count===1?'':'s')+' in hidden assessments — Show all to review':'';}
   const save=root.querySelector('[data-action="gradebook-save"]'),discard=root.querySelector('[data-action="gradebook-discard"]');
   if(save)save.disabled=!dirty()||invalid>0;if(discard)discard.disabled=!dirty();
   paintSelection();

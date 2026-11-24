@@ -24,8 +24,8 @@ export function selectedRectangle(overview,columns,anchor,end){
  for(let row=b.top;row<=b.bottom;row++){
   const line=[];
   for(let col=b.left;col<=b.right;col++){
-   const p=overview.rows[row],{assessment:a,item}=columns[col],r=p.results[a.id];
-   if(!item||!canEnter(a,r,item.id))throw Error('Select only editable marks; the range includes a calculated or read-only cell');
+   const p=overview.rows[row],{assessment:a,item}=columns[col],r=a?p.results[a.id]:null;
+   if(!a||!item||!canEnter(a,r,item.id))throw Error('Select only editable marks; the range includes a calculated or read-only cell');
    line.push({row,col,p,a,item,r});
   }
   rows.push(line);

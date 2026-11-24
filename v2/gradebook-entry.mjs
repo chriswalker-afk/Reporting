@@ -72,8 +72,8 @@ export function blockEntries(overview,row,col,text,columns=gradebookColumns(over
  if(matrix.some(line=>line.length!==width))throw Error('Paste a rectangular block of cells');
  if(row+matrix.length>overview.rows.length||col+width>columns.length)throw Error('Pasted block extends beyond the gradebook');
  for(const [i,line] of matrix.entries())for(const [j,value] of line.entries()){
-  const {assessment:a,item}=columns[col+j],p=overview.rows[row+i],r=p.results[a.id];
-  if(!item||!canEnter(a,r,item.id))throw Error('Pasted block includes a read-only or structured assessment cell; expand assessments and paste into mark columns only');
+  const {assessment:a,item}=columns[col+j],p=overview.rows[row+i],r=a?p.results[a.id]:null;
+  if(!a||!item||!canEnter(a,r,item.id))throw Error('Pasted block includes a read-only or structured assessment cell; expand assessments and paste into mark columns only');
   if(!value.trim())continue;
   const raw=value.trim().toUpperCase()==='CLEAR'?'':value;
   if(a.mode==='total')decodeEntry(a,r,raw);else cellMark(raw,item);
