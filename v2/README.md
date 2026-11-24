@@ -348,3 +348,26 @@ The reporting schedule now presents labelled stacked rows on phones, including t
 Regression coverage checks priority ordering, unique board records, audience access, acknowledgement updates, deadline counts, task-first layout, compact disclosure defaults, mobile schedule and board expansion across viewport sizes.
 
 Next: PR34 — comprehensive responsive and accessibility audit, including all roles, pages, viewport sizes, orientations and zoom levels.
+
+
+## Comprehensive responsive and accessibility audit (PR34)
+
+The responsive cycle concludes with a separate Chromium matrix alongside the existing full workflow and data-integrity tests. Run `node tests/browser-responsive-audit.mjs` with Node 22 and Chrome/Chromium (or set CHROME_BIN). CI runs it as an independent job. It exercises the five main destinations and six class tabs, plus the gradebook focus and single-assessment views, at 320×568, 390×844, 844×390, 768×1024, 1024×768, 1280×720, 1366×768, 1920×1080 and 2560×1440. The effective CSS viewports 1024×576, 853×480 and 640×360 represent 125%, 150% and 200% reflow on a 1280×720 display; these do not simulate all actual browser zoom or pinch-zoom behaviours.
+
+The separate role/scope pass traverses available staff identities and scopes on mobile. Representative drawers and forms are inspected at narrow, short and normal sizes and in expanded mode. Existing smoke tests additionally cover real assessment creation, bulk imports, saved reporting grades, interventions and mobile entry. The audit asserts viewport bounds, usable workspace dimensions, no duplicate IDs, reachable essential controls, labelled keyboard-scrollable regions, keyboard navigation, accessible global search and preservation of unsaved grades. It reports remaining potential control-name and outer-horizontal-scroll issues with their first observed context for follow-up. Wide spreadsheets may scroll within their table regions.
+
+Shared improvements distinguish actual visible content from retained layout rectangles inside closed disclosures, restore focus to the corresponding visible record action when layouts change, and name scrollable regions. Short landscape and zoom-reflow views avoid stacked sticky gradebook controls consuming the entire working area; controls remain reachable through scrolling. Forms, options, toolbars and modal headings wrap more reliably. None of these changes modifies assessment, reporting or communication records.
+
+### Manual acceptance checklist
+
+- On a school laptop, tablet and phone, work through each destination and all class tabs as a classroom teacher, faculty leader, tutor, House leader and school leader. Use Standard, Compact, Auto, card/table, gradebook focus and expanded drawers.
+- Use real browser zoom at 125%, 150% and 200%, rotate a device, and check iOS Safari and Android Chrome (the CI matrix is desktop Chromium). Verify that the workspace scrolls, controls do not overlap, and horizontal scrolling is limited to data regions that need it.
+- Navigate with Tab/Shift+Tab, Enter, Space, Escape and gradebook keyboard shortcuts. Verify visible focus, meaningful names/status announcements with a screen reader, mobile navigation focus containment, access to collapsed filters, and usable chart evidence links.
+- Enter an unsaved grade or form value, resize, expand/restore, and confirm the value remains. Confirm that an attempted navigation cannot discard it silently. Use fictional records only.
+- Review colour contrast, text enlargement, touch target size, reduced-motion and high-contrast preferences manually.
+
+This is targeted prototype regression coverage, not a claim of formal WCAG conformance or accessibility certification. A real-device/staff acceptance review is still required before deploying any live school system.
+
+### Following the responsive cycle
+
+Recommended next development area: end-to-end reporting workflows (centrally defined windows, bulk grade submission, subject comments, faculty moderation, leadership sign-off and completion dashboard). Maintain the shared responsive and accessibility contracts when adding features.
