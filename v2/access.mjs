@@ -61,9 +61,9 @@ export function createAccess(data,staffId){
     if(scope==='teaching')return teaches(e.classId);
     return scope==='accessible'&&canViewEnrolment(e.id);
   }).map(e=>e.id);
-  const audienceMatches=audience=>{
+  const audienceMatches=(audience,{oversight=true}={})=>{
     if(!audience)return false;
-    if(audience.type==='all'||has('leadership'))return true;
+    if(audience.type==='all'||oversight&&has('leadership'))return true;
     const taught=data.classes.filter(c=>teaches(c.id));
     if(audience.type==='faculty')return faculties.has(audience.id)||taught.some(c=>facultyOf(c.id)===audience.id);
     if(audience.type==='house')return houses.has(audience.id)||data.tutorGroups.some(g=>g.houseId===audience.id&&tutorGroups.has(g.id));

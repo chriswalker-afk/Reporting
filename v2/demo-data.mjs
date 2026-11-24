@@ -134,10 +134,15 @@ export function createDemoData(){
   add('notes',{id:'N001',enrolmentId:c1.enrolmentId,authorStaffId:c1.ownerStaffId,
     date:'2026-11-20',visibility:'subject',text:'Demo note: more independent work this week.'});
   add('notices',{id:'NO1',kind:'notice',title:'Demo staff notice',body:'Review upcoming assessment deadlines.',
-    audience:{type:'all',id:null},authorStaffId:'avery',publishedDate:'2026-11-20',expiryDate:'2026-12-10',priority:'normal'});
+    audience:{type:'all',id:null},authorStaffId:'avery',publishedDate:'2026-11-20',expiryDate:'2026-12-10',priority:'important',pinned:true,requiresAcknowledgement:true,version:1,acknowledgements:[],links:[]});
   add('notices',{id:'NO2',kind:'briefing',title:'Demo Week 12 briefing',body:'Check moderation and reporting arrangements.',
     audience:{type:'faculty',id:'mathematics'},authorStaffId:'sam',publishedDate:'2026-11-23',expiryDate:null,priority:'normal'});
-  add('deadlines',{id:'D1',title:'Demo Year 11 reporting deadline',dueDate:'2026-12-02',audience:{type:'year',id:11}});
-  add('deadlines',{id:'D2',title:'Demo mathematics moderation',dueDate:'2026-11-27',audience:{type:'faculty',id:'mathematics'}});
+  add('notices',{id:'NO3',kind:'briefing',title:'Demo previous briefing',body:'Earlier fictional teaching and learning reminders.',
+    audience:{type:'all',id:null},authorStaffId:'avery',publishedDate:'2026-11-16',expiryDate:'2026-11-22',priority:'normal'});
+  add('notices',{id:'NO4',kind:'notice',title:'Demo Willow House update',body:'Check tutor-group study routines.',
+    audience:{type:'house',id:'willow'},authorStaffId:'morgan',publishedDate:'2026-11-23',expiryDate:'2026-12-05',priority:'normal'});
+  add('deadlines',{id:'D1',title:'Demo Year 11 reporting deadline',event:'Reports',details:'Check and submit fictional reports in the approved reporting workflow.',dueDate:'2026-12-02',audience:{type:'year',id:11}});
+  add('deadlines',{id:'D2',title:'Demo mathematics moderation',event:'Moderation',details:'Review the common assessment results.',dueDate:'2026-11-27',audience:{type:'faculty',id:'mathematics'}});
+  add('deadlines',{id:'D3',title:'Demo Year 10 SIMS grades',event:'SIMS grades',details:'Review your fictional grade entries.',dueDate:'2026-11-23',audience:{type:'year',id:10}});
   return assertData(data);
 }

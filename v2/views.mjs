@@ -1,4 +1,5 @@
 import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,displayDate,gradeGap,matchText,sortRows,routeHash} from './workspace.mjs';
+import {EVENTS,safeLink} from './communications.mjs';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={
  home:'M3 10 12 3l9 7v10h-6v-7H9v7H3z',notice:'M4 11V8l15-5v14L4 13z M7 14l2 6h4l-2-5 M19 8h2',
@@ -52,28 +53,55 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Design system</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Home &amp; Notices</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
  return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
 }
+const noticeBadge=n=>n.canAcknowledge?tag('Acknowledge','tag-warning'):n.acknowledged?tag('Acknowledged','tag-success'):n.priority==='urgent'?tag('Urgent','tag-danger'):n.priority==='important'?tag('Important','tag-warning'):n.status!=='active'?tag(n.status):'';
+const deadlineBadge=d=>tag(({archived:'Archived',completed:'Done',overdue:'Overdue',today:'Due today',upcoming:'Upcoming'})[d.status]||d.status,d.status==='overdue'?'tag-danger':d.status==='today'?'tag-warning':d.status==='completed'?'tag-success':'');
+const noticeRow=(w,n)=>listRow((n.pinned?'Pinned · ':'')+n.title,w.audienceLabel(n.audience)+' · '+displayDate(n.publishedDate),'open-notice',n.id,'notice',noticeBadge(n));
+const deadlineRow=(w,d)=>listRow(d.title,w.audienceLabel(d.audience)+' · '+displayDate(d.dueDate),'open-deadline',d.id,'calendar',(d.recipient?'':tag('Oversight'))+deadlineBadge(d));
 export function renderHome(w,s){
- const h=w.home(),c=h.cohort,classes=sortRows(w.classRows(),'code'),actions=h.actions;
+ const h=w.home(),c=h.cohort,classes=sortRows(w.classRows(),'code'),all=w.allHome(),comm=w.communications(),actions=all.actions;
  const classTable=table('homeClasses',classColumns,classes,classCell,s,{compact:true});
- const actionList=actions.length?actions.slice(0,4).map(a=>{const r=w.caseDetail(a.caseId);return listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'open-case',r.id,'support',r.overdue?tag('Overdue','tag-danger'):'');}).join(''):empty('No outstanding intervention actions','Actions in your selected scope appear here.');
- const notices=h.notices.slice().sort((a,b)=>b.publishedDate.localeCompare(a.publishedDate)).slice(0,3);
+ const queue=[
+   ...comm.pendingAcknowledgements.map(n=>({kind:'notice',html:listRow('Acknowledge: '+n.title,w.audienceLabel(n.audience),'open-notice',n.id,'notice',tag('Pending','tag-warning'))})),
+   ...actions.map(a=>{const r=w.caseDetail(a.caseId);return {kind:'case',html:listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'open-case',r.id,'support',r.overdue?tag('Overdue','tag-danger'):'')};})
+ ];
+ const attention=queue.length?queue.slice(0,4).map(a=>a.html).join(''):empty('Nothing awaiting your attention','Your notice acknowledgements and intervention actions appear here.');
+ const notices=comm.activeNotices.slice(0,3),reportingRows=w.access.has('leadership')?comm.deadlines.filter(d=>!d.archived&&(!d.recipient||!d.completed)):comm.openDeadlines,deadlines=reportingRows.slice(0,3);
+ const scopeTitle=w.scope==='house'?'House academic overview':w.scope==='tutor'?'Tutee academic overview':w.scope==='faculty'?'Faculty class overview':w.scope==='school'?'School class overview':'Class overview';
  return heading('Welcome, '+w.staff.name.split(' ')[0],displayDate(w.asOf)+' · '+SCOPE_LABELS[w.scope],tag('Demo reference date')+help('date','reference date'),'Your workspace')+
- '<div class="metrics">'+metric('Pupils',c.students,c.enrolments+' subject enrolments','scope','go-students')+metric('Below minimum target',c.belowTarget.length,'View affected classes','target','go-below')+metric('Active interventions',c.interventions.active,c.interventions.students+' individual pupils','intervention','go-cases')+metric('Actions requiring attention',actions.length,'Open your action queue','due','go-actions')+'</div>'+
- '<div class="home-grid">'+panel('Class overview',classTable,btn('View classes','go-classes','','btn-quiet','arrow'),'average')+panel('Requires your attention','<div class="list">'+actionList+'</div>',btn('All actions','go-actions','','btn-quiet'))+'</div>'+
- '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>listRow(n.title,w.audienceLabel(n.audience)+' · '+displayDate(n.publishedDate),'open-notice',n.id,'notice')).join(''):empty('No active notices'))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+panel('Upcoming deadlines','<div class="list">'+(h.deadlines.length?h.deadlines.slice(0,3).map(d=>'<div class="list-row"><span class="list-icon">'+icon('calendar')+'</span><span class="row-text"><strong>'+esc(d.title)+'</strong><small>'+esc(w.audienceLabel(d.audience))+'</small></span><span class="nowrap small">'+esc(displayDate(d.dueDate))+'</span></div>').join(''):empty('No upcoming deadlines'))+'</div>',btn('Schedule','go-notices','','btn-quiet'))+'</div>'+
- note('Live calculations from V2 fictional records. Home and Notices workflows are expanded in V2-03.');
+ '<div class="metrics">'+metric('Pupils',c.students,c.enrolments+' subject enrolments','scope','go-students')+metric('Below minimum target',c.belowTarget.length,'View affected classes','target','go-below')+metric('Active interventions',c.interventions.active,c.interventions.students+' individual pupils','intervention','go-cases')+metric('Actions requiring attention',queue.length,actions.length+' intervention · '+comm.pendingAcknowledgements.length+' notice','personalActions','focus-attention')+'</div>'+
+ '<div class="home-grid">'+panel(scopeTitle,classTable,btn('View classes','go-classes','','btn-quiet','arrow'),'average')+
+ '<div id="attention-panel" tabindex="-1">'+panel('Requires your attention','<div class="list">'+attention+'</div><div class="attention-footer">'+btn('Interventions ('+actions.length+')','go-personal-actions','','btn-quiet')+btn('Notices ('+comm.pendingAcknowledgements.length+')','go-acknowledgements','','btn-quiet')+'</div>','', 'personalActions')+'</div></div>'+
+ '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>noticeRow(w,n)).join(''):empty('No active notices'))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+
+ panel(w.access.has('leadership')?'School reporting schedule':'Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+reportingRows.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
+ note('Academic figures follow the selected scope. Your action queue and communications cover all your assigned responsibilities. Intervention plan editing follows in V2-08.');
 }
 export function renderNotices(w,s){
- const h=w.allHome(),notices=h.notices.filter(n=>matchText(s.query,n.title,n.body,w.audienceLabel(n.audience)));
- const list=kind=>notices.filter(n=>n.kind===kind).sort((a,b)=>b.publishedDate.localeCompare(a.publishedDate)).map(n=>listRow(n.title,w.audienceLabel(n.audience)+' · '+displayDate(n.publishedDate),'open-notice',n.id,'notice')).join('')||empty('No matching notices');
- return heading('Notices','Staff communications, briefings and reporting dates',help('notices','notice audience'),'Communication')+
- '<div class="surface toolbar" style="margin-bottom:12px">'+field('page-query',s.query,'Search notices')+'<span class="count">'+notices.length+' active notices</span></div>'+
- '<div class="home-grid">'+panel('Staff noticeboard','<div class="list">'+list('notice')+'</div>')+panel('Briefing notices','<div class="list">'+list('briefing')+'</div>')+'</div><div style="margin-top:12px">'+panel('Reporting schedule',h.deadlines.length?'<div class="table-scroll"><table class="data-table"><thead><tr><th>Deadline</th><th>Audience</th><th>Date</th></tr></thead><tbody>'+h.deadlines.map(d=>'<tr><td>'+esc(d.title)+'</td><td>'+esc(w.audienceLabel(d.audience))+'</td><td>'+esc(displayDate(d.dueDate))+'</td></tr>').join('')+'</tbody></table></div>':empty('No upcoming deadlines'))+'</div>'+note('Read-only preview. Notice creation, acknowledgement and deadline management are planned for V2-03.');
+ const comm=w.communications(),filter=s.noticeFilter||'active',deadlineFilter=s.deadlineFilter||'open';
+ const notices=comm.notices.filter(n=>matchText(s.query,n.title,n.body,w.audienceLabel(n.audience),n.author)&&(
+  filter==='all'||filter==='active'&&n.status==='active'||filter==='pending'&&n.canAcknowledge||
+  filter==='archive'&&['archived','expired'].includes(n.status)||filter==='scheduled'&&n.status==='scheduled'));
+ const board=notices.filter(n=>n.kind==='notice'),briefings=notices.filter(n=>n.kind==='briefing');
+ const weeks=[...new Set(briefings.map(n=>n.week))].sort().reverse();
+ const brief=weeks.map(week=>'<div class="week-label">Week commencing '+esc(displayDate(week))+'</div>'+briefings.filter(n=>n.week===week).map(n=>noticeRow(w,n)).join('')).join('');
+ const deadlineRows=comm.deadlines.filter(d=>matchText(s.query,d.title,d.event,d.details,w.audienceLabel(d.audience))&&(
+  deadlineFilter==='all'||deadlineFilter==='open'&&!d.archived&&!d.completed||deadlineFilter==='overdue'&&d.status==='overdue'||
+  deadlineFilter==='completed'&&d.completed&&!d.archived||deadlineFilter==='archived'&&d.archived));
+ const schedule=deadlineRows.length?'<div class="table-scroll reporting-table"><table class="data-table"><thead><tr><th>Deadline</th><th>Event</th><th>Audience</th><th>Date</th><th>My status</th></tr></thead><tbody>'+deadlineRows.map(d=>'<tr><td>'+link(d.title,'open-deadline',d.id)+'</td><td>'+esc(d.event)+'</td><td>'+esc(w.audienceLabel(d.audience))+'</td><td>'+esc(displayDate(d.dueDate))+'</td><td>'+(d.recipient||d.archived?deadlineBadge(d):tag('Oversight'))+'</td></tr>').join('')+'</tbody></table></div>':empty('No matching deadlines');
+ return heading('Notices','Staff communications, briefings and reporting dates',
+ (comm.publishAudiences.length?btn('Add notice','new-notice','','btn-primary','notice'):'')+help('notices','notice audience'),'Communication')+
+ '<div class="metrics communication-metrics">'+metric('Active notices',comm.activeNotices.length,'Staff notices and briefings','notices','show-active-notices')+metric('Awaiting acknowledgement',comm.pendingAcknowledgements.length,'Your pending notices','acknowledgement','show-pending-notices')+metric('Open reporting reminders',comm.openDeadlines.length,comm.openDeadlines.filter(d=>d.status==='overdue').length+' overdue','reporting','focus-schedule')+'</div>'+
+ '<div class="surface toolbar" style="margin-bottom:12px">'+field('page-query',s.query,'Search notices and deadlines')+select('notice-filter',filter,[['active','Active notices'],['pending','Awaiting acknowledgement'],['archive','Archive'],['scheduled','Scheduled'],['all','All accessible notices']],'Notice status')+'<span class="count">'+notices.length+' matching notices</span></div>'+
+ '<div class="home-grid">'+panel('Staff noticeboard','<div class="list communication-list">'+(board.length?board.map(n=>noticeRow(w,n)).join(''):empty('No matching notices'))+'</div>')+
+ panel('Briefing notices','<div class="list communication-list">'+(brief||empty('No matching briefings','Select Archive to see previous briefings.'))+'</div>',btn('Previous briefings','show-archive','','btn-quiet'))+'</div>'+
+ '<div id="schedule-panel" tabindex="-1" style="margin-top:12px">'+panel('Reporting schedule',
+ '<div class="toolbar">'+select('deadline-filter',deadlineFilter,[['open','Open / upcoming'],['overdue','Overdue'],['completed','My completed'],['archived','Archived'],['all','All accessible deadlines']],'Reporting schedule filter')+'<span class="count">'+deadlineRows.length+' deadlines</span></div>'+schedule,
+ (comm.canManageDeadline?btn('Add deadline','new-deadline','','btn-primary','calendar'):'')+help('reporting','reporting schedule'))+'</div>'+
+ note('Personal completion markers do not submit reports to external systems. Notice and deadline edits are saved in the fictional demo audit history.');
 }
 export function renderClasses(w,s){
  const all=sortRows(w.classRows(),'code');
@@ -149,8 +177,47 @@ export function renderDetail(w,detail){
   return drawer(c.studentName,c.classInfo.name+' · '+c.id,facts([['Tutor group',c.student.tutorGroupId],['House',c.house],['Review date',displayDate(c.reviewDate)],['Stage',c.status],['Case owner',c.owner],['Updated',displayDate(c.updatedDate)]])+section('Wave 1 · Classroom intervention','<p>'+esc(c.reason)+'</p><div class="tags">'+(c.strategies||[]).map(x=>tag(x)).join('')+'</div>')+(c.wave>=2?section('Wave 2 · Faculty and House','<strong>Faculty plan</strong><p>'+esc(c.facultyPlan||'Awaiting faculty plan')+'</p><strong>House request</strong><p>'+esc(c.houseRequest||'Not yet assigned')+'</p><strong>House response</strong><p>'+esc(c.houseResponse?.response||'No response recorded')+'</p>'):'')+(c.wave>=3?section('Wave 3 · Leadership','<p>'+esc(c.leadershipPlan||'Awaiting leadership plan')+'</p>'):'')+section('History',(c.history||[]).map(h=>'<p><strong>'+esc(displayDate(h.date))+'</strong> · '+esc(h.text)+'</p>').join(''))+(c.evaluation?section('Evaluation','<p>'+esc(c.evaluation)+'</p>'):'')+note('View only in V2-02. Intervention actions are implemented in V2-08.'),btn('Student profile','open-student',c.student.id,'btn-quiet'));
  }
  if(kind==='notice'){
-  const n=w.noticeDetail(id);
-  return drawer(n.title,n.kind==='briefing'?'Briefing notice':'Staff notice',facts([['Audience',w.audienceLabel(n.audience)],['Author',n.author],['Published',displayDate(n.publishedDate)],['Expires',displayDate(n.expiryDate)]])+section('Notice','<p>'+esc(n.body)+'</p>')+note('Editing and acknowledgement arrive in V2-03.'));
+  const n=w.noticeDetail(id),editable=n.editable&&n.status!=='archived';
+  const status=n.canAcknowledge?'Acknowledgement required':n.acknowledged?'Acknowledged by you':n.requiresAcknowledgement&&!n.recipient?'Oversight only':n.requiresAcknowledgement?'Not currently actionable':'No acknowledgement required';
+  const resources=(n.links??[]).filter(safeLink);
+  return drawer(n.title,n.kind==='briefing'?'Briefing notice':'Staff notice',
+   facts([['Audience',w.audienceLabel(n.audience)],['Author',n.author],['Published',displayDate(n.publishedDate)],['Expires',displayDate(n.expiryDate)],['Status',n.status],['Priority',n.priority??'normal']])+
+   section('Notice','<p>'+esc(n.body)+'</p>')+(resources.length?section('Resources',resources.map(url=>'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(url)+'</a>').join('')):'')+
+   section('Acknowledgement','<p>'+esc(status)+' '+help('acknowledgement','notice acknowledgement')+'</p>'+(n.acknowledgementCount?'<p><strong>'+n.acknowledgementCount.done+' / '+n.acknowledgementCount.total+'</strong> current recipients acknowledged.</p>':'')+(n.canAcknowledge?btn('Acknowledge notice','ack-notice',id,'btn-primary','check'):'')+(n.acknowledged?tag('Acknowledged','tag-success'):'')),
+   editable?btn('Archive','archive-notice',id,'btn-danger')+btn('Edit notice','edit-notice',id,'btn-primary','edit'):'');
+ }
+ if(kind==='deadline'){
+  const d=w.deadlineDetail(id);
+  return drawer(d.title,'Reporting schedule',facts([['Event',d.event],['Audience',w.audienceLabel(d.audience)],['Due date',displayDate(d.dueDate)],['My status',d.recipient?d.status:'Oversight only']])+
+   section('Instructions','<p>'+esc(d.details||'No additional instructions.')+'</p>')+
+   section('Personal reminder','<p>'+esc(HELP.reporting)+'</p>'+(d.recipient&&!d.archived?btn(d.completed?'Reopen my reminder':'Mark my reminder complete','toggle-deadline',id,d.completed?'':'btn-primary','check'):'')),
+   d.editable&&!d.archived?btn('Archive','archive-deadline',id,'btn-danger')+btn('Edit deadline','edit-deadline',id,'btn-primary','edit'):'');
+ }
+ if(kind==='notice-form'||kind==='deadline-form'){
+  const isNotice=kind==='notice-form',comm=w.communications(),existing=id?(isNotice?w.noticeDetail(id):w.deadlineDetail(id)):null;
+  const audiences=isNotice?comm.publishAudiences:comm.deadlineAudiences;
+  if(!audiences.length||existing&&(!existing.editable||existing.archived||existing.status==='archived'))throw Error('You cannot edit this record.');
+  const key=a=>JSON.stringify({type:a.type,id:a.id}),selected=existing?key(existing.audience):key(audiences[0]);
+  const check=(name,label,value)=>'<label class="check-field"><input type="checkbox" name="'+name+'" '+(value?'checked':'')+'> '+esc(label)+'</label>';
+  const input=(name,label,value,type='text',required=true,max=160)=>'<label for="comm-'+name+'">'+esc(label)+'<input id="comm-'+name+'" class="input" name="'+name+'" type="'+type+'" value="'+esc(value??'')+'" '+(required?'required ':'')+(type==='text'?'maxlength="'+max+'"':'')+'></label>';
+  const area=(name,label,value,max,required=false)=>'<label for="comm-'+name+'">'+esc(label)+'<textarea id="comm-'+name+'" name="'+name+'" class="input text-area" maxlength="'+max+'" rows="4" '+(required?'required':'')+'>'+esc(value??'')+'</textarea></label>';
+  const choose=(name,label,value,options)=>'<label for="comm-'+name+'">'+esc(label)+'<select name="'+name+'" class="select" id="comm-'+name+'" required>'+options.map(([k,l])=>option(k,l,value)).join('')+'</select></label>';
+  const common=input('title','Title',existing?.title)+choose('audience','Audience',selected,audiences.map(a=>[key(a),a.label]));
+  const fields=isNotice?
+    choose('kind','Type',existing?.kind??'notice',[['notice','Staff notice'],['briefing','Weekly briefing']])+common+
+    area('body','Notice text',existing?.body,8000,true)+choose('priority','Priority',existing?.priority??'normal',[['normal','Normal'],['important','Important'],['urgent','Urgent']])+
+    '<div class="form-columns">'+input('publishedDate','Publication date',existing?.publishedDate??w.asOf,'date')+input('expiryDate','Expiry date (optional)',existing?.expiryDate,'date',false)+'</div>'+
+    area('links','HTTPS resource links (optional, one per line)',(existing?.links??[]).join('\n'),2500)+check('pinned','Pin this notice',existing?.pinned)+check('requiresAcknowledgement','Require staff acknowledgement',existing?.requiresAcknowledgement):
+    common+choose('event','Reporting event',existing?.event??'Reports',EVENTS.map(x=>[x,x]))+input('dueDate','Due date',existing?.dueDate??w.asOf,'date')+area('details','Instructions (optional)',existing?.details,4000);
+  return drawer((existing?'Edit ':'Add ')+(isNotice?'notice':'deadline'),isNotice?'Publish to an authorised staff audience':'Maintain the shared reporting schedule',
+   '<form id="communication-form" class="form-stack">'+fields+(existing?'<div class="alert">'+check('confirmed',isNotice?'Confirm changes will reset current acknowledgements.':'Confirm changes will reset personal completion markers.',false)+'</div>':'')+
+   '<div id="form-error" class="error" role="alert" hidden></div><button class="btn btn-primary" type="submit">'+icon('check')+esc(existing?'Save changes':isNotice?'Publish notice':'Save deadline')+'</button></form>');
+ }
+ if(kind==='archive-notice'||kind==='archive-deadline'){
+  const isNotice=kind==='archive-notice',record=isNotice?w.noticeDetail(id):w.deadlineDetail(id);
+  if(!record.editable||record.archived||record.status==='archived')throw Error('You cannot archive this record.');
+  return drawer('Archive '+(isNotice?'notice':'deadline'),record.title,
+    '<div class="alert">This removes the record from active views and reminders. Its history is retained.</div><form id="archive-form" class="form-stack"><label class="check-field"><input type="checkbox" name="confirmed" required> Confirm archive</label><div id="form-error" class="error" role="alert" hidden></div><button class="btn btn-danger" type="submit">Archive record</button></form>');
  }
  if(kind==='staff'){
   const d=w.staffDetail(id);
@@ -167,5 +234,5 @@ export function renderSearchResults(w,q){
  const rows=w.search(q);
  if(!q.trim())return empty('Search your accessible workspace','Try a student name, class code, tutor group or staff member.');
  if(!rows.length)return empty('No results in your access scope');
- return rows.map(r=>'<button type="button" class="search-result" data-action="search-result" data-id="'+esc(r.kind+':'+r.id)+'"><span class="list-icon">'+icon({student:'students',class:'class',case:'support',notice:'notice',staff:'person'}[r.kind])+'</span><span class="row-text"><strong>'+esc(r.title)+'</strong><small>'+esc(r.sub)+'</small></span>'+tag(r.kind==='case'?'Intervention':r.kind[0].toUpperCase()+r.kind.slice(1))+icon('arrow')+'</button>').join('');
+ return rows.map(r=>'<button type="button" class="search-result" data-action="search-result" data-id="'+esc(r.kind+':'+r.id)+'"><span class="list-icon">'+icon({student:'students',class:'class',case:'support',notice:'notice',deadline:'calendar',staff:'person'}[r.kind])+'</span><span class="row-text"><strong>'+esc(r.title)+'</strong><small>'+esc(r.sub)+'</small></span>'+tag(r.kind==='case'?'Intervention':r.kind[0].toUpperCase()+r.kind.slice(1))+icon('arrow')+'</button>').join('');
 }

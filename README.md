@@ -4,9 +4,9 @@ An interactive, **fictional-data-only** proof of concept for a unified school st
 
 > **Not production software.** The repository is public. No school data, secrets, identifiers or genuine safeguarding information should be committed, entered or copied into the prototype.
 
-## Version 2 rebuild (V2-02)
+## Version 2 rebuild (V2-03)
 
-The new implementation is the default site at `index.html` and is also available at `v2/index.html`. The previous prototype is preserved at `legacy.html`. Serve the repository using a static HTTP server (ES modules require HTTP). The five V2 pages are data-connected previews; later passes extend them into complete workflows. See [V2 roadmap and data contract](v2/README.md). The descriptions below document the archived prototype, not completed V2 functionality.
+The new implementation is the default site at `index.html` and is also available at `v2/index.html`. The previous prototype is preserved at `legacy.html`. Serve the repository using a static HTTP server (ES modules require HTTP). Home and Notices now include editable, audience-scoped fictional communications, acknowledgements and the shared reporting schedule. The other V2 pages are data-connected previews; later passes extend them into complete workflows. See [V2 roadmap and data contract](v2/README.md). The descriptions below document the archived prototype, not completed V2 functionality.
 
 ## Explore
 

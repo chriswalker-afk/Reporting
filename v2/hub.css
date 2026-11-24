@@ -17,3 +17,17 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
 @media(max-width:1080px){.app-shell{grid-template-columns:162px minmax(0,1fr)}.topbar{gap:7px;padding-inline:14px}.staff-field{padding-left:8px}.search-launch kbd{display:none}.topbar-spacer{display:none}.workspace{padding:15px}.home-grid{grid-template-columns:1fr 1fr}.metric-value{font-size:23px}.topbar-field label{display:none}}
 @media(max-width:760px){.app-shell{display:block;height:100dvh}.app-main{height:100%;display:grid}.sidebar{display:none;position:fixed;inset:0 auto 0 0;z-index:20;width:215px;box-shadow:5px 0 30px #10263860}.sidebar[data-open=true]{display:flex}.btn.mobile-toggle{display:inline-flex}.topbar{gap:7px;padding:8px 10px}.search-launch{min-width:100px;max-width:none;order:2;flex:1}.topbar-field{order:3}.staff-field{max-width:100%;border:0;padding:0;order:4}.staff-field .avatar{display:none}.staff-field .select{max-width:140px;font-size:11px}.staff-field .roles{max-width:140px}.workspace{padding:13px 10px}.home-grid,.home-lower{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{padding:10px}.metric-value{font-size:23px}.demo-footer{padding:6px 10px;font-size:10px}.drawer-body{padding:13px}.drawer-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.table-scroll{max-height:58dvh}.home-table{max-height:200px}.toolbar .input{flex:1}.toolbar .count{margin-left:0}.page-heading{gap:8px}.topbar .select{max-width:155px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* V2-03 communications */
+.communication-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.attention-footer{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;padding:6px 10px;border-top:1px solid var(--line)}
+.communication-list{max-height:265px;overflow:auto;overscroll-behavior:contain}
+.week-label{font-size:11px;font-weight:700;color:var(--muted);background:#f3f6f8;border-bottom:1px solid var(--line);padding:7px 14px}
+.reporting-table{max-height:300px}
+.form-stack .input{width:100%;height:40px;max-width:100%}
+.form-stack .text-area{height:auto;min-height:92px;resize:vertical;padding:9px 10px;line-height:1.5}
+.form-stack .check-field{display:flex;align-items:center;gap:8px;font-weight:550}
+.check-field input{width:17px;height:17px;accent-color:var(--accent);flex:none}
+.form-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.drawer-section .content .btn{justify-self:start}
+@media(max-width:760px){.communication-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.form-columns{grid-template-columns:1fr}.communication-list{max-height:240px}}

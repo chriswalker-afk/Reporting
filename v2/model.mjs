@@ -189,18 +189,44 @@ export function validateData(data) {
   const audience=(r)=>{
     if(!r.audience||!['all','faculty','house','tutorGroup','year'].includes(r.audience.type)){err(r.id,'invalid audience');return;}
     const {type,id}=r.audience;
+    if(type==='all'&&id!==null)err(r.id,'all-staff audience must use null ID');
     if(type==='faculty')ref(r.id,'faculties',id);
     if(type==='house')ref(r.id,'houses',id);
     if(type==='tutorGroup')ref(r.id,'tutorGroups',id);
     if(type==='year'&&(!Number.isInteger(id)||id<7||id>13))err(r.id,'invalid audience year');
   };
+  function staffResponses(r,rows,versioned=false){
+    if(rows===undefined)return;
+    if(!Array.isArray(rows)){err(r.id,'invalid staff responses');return;}
+    const seen=new Set();
+    for(const a of rows){
+      if(!a||typeof a!=='object'){err(r.id,'invalid staff response');continue;}
+      ref(r.id,'staff',a.staffId);
+      if(!isDate(a.date)||versioned&&a.version!==(r.version??1))err(r.id,'invalid response date/version');
+      if(seen.has(a.staffId))err(r.id,'duplicate staff response');
+      seen.add(a.staffId);
+    }
+  }
+  const safeResource=value=>{try{const u=new URL(value);return typeof value==='string'&&value.length<=500&&u.protocol==='https:'&&!u.username&&!u.password;}catch{return false;}};
   for(const n of data.notices){
     ref(n.id,'staff',n.authorStaffId);audience(n);
     if(!isText(n.title)||!isText(n.body)||!isDate(n.publishedDate)||
       (n.expiryDate!==null&&(!isDate(n.expiryDate)||n.expiryDate<n.publishedDate))||
       !['notice','briefing'].includes(n.kind))err(n.id,'invalid notice');
+    if(n.priority!==undefined&&!['normal','important','urgent'].includes(n.priority))err(n.id,'invalid notice priority');
+    for(const field of ['archived','pinned','requiresAcknowledgement'])if(n[field]!==undefined&&typeof n[field]!=='boolean')err(n.id,'invalid '+field);
+    if(n.version!==undefined&&(!Number.isInteger(n.version)||n.version<1))err(n.id,'invalid notice version');
+    if(n.links!==undefined&&(!Array.isArray(n.links)||n.links.length>5||n.links.some(l=>!safeResource(l))))err(n.id,'invalid resource links');
+    staffResponses(n,n.acknowledgements,true);
+    if(!n.requiresAcknowledgement&&n.acknowledgements?.length)err(n.id,'acknowledgement not required');
   }
-  for(const d of data.deadlines){audience(d);if(!isText(d.title)||!isDate(d.dueDate))err(d.id,'invalid deadline');}
+  for(const d of data.deadlines){
+    audience(d);if(!isText(d.title)||!isDate(d.dueDate))err(d.id,'invalid deadline');
+    if(d.event!==undefined&&!['Reports','SIMS grades','PTM','PTE','Moderation','Other'].includes(d.event))err(d.id,'invalid deadline event');
+    if(d.details!==undefined&&typeof d.details!=='string')err(d.id,'invalid instructions');
+    if(d.archived!==undefined&&typeof d.archived!=='boolean')err(d.id,'invalid archived state');
+    staffResponses(d,d.completions);
+  }
   for(const a of data.audit){ref(a.id,'staff',a.actorStaffId);if(!isText(a.action)||!isText(a.recordId)||!isText(a.timestamp)||!Number.isFinite(Date.parse(a.timestamp)))err(a.id,'invalid audit event');}
   return errors;
 }
