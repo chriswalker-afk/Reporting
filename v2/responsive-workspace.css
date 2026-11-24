@@ -801,3 +801,49 @@
  .page-zoom-controls{display:none!important}
  .workspace>.workspace-inner{zoom:1!important}
 }
+
+/* PR42: compact directory and class headers. Intrinsic flex wrapping follows
+   the actual workspace width, including rail navigation and per-page zoom. */
+@media screen{
+ .compact-workspace-header{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:5px 9px;margin:0 0 8px;border-left:3px solid var(--jis-burgundy);min-width:0;max-width:100%}
+ .compact-header-identity{display:flex;align-items:center;flex-wrap:wrap;gap:3px 9px;min-width:0;max-width:100%;flex:0 1 auto}
+ .compact-header-identity h1{font-size:clamp(19px,1.7vw,25px);line-height:1.2;overflow-wrap:anywhere}
+ .compact-header-context{font-size:12px;color:var(--muted);line-height:1.3;overflow-wrap:anywhere;min-width:0}
+ .compact-header-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px;min-width:0;max-width:100%;margin-left:auto}
+ .compact-workspace-header .btn,.compact-workspace-header .select,.compact-workspace-header .input{min-height:32px;max-width:100%;padding:4px 8px;font-size:12px}
+ .compact-workspace-header .btn{white-space:normal;text-align:left;line-height:1.3}
+ .compact-workspace-header .select,.compact-workspace-header .input{height:32px;min-width:0}
+ .compact-header-search{display:flex;align-items:center;flex:1 1 270px;min-width:0;max-width:100%;gap:5px;flex-wrap:wrap}
+ .compact-header-search .input{flex:1 1 170px;width:220px;min-width:min(130px,100%);max-width:300px}
+ .compact-header-search .btn{flex:none}
+ .compact-header-matches{font-size:11px;color:var(--muted)}
+ .compact-header-stat{display:flex;align-items:center;gap:0;min-width:0;max-width:100%}
+ .compact-header-stat .btn{font-weight:550;display:inline-block;padding-inline:5px;overflow-wrap:anywhere}
+ .compact-header-stat .btn strong{font-weight:750;font-variant-numeric:tabular-nums}
+ .compact-header-stat .help{flex:none;width:21px;height:24px}
+ .compact-header-stat .compact-stat-warning{color:var(--warning)}
+ .compact-header-stat .compact-stat-danger{color:var(--danger)}
+ .compact-workspace-header .class-switcher{width:auto;min-width:0;max-width:100%;flex-wrap:wrap;gap:4px}
+ .compact-workspace-header .class-switcher .select{max-width:min(235px,100%)}
+ .compact-workspace-header .btn:focus-visible{outline-offset:1px}
+ .compact-directory-filters{padding:5px 9px;gap:6px}
+ .compact-directory-filters .btn,.compact-directory-filters .input{min-height:32px;height:32px;padding-block:4px}
+ .workspace-inner[data-workspace-page="classes"] [data-workspace-disclosure="class-index-filters"]>summary,
+ .workspace-inner[data-workspace-page="students"] [data-workspace-disclosure="student-filters"]>summary,
+ [data-workspace-disclosure="case-progression"]>summary{min-height:28px}
+ .class-heading>.compact-header-class{margin-bottom:5px}
+ .class-heading:has(>.compact-header-class)+.tabs{margin-bottom:6px}
+ @media(max-width:760px){
+  .compact-workspace-header{gap:4px 5px;padding:5px 7px}
+  .compact-header-identity{flex:1 1 100%}
+  .compact-workspace-header .btn,.compact-workspace-header .select,.compact-workspace-header .input{min-height:34px}
+  .compact-header-search{flex-basis:100%}
+  .compact-header-actions{max-width:100%}
+  .compact-workspace-header .class-switcher .select{flex:1 1 140px;max-width:100%}
+ }
+}
+@media print{
+ .compact-header-actions,.compact-header-search,.compact-directory-filters{display:none!important}
+ .compact-workspace-header .help{display:none!important}
+ .compact-header-stat .btn{border:0;padding:2px;color:inherit;background:none}
+}
