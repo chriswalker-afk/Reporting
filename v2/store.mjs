@@ -11,7 +11,9 @@ export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
 /** A fresh permission-filtered read model, intended for all V2 screens. */
 export function createReadModel(data,staffId){
   const access=createAccess(data,staffId),analytics=createAnalytics(data);
-  const byId=(table,id)=>data[table].find(r=>r.id===id);
+  const lookupMaps=new Map();
+  const byId=(table,id)=>{if(!lookupMaps.has(table))lookupMaps.set(table,new Map(data[table].map(r=>[r.id,r])));return lookupMaps.get(table).get(id);};
+  const allEnrolmentIds=access.scopeEnrolments(),allEnrolments=new Set(allEnrolmentIds);
   const visibleCaseIds=data.interventions.filter(c=>access.canViewCase(c.id)).map(c=>c.id);
   let communicationsCache;
   const communications=()=>communicationsCache??=communicationView(data,staffId);
@@ -34,7 +36,7 @@ export function createReadModel(data,staffId){
   }
   function student(studentId,options={}){
     assert(access.canViewStudent(studentId),'Student outside current demo scope');
-    const enrolmentIds=access.scopeEnrolments();
+    const enrolmentIds=allEnrolmentIds;
     return {student:byId('students',studentId),
       subjects:analytics.studentOverview(studentId,{...options,enrolmentIds}),
       cases:data.interventions.filter(c=>access.canViewCase(c.id)&&byId('enrolments',c.enrolmentId)?.studentId===studentId),
@@ -57,10 +59,12 @@ export function createReadModel(data,staffId){
   function assessment(assessmentId,options={}){
     const a=byId('assessments',assessmentId);
     assert(a,'Unknown assessment');
-    const permitted=a.classIds.filter(id=>access.canViewClass(id)&&(a.status==='published'||access.teaches(id)||access.leads(id)));
+    const permitted=a.classIds.filter(id=>(a.status==='published'||access.teaches(id)||access.leads(id))&&data.enrolments.some(e=>e.classId===id&&allEnrolments.has(e.id)));
     const classIds=options.classIds??permitted;
     assert(classIds.length&&classIds.every(id=>permitted.includes(id)),'Assessment outside current demo class scope');
-    return analytics.assessmentAnalysis(assessmentId,{...options,classIds});
+    const requested=options.enrolmentIds?new Set(options.enrolmentIds):null;
+    const enrolmentIds=data.enrolments.filter(e=>classIds.includes(e.classId)&&allEnrolments.has(e.id)&&(!requested||requested.has(e.id))).map(e=>e.id);
+    return analytics.assessmentAnalysis(assessmentId,{...options,classIds,enrolmentIds});
   }
   return {access,cohort,home,student,classSummary,classSlice,assessment,communications,
     interventionSummary:()=>analytics.interventionSummary(visibleCaseIds),
