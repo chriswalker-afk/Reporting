@@ -371,3 +371,12 @@ This is targeted prototype regression coverage, not a claim of formal WCAG confo
 ### Following the responsive cycle
 
 Recommended next development area: end-to-end reporting workflows (centrally defined windows, bulk grade submission, subject comments, faculty moderation, leadership sign-off and completion dashboard). Maintain the shared responsive and accessibility contracts when adding features.
+
+
+## Clean navigation rail (PR35)
+
+The sidebar prioritises the five working destinations. Planned modules are grouped under one collapsed-by-default, keyboard-accessible Planned modules disclosure; they remain explicitly unavailable rather than acting as misleading navigation links. The disclosure state and navigation scroll position survive ordinary page renders during the session.
+
+The school crest and brand stay fixed above an independent navigation scroll region. The ordinary collapsed rail fits common laptop and landscape viewport heights without a scrollbar. If a short viewport or expanded planned list genuinely requires scrolling, a thin burgundy-compatible thumb with a transparent track appears inside the navigation area. Standard, compact and mobile overlay navigation use the same markup; keyboard focus, wheel/touch scrolling, mobile focus containment, visible focus indicators and forced-colours support remain available. Decorative footer information is omitted on very short screens.
+
+Browser regressions verify no ordinary rail overflow, persistent disclosure state, scrolling with the crest stationary, and keyboard operation of the disclosure and mobile menu.

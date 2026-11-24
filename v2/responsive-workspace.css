@@ -601,3 +601,49 @@
  .detail-dialog[open],.detail-dialog[data-drawer-expanded="true"]{inset:0;inline-size:100%;max-inline-size:100%;min-inline-size:0;margin:0;box-sizing:border-box}
  .detail-dialog .dialog-head,.detail-dialog .drawer-body,.detail-dialog .drawer-footer{min-inline-size:0;max-inline-size:100%}
 }
+
+
+/* PR35: keep the crest fixed, put working destinations first, and scroll
+   only the navigation content when the available height truly requires it. */
+@media screen{
+ .sidebar{overflow:hidden;min-block-size:0;gap:0}
+ .sidebar>.brand,.sidebar>.sidebar-bottom{flex:none}
+ .sidebar>.brand{min-inline-size:0}
+ .sidebar>.sidebar-scroll{flex:1 1 auto;min-block-size:0;min-inline-size:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:3px 2px 5px;scroll-padding-block:5px;scrollbar-width:thin;scrollbar-color:#c69ba9 transparent}
+ .sidebar-scroll::-webkit-scrollbar{width:5px}
+ .sidebar-scroll::-webkit-scrollbar-track{background:transparent}
+ .sidebar-scroll::-webkit-scrollbar-thumb{background:#c69ba9;border-radius:8px}
+ .sidebar-scroll::-webkit-scrollbar-button{display:none}
+ .sidebar-scroll:focus-visible{outline:2px solid var(--jis-gold);outline-offset:-2px;border-radius:5px}
+ .sidebar-scroll :focus-visible{outline:2px solid var(--jis-gold);outline-offset:-2px}
+ .sidebar-scroll .nav-group{min-inline-size:0}
+ .sidebar-scroll .nav-link,.sidebar-scroll .future-link{min-inline-size:0;overflow-wrap:anywhere}
+ .sidebar-scroll .nav-label{min-inline-size:0}
+ .sidebar-future{min-inline-size:0}
+ .sidebar-future>summary{display:flex;align-items:center;gap:7px;list-style:none;min-height:36px;padding:7px 8px;border-radius:6px;cursor:pointer;color:#f3d5df;font-size:12px;font-weight:650;position:relative}
+ .sidebar-future>summary::-webkit-details-marker{display:none}
+ .sidebar-future>summary:hover,.sidebar-future[open]>summary{background:#ffffff12;color:#fff7df}
+ .sidebar-future>summary .icon{width:17px;height:17px}
+ .sidebar-future-chevron{border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);width:7px;height:7px;flex:none;margin-left:auto;margin-right:2px}
+ .sidebar-future[open]>summary .sidebar-future-chevron{transform:rotate(45deg)}
+ .sidebar-future:not([open])>.sidebar-future-links{display:none}
+ .sidebar-future-links{margin-top:3px}
+ .sidebar-future-links .future-link{padding-block:6px;min-height:30px}
+ .app-shell[data-workspace-navigation="rail"] .sidebar-scroll{padding-inline:1px}
+ .app-shell[data-workspace-navigation="rail"] .sidebar-future>summary{justify-content:center;min-height:38px;padding:8px}
+ .app-shell[data-workspace-navigation="rail"] .sidebar-future>summary .icon{width:19px;height:19px}
+ .app-shell[data-workspace-navigation="rail"] .sidebar-future-chevron{position:absolute;right:4px;bottom:5px;width:5px;height:5px;margin:0}
+ .app-shell[data-workspace-navigation="rail"] .sidebar-future-links .future-link{min-height:32px;padding:6px}
+ .app-shell[data-workspace-density="compact"] .sidebar-bottom{padding-top:6px}
+ @media(max-height:500px){
+  .sidebar>.brand{margin-bottom:5px;padding-bottom:6px}
+  .sidebar-scroll .nav-link{min-height:34px;padding-block:6px}
+  .sidebar-scroll .nav-heading{padding-block:5px}
+  .sidebar-scroll .sidebar-line{margin-block:6px}
+  .sidebar-bottom{display:none}
+ }
+ @media(forced-colors:active){
+  .sidebar>.sidebar-scroll{scrollbar-color:auto}
+  .sidebar-scroll :focus-visible,.sidebar-scroll:focus-visible{outline-color:Highlight}
+ }
+}
