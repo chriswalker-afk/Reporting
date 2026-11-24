@@ -38,7 +38,7 @@ test('information and event concepts are populated',()=>{
   assert.ok(events.length>0);
 });
 test('HTML loads fixture before UI logic',()=>{
-  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+  const html=fs.readFileSync(path.join(__dirname,'..','legacy.html'),'utf8');
   assert.ok(html.indexOf('./data.js')<html.indexOf('./app.js'));
   assert.match(html,/noindex,\s*nofollow/);
 });

@@ -126,7 +126,7 @@ test('wizard starts with no exclusions and requires review acknowledgement',()=>
   assert.ok(classroom.assessmentsFor('11MA1').some(a=>a.title==='Example new test'));
 });
 test('index loads all modules before app and class UI has CSS',()=>{
-  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+  const html=fs.readFileSync(path.join(__dirname,'..','legacy.html'),'utf8');
   for(const name of ['data.js','assessment-core.js','classroom.js','app.js'])assert.ok(html.includes(name));
   assert.ok(html.indexOf('data.js')<html.indexOf('assessment-core.js'));
   assert.ok(html.indexOf('assessment-core.js')<html.indexOf('classroom.js'));

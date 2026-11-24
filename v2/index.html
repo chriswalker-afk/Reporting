@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#182f44">
+  <title>JIS Hub · V2 Preview</title>
+  <link rel="stylesheet" href="./hub.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to workspace</a>
+  <div id="app" class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Navigation"></aside>
+    <div class="app-main">
+      <header id="topbar" class="topbar"></header>
+      <main id="workspace" class="workspace" tabindex="-1">
+        <p class="loading">Loading fictional school records…</p>
+      </main>
+      <footer class="demo-footer"><span>V2 preview · Fictional data only · Not a secure school system</span><button class="inline-link" type="button" data-action="reset-demo">Reset demo data</button></footer>
+    </div>
+  </div>
+  <dialog id="search-dialog" class="search-dialog" aria-labelledby="search-title"></dialog>
+  <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"></dialog>
+  <dialog id="reset-dialog" class="confirm-dialog" aria-labelledby="reset-title"></dialog>
+  <div id="tooltip" class="floating-tooltip" role="tooltip" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript>JavaScript is required to run this fictional-data prototype.</noscript>
+  <script type="module" src="./hub.mjs"></script>
+</body>
+</html>

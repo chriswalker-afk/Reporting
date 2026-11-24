@@ -44,6 +44,16 @@ export function createReadModel(data,staffId){
     assert(access.canViewClass(classId),'Class outside current demo scope');
     return analytics.classSummary(classId,options);
   }
+  // A tutor/House scope can see a subset of a teaching class without gaining
+  // access to its entire register. Always intersect requested IDs with permissions.
+  function classSlice(classId,scope='accessible',options={}){
+    const permitted=new Set(access.scopeEnrolments(scope));
+    const requested=options.enrolmentIds?new Set(options.enrolmentIds):null;
+    const enrolmentIds=data.enrolments.filter(e=>e.classId===classId&&permitted.has(e.id)&&
+      (!requested||requested.has(e.id))).map(e=>e.id);
+    assert(enrolmentIds.length||access.canViewClass(classId),'Class outside current demo scope');
+    return analytics.classSummary(classId,{...options,enrolmentIds});
+  }
   function assessment(assessmentId,options={}){
     const a=byId('assessments',assessmentId);
     assert(a,'Unknown assessment');
@@ -52,7 +62,7 @@ export function createReadModel(data,staffId){
     assert(classIds.length&&classIds.every(id=>permitted.includes(id)),'Assessment outside current demo class scope');
     return analytics.assessmentAnalysis(assessmentId,{...options,classIds});
   }
-  return {access,cohort,home,student,classSummary,assessment,
+  return {access,cohort,home,student,classSummary,classSlice,assessment,
     interventionSummary:()=>analytics.interventionSummary(visibleCaseIds),
     cases:()=>data.interventions.filter(c=>access.canViewCase(c.id))};
 }
