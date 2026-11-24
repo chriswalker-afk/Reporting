@@ -6,6 +6,7 @@ import {upgradeDemoGradeScales} from './grade-scales.mjs';
 import {normalizeDefinition,resultInput} from './markbook.mjs';
 import {startCase,changeCase,changeStudyPlan,pendingCaseActions} from './interventions.mjs';
 import {communicationPolicy,communicationView,noticeFields,deadlineFields,noticeVersion} from './communications.mjs';
+import {changeCalculation,changeReportGrade,reportGradeId} from './reporting-grades.mjs';
 
 export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
 export const LEGACY_GRADE_STORAGE_KEY='jis-hub-v2-synthetic-schema-1';
@@ -258,6 +259,18 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       return {before,after:r,reason:reason.trim()};
     });
   }
+  function setCalculationPolicy(staffId,classId,input,{expectedRevision=null}={}){
+    must(expectedRevision===null||expectedRevision===revision,'Records changed since this form opened; reopen it before saving');
+    const cls=lookup(current,'classes',classId),course=cls&&lookup(current,'courses',cls.courseId),subject=course&&lookup(current,'subjects',course.subjectId);
+    must(subject,'Unknown course');
+    const recordId=input.level==='faculty'?subject.facultyId:course.id;
+    return transaction(staffId,'setCalculationPolicy',recordId,(d,a)=>changeCalculation(d,a,classId,input));
+  }
+  function saveReportGrade(staffId,periodId,enrolmentId,input,{expectedRevision=null}={}){
+    must(expectedRevision===null||expectedRevision===revision,'Records changed since this form opened; reopen it before saving');
+    return transaction(staffId,input.action==='reopen'?'reopenReportGrade':input.action==='submit'?'submitReportGrade':'saveReportDraft',
+      reportGradeId(periodId,enrolmentId),(d,a)=>changeReportGrade(d,a,staffId,periodId,enrolmentId,input));
+  }
   function setPrediction(staffId,enrolmentId,predictedGrade){
     return transaction(staffId,'setPrediction',enrolmentId,(d,a)=>{
       must(a.canEditPrediction(enrolmentId),'Only the assigned teacher can edit predictions');
@@ -355,6 +368,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       must(p.canPublish(input.audience),'Invalid deadline audience');
       const fields=deadlineFields(input),before=old?clone(old):null;
       if(old){
+        if((d.reportGrades??[]).some(r=>r.periodId===id))must(fields.event===old.event&&fields.audience.type===old.audience.type&&fields.audience.id===old.audience.id,'Report grades exist for this deadline; create a new period to change its event or audience');
         if(Object.keys(fields).every(k=>JSON.stringify(fields[k])===JSON.stringify(old[k])))return {before,after:old};
         must(input.confirmed===true,'Confirm the revised deadline and reset of personal completion markers');
         Object.assign(old,fields,{completions:[]});
@@ -393,6 +407,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    addUnit,saveAssessment,deleteEmptyAssessment,publishAssessment,saveResultBatch,saveGradebookBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
+    addUnit,saveAssessment,deleteEmptyAssessment,publishAssessment,saveResultBatch,saveGradebookBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,setCalculationPolicy,saveReportGrade,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
     saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }
