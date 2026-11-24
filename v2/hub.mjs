@@ -86,11 +86,11 @@ function addBack(){
   head?.insertAdjacentHTML('afterbegin','<button type="button" class="btn btn-icon" data-action="detail-back" aria-label="Back to previous record">'+icon('back')+'</button>');
  }
 }
-function refreshDetail(){
+function refreshDetail(markup=null){
  const scroll=detailDialog.querySelector('.drawer-body')?.scrollTop||0;
  detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
  detailDialog.classList.toggle('wide-profile',detail.kind==='student');
- detailDialog.innerHTML=renderDetail(w,detail);addBack();grid.init();
+ detailDialog.innerHTML=markup??renderDetail(w,detail);addBack();grid.init();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=scroll;
 }
 function detailBack(){
@@ -117,7 +117,7 @@ function changeProfile(values,focusId=null,action=null){
  const next={...detail,...values};
  try{
   if(!w.access.canViewStudent(next.id))throw Error('Student outside current demo scope');
-  renderDetail(w,next);detail=next;refreshDetail();
+  const markup=renderDetail(w,next);detail=next;refreshDetail(markup);
   const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=0;
   if(focusId)byId(focusId)?.focus({preventScroll:true});
   else if(action)detailDialog.querySelector('[data-action="'+action+'"][data-id="'+CSS.escape(String(values.tab??values.id??''))+'"]')?.focus({preventScroll:true});
@@ -234,7 +234,10 @@ document.addEventListener('click',event=>{
     if(detail?.kind==='student'&&w.studentProfile(detail.id).subjects.some(s=>s.enrolmentId===id))changeProfile({tab:'assessments',subjectId:id},'profile-subject');break;
   case 'profile-result':openDetail('profile-result',id);break;
   case 'profile-open-analysis':openProfileAnalysis(id);break;
-  case 'profile-open-class':openClass(id);break;
+  case 'profile-open-class':
+    if(!w.accessibleClassIds.has(id)){notify('Class outside your accessible records.');break;}
+    if(!w.scopedClassIds.has(id))state.scope='accessible';
+    navigate('classes',{classId:id,classTab:'information'});break;
   case 'open-profile-staff':openDetail('staff',id);break;
   case 'students-reset':clearStudentFilters();render();break;
   case 'students-below':clearStudentFilters();state.studentAttainment='below';render();break;
