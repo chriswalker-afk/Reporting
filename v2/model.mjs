@@ -165,7 +165,7 @@ export function validateData(data) {
   }
   for(const n of data.notes){
     ref(n.id,'enrolments',n.enrolmentId);ref(n.id,'staff',n.authorStaffId);
-    if(!isText(n.text)||!isDate(n.date)||!['subject','pastoral'].includes(n.visibility))err(n.id,'invalid note');
+    if(!isText(n.text)||n.text.length>2000||!isDate(n.date)||!['subject','pastoral'].includes(n.visibility)||n.updatedDate!==undefined&&!isDate(n.updatedDate))err(n.id,'invalid note');
   }
   const activeCases=new Set();
   for(const c of data.interventions) {
