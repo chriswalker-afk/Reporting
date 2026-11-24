@@ -78,7 +78,7 @@ export function createWorkspaceDisplay({app,main,sidebar,topbar,backdrop,getStaf
   if(!mobileOpen)return false;
   if(event.key==='Escape'){event.preventDefault();closeMenu();return true;}
   if(event.key==='Tab'){
-   const items=[...sidebar.querySelectorAll('button:not([disabled]),a[href]')].filter(el=>el.getClientRects().length);
+   const items=[...sidebar.querySelectorAll('button:not([disabled]),a[href],summary,[tabindex="0"]')].filter(el=>el.getClientRects().length&&!el.closest('[hidden],[inert]')&&(!el.closest('details:not([open])')||el.matches('summary')));
    if(!items.length)return false;
    const first=items[0],last=items.at(-1);
    if(event.shiftKey&&(doc.activeElement===first||!sidebar.contains(doc.activeElement))){event.preventDefault();last.focus();return true;}
