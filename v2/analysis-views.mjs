@@ -28,9 +28,14 @@ function distributions(a,s,o,assessmentId=null){
  const prefix=assessmentId?'assessment-':'',extra=assessmentId?{assessmentId}:{};
  const n=s.statistics.n;
  const gradeBars=s.gradeDistribution.map(g=>bar(g.grade,g.count,analysisId(a.classId,prefix+'grade',g.grade,o,extra),String(g.count),Math.max(1,...s.gradeDistribution.map(g=>g.count)))).join('');
- const bins=s.histogram.map(b=>bar(b.lo+'–'+b.hi+(b.inclusiveUpper?' inclusive':'%'),b.count,analysisId(a.classId,prefix+'histogram',String(b.lo),o,extra),String(b.count),Math.max(1,...s.histogram.map(b=>b.count)))).join('');
+ const max=Math.max(1,...s.histogram.map(b=>b.count));
+ const bins='<div class="frequency-chart" role="group" aria-label="Histogram of scored percentages">'+s.histogram.map(b=>{
+  const id=analysisId(a.classId,prefix+'histogram',String(b.lo),o,extra),label=b.lo+' to '+b.hi+(b.inclusiveUpper?' inclusive':' (upper bound excluded)'),height=100*b.count/max;
+  return '<button type="button" class="frequency-bin" data-action="analysis-evidence" data-id="'+e(id)+'" aria-label="'+e(label+': '+b.count+' pupils')+'"><span class="frequency-column"><span class="frequency-count" style="bottom:'+height+'%">'+b.count+'</span><span class="frequency-fill" style="height:'+height+'%"></span></span><span class="frequency-label">'+b.lo+'</span></button>';
+ }).join('')+'<span class="frequency-end">100</span></div><p class="small muted">Percentage (%) · equal-width bins; counts above bars.</p>';
+
  return '<div class="analysis-grid">'+panel('Grade distribution',n?'<p class="small muted">Scored pupils: '+n+'. Select a grade to see contributing pupils.</p><div class="bar-list">'+gradeBars+'</div>':empty('No scored pupils'),'analysisDistribution')+
- panel('Percentage distribution',n?'<p class="small muted">Frequency by 10-percentage-point bin. Select a bin to inspect its pupils.</p><div class="bar-list histogram-bars">'+bins+'</div>':empty('No scored pupils'),'analysisBins')+'</div>';
+ panel('Percentage distribution',n?'<p class="small muted">Frequency by 10-percentage-point bin. Select a bin to inspect its pupils.</p>'+bins+'':empty('No scored pupils'),'analysisBins')+'</div>';
 }
 function boxPlot(s,label){
  if(!s.n)return '<div class="box-empty muted">No scored results</div>';
@@ -122,7 +127,7 @@ export function renderAcademicAnalysis(w,s,r){
  const a=w.academicAnalysis(r.id),options={from:s.analysisFrom||null,to:s.analysisTo||null,unitId:a.units.some(u=>u.id===s.analysisUnit)?s.analysisUnit:null};
  let o;try{o=a.filters(options);}catch(error){return '<section class="surface"><div class="panel-body"><p class="error">'+e(error.message)+'</p>'+btn('Reset analysis filters','analysis-reset')+'</div></section>';}
  const controls='<section class="surface analysis-controls"><div class="toolbar">'+select('analysis-unit',[['','All units'],...a.units.map(u=>[u.id,u.title])],o.unitId??'','Curriculum unit')+
- '<label class="analysis-field">From<input type="date" class="input" id="analysis-from" value="'+e(o.from??'')+'" max="'+e(a.asOf)+'"></label><label class="analysis-field">To<input type="date" class="input" id="analysis-to" value="'+e(o.to)+'" max="'+e(a.asOf)+'"></label>'+btn('Reset filters','analysis-reset','','btn-quiet')+'<span class="count">Published results through '+e(displayDate(a.asOf))+'</span></div></section>';
+ '<label class="analysis-field">From<input type="date" class="input" id="analysis-from" value="'+e(o.from??'')+'" max="'+e(a.asOf)+'"></label><label class="analysis-field">To<input type="date" class="input" id="analysis-to" value="'+e(o.to)+'" max="'+e(a.asOf)+'"></label>'+btn('Reset filters','analysis-reset','','btn-quiet')+btn('Print view','analysis-print')+'<span class="count">Published results through '+e(displayDate(a.asOf))+'</span></div></section>';
  return '<div class="academic-analysis">'+controls+(r.partial?'<div class="info-box">Partial class: only pupils in your selected scope contribute to all charts and evidence.</div>':'')+
  (s.classTab==='student-analysis'?studentView(a,s,o):s.classTab==='faculty-analysis'?facultyView(a,s,o):classView(a,s,o))+'</div>';
 }
