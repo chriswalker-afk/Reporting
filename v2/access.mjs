@@ -90,7 +90,7 @@ export function createAccess(data,staffId){
     if(c.state==='closed')return [];
     const teacher=teaches(e.classId),faculty=leads(e.classId),house=isHouse(e.studentId),leadership=has('leadership');
     const active=['wave1','wave2','wave3'].includes(c.state);
-    const review=c.state==='wave1'&&teacher||c.state==='wave2'&&(teacher||faculty)||c.state==='wave3'&&leadership;
+    const review=c.state==='wave1'&&teacher||c.state==='wave2'&&faculty||c.state==='wave3'&&leadership;
     const actions=['view','update'];
     if(review)actions.push('review');
     if(c.state==='wave1'&&teacher)actions.push('requestWave2');
@@ -101,7 +101,7 @@ export function createAccess(data,staffId){
     const plan=data.studyPlans.find(p=>p.interventionId===c.id);
     const planContributor=active&&(c.wave===1?teacher:c.wave===2?teacher||faculty||house:teacher||faculty||house||leadership);
     if(planContributor)actions.push('saveStudyPlan');
-    if(planContributor&&plan&&!plan.completedDate&&(plan.ownerStaffId===staffId||c.ownerStaffId===staffId))actions.push('reviewStudyPlan');
+    if(planContributor&&plan&&!plan.completedDate&&plan.ownerStaffId===staffId)actions.push('reviewStudyPlan');
     return actions;
   };
   return {staff,has,facultyOf,teaches,leads,isTutor,isHouse,canViewClass,canViewEnrolment,canViewStudent,
