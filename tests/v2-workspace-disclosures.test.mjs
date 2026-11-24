@@ -26,8 +26,8 @@ test('page disclosures preserve important identity, flags, status and controls',
  assert.match(gradebook,/<h1>[^<]*Mathematics/);
  assert.match(gradebook,/data-workspace-disclosure="page-context"/);
  assert.match(gradebook,/data-workspace-disclosure="gradebook-help"/);
- assert.ok(gradebook.indexOf('id="gradebook-save-status"')<gradebook.indexOf('data-workspace-disclosure="gradebook-help"'));
- assert.ok(gradebook.indexOf('id="gradebook-error"')<gradebook.indexOf('data-workspace-disclosure="gradebook-help"'));
+ assert.ok(gradebook.indexOf('id="gradebook-save-status"')>gradebook.indexOf('data-workspace-disclosure="gradebook-help"'));
+ assert.ok(gradebook.indexOf('id="gradebook-error"')>gradebook.indexOf('data-workspace-disclosure="gradebook-help"'));
  const register=renderPage(w,{...state,classTab:'information'});
  assert.match(register,/data-workspace-disclosure="class-summary"/);
  assert.match(register,/active cases/);
