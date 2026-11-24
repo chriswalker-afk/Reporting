@@ -8,6 +8,7 @@ import {CASE_FILTERS} from './intervention-refinement.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {createGradebookController} from './gradebook-controller.mjs';
+import {loadLayout,saveLayout,normalizeLayout,updateLayout,revealLayout,moveAssessment,groupOf,matchesLayout,layoutKey} from './gradebook-layout.mjs';
 import {editorInput,changeBoundaryUnit,changeEditorRows,resetEditorBoundaries} from './assessment-editor.mjs';
 import {GROUPS,DEFAULT_GROUPS,FULL_GROUPS,registerFocusFilter,visibleRegisterRows} from './class-overview.mjs';
 import {createWorkspace,parseRoute,routeHash,HELP,sortRows,matchText} from './workspace.mjs';
@@ -18,12 +19,28 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},gradebookExpanded:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},gradebookExpanded:{},gradebookLayout:null,gradebookLayoutOpen:false,classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
 function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
+const gradebookLayouts=new Map(),gradebookPanels=new Map(),gradebookExpansions=new Map();
+const currentLayoutKey=()=>layoutKey(state.staffId,state.classId);
+function personalLayout(){
+ const key=currentLayoutKey();
+ if(!gradebookLayouts.has(key)){let storage;try{storage=window.localStorage;}catch{}gradebookLayouts.set(key,loadLayout(storage,state.staffId,state.classId));}
+ return gradebookLayouts.get(key);
+}
+function changeLayout(layout,{focus=null}={}){
+ const key=currentLayoutKey();gradebookLayouts.set(key,normalizeLayout(layout));
+ let storage;try{storage=window.localStorage;}catch{}
+ if(!saveLayout(storage,state.staffId,state.classId,layout))notify('Layout updated for this session; browser storage is unavailable.');
+ render();
+ if(focus)focus();
+}
+function setGradebookExpansion(classId,expanded){gradebookExpansions.set(layoutKey(state.staffId,classId),[...expanded]);state.gradebookExpanded[classId]=[...expanded];}
+function gradebookActionFocus(action,id=''){main.querySelector('[data-action="'+CSS.escape(action)+'"]'+(id?'[data-id="'+CSS.escape(id)+'"]':''))?.focus({preventScroll:true});}
 let storageIssue='',suspendDetailRefresh=false,formDirty=false;
 function boot(){
  try{store=createStore({storage:window.localStorage});}
@@ -47,6 +64,10 @@ function render({top=false,keepFocus=false}={}){
  const key=JSON.stringify([state.staffId,state.scope,store.revision()]);
  if(!w||workspaceKey!==key){w=createWorkspace(store,state.staffId,state.scope);state.scope=w.scope;workspaceKey=JSON.stringify([state.staffId,state.scope,store.revision()]);}
  if(state.page==='classes'&&state.classId&&!w.scopedClassIds.has(state.classId)){state.classId=null;state.classTab='information';history.replaceState(null,'',routeHash('classes'));}
+ if(state.page==='classes'&&state.classId&&state.classTab==='markbook'){
+  state.gradebookLayout=personalLayout();state.gradebookLayoutOpen=Boolean(gradebookPanels.get(currentLayoutKey()));
+  state.gradebookExpanded[state.classId]=gradebookExpansions.get(currentLayoutKey())??[];
+ }
  nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
  main.scrollTop=top?0:oldScroll;
@@ -210,17 +231,31 @@ document.addEventListener('click',event=>{
  hideHelp();
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
   case 'gradebook-save':gradebook.save();break;
   case 'gradebook-discard':gradebook.discard();break;
   case 'gradebook-undo':case 'gradebook-redo':case 'gradebook-copy':case 'gradebook-fill':case 'gradebook-clear':case 'gradebook-export':case 'gradebook-import-preview':case 'gradebook-import-apply':gradebook.bulkAction(action);break;
+  case 'gradebook-layout-toggle':{
+    gradebookPanels.set(currentLayoutKey(),!state.gradebookLayoutOpen);render();gradebookActionFocus(action);break;
+  }
+  case 'gradebook-reveal-layout':changeLayout(revealLayout(personalLayout()),{focus:()=>gradebookActionFocus(action)});break;
+  case 'gradebook-reset-layout':changeLayout(normalizeLayout(),{focus:()=>gradebookActionFocus(action)});break;
+  case 'gradebook-toggle-group':{
+    const p=personalLayout(),closed=new Set(p.collapsed);if(closed.has(id))closed.delete(id);else closed.add(id);
+    changeLayout(updateLayout(p,{collapsed:[...closed]}),{focus:()=>gradebookActionFocus(action,id)});break;
+  }
+  case 'gradebook-move-earlier':case 'gradebook-move-later':{
+    const b=w.markbook(state.classId),p=personalLayout();
+    // Keep the complete class's custom order when working in one curriculum unit.
+    changeLayout(moveAssessment(b.overview('').assessments,p,id,action==='gradebook-move-earlier'?-1:1),{focus:()=>gradebookActionFocus(action,id)});break;
+  }
   case 'toggle-assessment-columns':{
     const b=w.markbook(state.classId),a=b.overview(state.unitId).assessments.find(a=>a.id===id&&a.mode!=='total');if(!a)break;
     const open=new Set(state.gradebookExpanded[state.classId]??[]);if(open.has(id))open.delete(id);else open.add(id);
-    state.gradebookExpanded[state.classId]=[...open];render();
+    setGradebookExpansion(state.classId,open);render();
     const toggle=main.querySelector('[data-action="toggle-assessment-columns"][data-id="'+CSS.escape(id)+'"]');
     if(open.has(id)){const first=main.querySelector('.gradebook-cell[data-assessment="'+CSS.escape(id)+'"]');if(first){first.focus({preventScroll:true});first.scrollIntoView({block:'nearest',inline:'nearest'});}else toggle?.focus();}
     else toggle?.focus();break;
@@ -410,6 +445,17 @@ document.addEventListener('change',event=>{
  if(el.id==='profile-comment-subject'){changeProfile({commentSubject:el.value},'profile-comment-subject');return;}
  const studentFields={'student-year':'studentYear','student-attainment':'studentAttainment','student-support':'studentSupport'};
  if(studentFields[el.id]){state[studentFields[el.id]]=el.value;render({keepFocus:true});return;}
+ const layoutFields={'gradebook-group':'group','gradebook-order':'order','gradebook-display':'display','gradebook-quick-display':'display','gradebook-filter':'filter','gradebook-format':'format','gradebook-density':'density','gradebook-from':'from','gradebook-to':'to'};
+ if(layoutFields[el.id]&&main.querySelector('#gradebook-surface')){
+  const p=personalLayout(),field=layoutFields[el.id],patch={...p,[field]:el.value};
+  if(patch.from&&patch.to&&patch.from>patch.to){notify('From date must be on or before To date.');el.value=p[field];return;}
+  changeLayout(updateLayout(p,patch),{focus:()=>byId(el.id)?.focus({preventScroll:true})});return;
+ }
+ if(el.matches('.gradebook-summary-choice,.gradebook-assessment-choice')&&main.querySelector('#gradebook-surface')){
+  const p=personalLayout(),summary=el.matches('.gradebook-summary-choice'),key=summary?'summary':'hidden',set=new Set(p[key]);
+  if(summary?el.checked:!el.checked)set.add(el.value);else set.delete(el.value);
+  changeLayout(updateLayout(p,{[key]:[...set]}),{focus:()=>main.querySelector('.'+(summary?'gradebook-summary-choice':'gradebook-assessment-choice')+'[value="'+CSS.escape(el.value)+'"]')?.focus({preventScroll:true})});return;
+ }
  if(el.id==='markbook-unit'){if(!gradebook.guard()){el.value=main.querySelector('#gradebook-surface')?.dataset.unitId??'';return;}state.unitId=el.value;render({keepFocus:true});return;}
  if(gradebook.isDirty()&&['staff','scope','quick-class'].includes(el.id)){gradebook.guard();el.value=el.id==='staff'?state.staffId:el.id==='scope'?state.scope:state.classId;return;}
  const analysisFields={'analysis-student':'analysisStudent','analysis-assessment':'analysisAssessment','analysis-common':'analysisCommon','analysis-unit':'analysisUnit','analysis-from':'analysisFrom','analysis-to':'analysisTo'};
@@ -478,7 +524,16 @@ document.addEventListener('submit',event=>{
     const input=definitionInput(form,book,old);
     const saved=store.saveAssessment(state.staffId,classId,old?assessmentId:null,input);
     formDirty=false;if(state.unitId&&state.unitId!==input.unitId)state.unitId=input.unitId;
-    if(input.mode!=='total'&&!old){const expanded=new Set(state.gradebookExpanded[classId]??[]);expanded.add(saved.id);state.gradebookExpanded[classId]=[...expanded];}render();
+    if(!old&&state.classId===classId&&state.classTab==='markbook'){
+     const current=w.markbook(classId),a=current.overview('').assessments.find(a=>a.id===saved.id);
+     if(a){
+      let p=personalLayout();
+      if(!matchesLayout(a,p,w.asOf))p=updateLayout(p,{filter:'all',format:'all',from:'',to:'',hidden:p.hidden.filter(id=>id!==a.id)});
+      const group=groupOf(a,p.group,current.units);p=updateLayout(p,{display:'marks',collapsed:p.collapsed.filter(id=>id!==group.id)});
+      gradebookLayouts.set(currentLayoutKey(),p);try{saveLayout(window.localStorage,state.staffId,classId,p);}catch{}
+     }
+     if(input.mode!=='total'){const expanded=new Set(gradebookExpansions.get(currentLayoutKey())??[]);expanded.add(saved.id);setGradebookExpansion(classId,expanded);}
+    }render();
     if(old&&detailStack.length)detailBack();
     else if(state.page==='classes'&&state.classId===classId&&state.classTab==='markbook'){
      closeDetail(false);main.querySelector('.gradebook-cell[data-assessment="'+CSS.escape(saved.id)+'"]')?.focus();
