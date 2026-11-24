@@ -114,14 +114,23 @@ export function createDemoData(){
   const enrolment=(p,c)=>data.enrolments.find(e=>e.studentId===p&&data.classes.find(x=>x.id===e.classId).courseId===c);
   const makeCase=(id,p,c,state,wave,reviewDate)=>{
     const e=enrolment(p,c),classRecord=data.classes.find(x=>x.id===e.classId),owner=classRecord.teacherIds[0];
-    const record=add('interventions',{id,enrolmentId:e.id,ownerStaffId:owner,state,wave,
+    const faculty=data.faculties.find(f=>f.id===data.subjects.find(s=>s.id===data.courses.find(x=>x.id===classRecord.courseId).subjectId).facultyId),facultyLead=faculty.headIds[0];
+    const house=data.houses.find(h=>h.id===data.students.find(s=>s.id===p).houseId),houseLead=house.headIds[0];
+    const responsible=state==='closed'||wave===1?owner:wave===2?facultyLead:'avery';
+    const wave2Referral=wave>=2?{trigger:'Wave 1 has been ineffective after discussion with House',reason:'Demo referral: additional subject support is needed.',requestedBy:owner,date:'2026-11-14',ownerStaffId:facultyLead}:null;
+    const wave3Referral=wave>=3?{trigger:'Wave 2 review unsuccessful',reason:'Demo referral: coordinate additional academic support.',requestedBy:facultyLead,date:'2026-11-20',ownerStaffId:'avery'}:null;
+    const record=add('interventions',{id,enrolmentId:e.id,ownerStaffId:responsible,state,wave,wave2Referral,wave3Referral,
       reason:'Demo academic support: consolidate prerequisite knowledge.',
       strategies:['Targeted practice','Review of worked examples'],wave1Plan:'Demo: model worked examples and check independent practice weekly.',
       openedDate:'2026-11-02',updatedDate:'2026-11-20',reviewDate,evaluation:state==='closed'?'Improved confidence in the practice tasks.':null,
       facultyPlan:wave>=2&&state!=='wave2_requested'?'Weekly subject support and a progress review.':null,
       houseRequest:wave>=2&&state!=='wave2_requested'?'Agree a study routine with the tutor.':null,
-      houseResponse:null,leadershipPlan:state==='wave3'?'Coordinate a joint review.':null,
-      history:[{actorStaffId:owner,date:'2026-11-02',text:'Fictional intervention opened.'}]});
+      ...(wave>=2&&state!=='wave2_requested'?{houseOwnerStaffId:houseLead}:{}),houseResponse:null,leadershipPlan:state==='wave3'?'Coordinate a joint review.':null,
+      history:[{actorStaffId:owner,date:'2026-11-02',action:'startWave1',text:'Fictional intervention opened.'},
+        ...(wave2Referral?[{actorStaffId:owner,date:wave2Referral.date,action:'requestWave2',text:wave2Referral.reason}]:[]),
+        ...(wave>=2&&state!=='wave2_requested'?[{actorStaffId:facultyLead,date:'2026-11-15',action:'activateWave2',text:'Demo faculty plan and House request recorded.'}]:[]),
+        ...(wave3Referral?[{actorStaffId:facultyLead,date:wave3Referral.date,action:'requestWave3',text:wave3Referral.reason}]:[]),
+        ...(state==='closed'?[{actorStaffId:owner,date:'2026-11-19',action:'review',text:'Demo resolved and closed.'}]:[])]});
     return record;
   };
   const c1=makeCase('I001','P121','11-maths','wave1',1,'2026-11-23');
