@@ -595,3 +595,9 @@
 @media (prefers-reduced-motion:reduce){
  .workspace,.table-scroll,.drawer-body{scroll-behavior:auto!important}
 }
+
+/* Mobile modal bounds must not depend on intrinsic notice/form width. */
+@media screen and (max-width:760px){
+ .detail-dialog[open],.detail-dialog[data-drawer-expanded="true"]{inset:0;inline-size:100%;max-inline-size:100%;min-inline-size:0;margin:0;box-sizing:border-box}
+ .detail-dialog .dialog-head,.detail-dialog .drawer-body,.detail-dialog .drawer-footer{min-inline-size:0;max-inline-size:100%}
+}
