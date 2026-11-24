@@ -6,7 +6,7 @@ const byId=id=>document.getElementById(id);
 const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
-let store,w,toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
+let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
 const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,sorts:{}};
 let storageIssue='';
 function boot(){
@@ -24,7 +24,8 @@ function render({top=false,keepFocus=false}={}){
    caret=oldId&&active?.type==='search'?active.selectionStart:null,
    oldScroll=main.scrollTop,oldTable=main.querySelector('.table-scroll'),tableScroll=oldTable?{top:oldTable.scrollTop,left:oldTable.scrollLeft}:null;
  hideHelp();
- w=createWorkspace(store,state.staffId,state.scope);state.scope=w.scope;
+ const key=JSON.stringify([state.staffId,state.scope,store.revision()]);
+ if(!w||workspaceKey!==key){w=createWorkspace(store,state.staffId,state.scope);state.scope=w.scope;workspaceKey=JSON.stringify([state.staffId,state.scope,store.revision()]);}
  if(state.page==='classes'&&state.classId&&!w.scopedClassIds.has(state.classId)){state.classId=null;history.replaceState(null,'',routeHash('classes'));}
  nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
@@ -46,12 +47,18 @@ function openClass(id,below=false){
  if(!w.scopedClassIds.has(id))state.scope='accessible';
  navigate('classes',{classId:id,below});
 }
+function focusToken(el){return el?{element:el,id:el.id,action:el.dataset?.action,record:el.dataset?.id}:null;}
+function restoreFocus(token){
+ if(!token)return;
+ const node=token.element?.isConnected?token.element:token.id?byId(token.id):token.action?document.querySelector('[data-action="'+CSS.escape(token.action)+'"]'+(token.record!==undefined?'[data-id="'+CSS.escape(token.record)+'"]':'')):null;
+ node?.focus({preventScroll:true});
+}
 function openDetail(kind,id){
  hideHelp();
  const next={kind,id};
  try{
   const markup=renderDetail(w,next);
-  if(!detailDialog.open){drawerReturn=document.activeElement;detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
+  if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
   detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
  }catch(error){notify(String(error.message||error));}
@@ -75,17 +82,17 @@ function detailBack(){
 }
 function closeDetail(restore=true){
  detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
- if(restore&&drawerReturn?.isConnected)drawerReturn.focus({preventScroll:true});
+ if(restore)restoreFocus(drawerReturn);
  drawerReturn=null;
 }
 function openSearch(){
  if(searchDialog.open)return;
- hideHelp();searchReturn=document.activeElement;
+ hideHelp();searchReturn=focusToken(document.activeElement);
  searchDialog.innerHTML='<div class="dialog-head"><div><h2 id="search-title">Global search</h2><p class="subtitle">Search across all assigned responsibilities, not just the current scope.</p></div><button class="btn btn-icon" data-action="close-search" aria-label="Close search">'+icon('close')+'</button></div><div class="search-input-wrap">'+icon('search')+'<input id="global-query" type="search" autocomplete="off" placeholder="Student, class, tutor group, staff…" aria-label="Search your workspace"></div><div id="search-results" class="search-results">'+renderSearchResults(w,'')+'</div><div class="search-hint">Type to search · ↑ ↓ to move · Enter to open · Esc to close</div>';
  searchDialog.showModal();byId('global-query').focus();
 }
 function closeSearch(restore=true){
- if(searchDialog.open)searchDialog.close();if(restore&&searchReturn?.isConnected)searchReturn.focus({preventScroll:true});searchReturn=null;
+ if(searchDialog.open)searchDialog.close();if(restore)restoreFocus(searchReturn);searchReturn=null;
 }
 function pickSearch(value){
  const i=value.indexOf(':'),kind=value.slice(0,i),id=value.slice(i+1);closeSearch();
@@ -112,6 +119,7 @@ function confirmReset(){
  resetDialog.showModal();resetDialog.querySelector('button')?.focus();
 }
 document.addEventListener('click',event=>{
+ if(event.target.closest('.skip-link')){event.preventDefault();main.focus();return;}
  const help=event.target.closest('[data-help]');
  if(help){if(helpAnchor===help&&helpPinned)hideHelp();else showHelp(help,true);return;}
  hideHelp();
