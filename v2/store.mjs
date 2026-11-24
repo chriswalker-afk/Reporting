@@ -2,7 +2,7 @@ import {assertData,clone,SCHEMA_VERSION,resultKey,isText,isDate} from './model.m
 import {createAccess} from './access.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {createDemoData} from './demo-data.mjs';
-import {normalizeDefinition,resultInput,createMarkbook} from './markbook.mjs';
+import {normalizeDefinition,resultInput} from './markbook.mjs';
 import {communicationPolicy,communicationView,noticeFields,deadlineFields,noticeVersion} from './communications.mjs';
 
 export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
