@@ -640,21 +640,21 @@ try{
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'rail');
  await fill(firstYear,'7');
  await evaluate(sel=>{document.querySelector(sel).dataset.testResponsiveIdentity='original';},firstYear);
- const pending=await text('#gradebook-save-status');
+ const responsivePending=await text('#gradebook-save-status');
  await fill('#workspace-density','standard');
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceDensity),'standard');
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'full');
  await action('toggle-workspace-navigation');
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'rail');
  await fill('#workspace-density','compact');
- assert.equal(await text('#gradebook-save-status'),pending);
+ assert.equal(await text('#gradebook-save-status'),responsivePending);
  assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testResponsiveIdentity,firstYear),'original');
  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'7');
  for(const [width,height] of [[320,568],[390,844],[844,390],[768,1024],[1024,768],[1280,720],[1366,768],[1920,1080],[2560,1440]]){
   await viewport(width,height);
   assert.ok(await tableHeight()>=139,'Short screen must retain a usable table');
   assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'7');
-  assert.equal(await text('#gradebook-save-status'),pending);
+  assert.equal(await text('#gradebook-save-status'),responsivePending);
   assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),width<=760?'overlay':'rail');
  }
  await viewport(390,844);
