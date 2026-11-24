@@ -1,4 +1,6 @@
 import {houseBadge} from './branding.mjs';
+import {compactWave} from './intervention-views.mjs';
+import {studyStatusLabel} from './intervention-refinement.mjs';
 import {pct,displayDate,gradeGap} from './workspace.mjs';
 import {PROFILE_TABS} from './student-profiles.mjs';
 import {trendChart} from './analysis-views.mjs';
@@ -85,16 +87,17 @@ function comments(p,detail){
 function support(p){
  const rows=cases=>cases.map(c=>[
   link(c.classInfo.subject.name,'open-case',c.id)+'<span class="cell-sub">'+e(c.classInfo.code+' · '+c.id)+'</span>',
-  tag(c.status,c.state==='closed'?'':'tag-warning'),e(c.owner),
+  compactWave(c),e(c.owner),
   e(displayDate(c.reviewDate))+(c.overdue?' '+tag('Overdue','tag-danger'):c.due?' '+tag('Due','tag-warning'):''),
-  e(displayDate(c.updatedDate)),btn('View record','open-case',c.id)
+  c.tasks[0]?e(c.tasks[0].label)+'<span class="cell-sub">'+e(c.tasks[0].responsible)+'</span>':e(displayDate(c.updatedDate)),
+  c.studyStatus==='none'?'—':link(studyStatusLabel(c.studyStatus),'open-case-plan',c.id),btn('View record','open-case',c.id)
  ]);
  return '<div class="metrics profile-metrics">'+metric('Active cases',p.activeCases.length,'Visible subject interventions')+
  metric('Reviews due',p.activeCases.filter(c=>c.due).length,p.activeCases.filter(c=>c.overdue).length+' overdue')+
  metric('Closed cases',p.closedCases.length,'Retained in history')+'</div>'+
  '<div class="profile-controls">'+p.subjects.filter(s=>s.canStart).map(s=>btn('Start Wave 1 · '+subjectName(s),'new-case',s.enrolmentId,'btn-primary')).join('')+'</div>'+
- section('Active interventions',table(['Subject / case','Stage','Owner','Review','Updated','Action'],rows(p.activeCases),'Active interventions'),'intervention')+
- section('Historic interventions',table(['Subject / case','Stage','Owner','Review','Updated','Action'],rows(p.closedCases),'Closed interventions'),'intervention')+
+ section('Active interventions',table(['Subject / case','Stage','Case owner','Case review','Next responsibility / update','Study plan','Action'],rows(p.activeCases),'Active interventions'),'intervention')+
+ section('Historic interventions',table(['Subject / case','Stage','Case owner','Case review','Next responsibility / update','Study plan','Action'],rows(p.closedCases),'Closed interventions'),'intervention')+
  '<p class="stage-note">Open a case to view or complete authorised actions, including plans, reviews and referrals. A low grade does not automatically create an intervention.</p>';
 }
 export function profilePeers(w,detail){
