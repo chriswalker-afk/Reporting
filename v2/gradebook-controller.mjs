@@ -142,7 +142,8 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
  function paste(event){
   if(!event.target.matches?.('.gradebook-cell')||!overview)return false;
   const text=event.clipboardData?.getData('text/plain')??'';
-  if(!/[\t\r\n]/.test(text))return false;
+  if(!event.clipboardData)return false;
+  if(!text.trim()){event.preventDefault();return true;}
   event.preventDefault();
   try{
    const {row,col}=point(event.target),changes=blockEntries(overview,row,col,text,columns);
@@ -202,7 +203,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   invalidateImport();const file=el.files?.[0],node=surface();
   if(!file)return;
   try{if(file.size>500000)throw Error('Import must be under 500 KB');
-   const text=await file.text();if(node!==surface()||!el.isConnected)return;
+   const text=await file.text();if(node!==surface()||!el.isConnected||el.files?.[0]!==file)return;
    root.querySelector('#gradebook-import-text').value=text;invalidateImport();notify('File loaded. Preview the import before applying.');
   }catch(e){error(e.message);}
  }
