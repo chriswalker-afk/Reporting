@@ -14,7 +14,7 @@ export const bookId=(classId,assessmentId='',enrolmentId='')=>JSON.stringify([cl
 export function unpackBookId(value){const v=JSON.parse(value);if(!Array.isArray(v)||v.length!==3||v.some(x=>typeof x!=='string'))throw Error('Invalid assessment selection');return v;}
 const flags=a=>'<div class="tags">'+tag(a.status==='draft'?'Draft':'Published',a.status==='draft'?'tag-warning':'tag-success')+(!a.includeInSummary?tag('Diagnostic / excluded','tag-warning'):'')+(a.classIds.length>1?tag('Common · '+a.classIds.length+' classes'):'')+'</div>';
 export function classTabs(active='information'){
- return '<div class="tabs" aria-label="Class views">'+[['information','Student information'],['markbook','Assessment tracker']].map(([id,label])=>'<button type="button" class="tab" data-action="class-tab" data-id="'+id+'" aria-pressed="'+(active===id)+'">'+label+'</button>').join('')+['Student analysis','Class analysis','Faculty analysis'].map(t=>'<button class="tab" disabled title="Available in a later development pass">'+t+'</button>').join('')+'</div>';
+ return '<div class="tabs" aria-label="Class views">'+[['information','Student information'],['markbook','Assessment tracker'],['student-analysis','Student analysis'],['class-analysis','Class analysis'],['faculty-analysis','Faculty analysis']].map(([id,label])=>'<button type="button" class="tab" data-action="class-tab" data-id="'+id+'" aria-pressed="'+(active===id)+'">'+label+'</button>').join('')+'</div>';
 }
 export function renderMarkbook(w,s,r){
  const b=w.markbook(r.id),unitId=b.units.some(u=>u.id===s.unitId)?s.unitId:'',overview=b.overview(unitId),list=overview.assessments;
