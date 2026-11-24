@@ -15,7 +15,7 @@ const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWor
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
 function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
-let storageIssue='';
+let storageIssue='',suspendDetailRefresh=false;
 function boot(){
  try{store=createStore({storage:window.localStorage});}
  catch(error){storageIssue='Saved demo data could not be loaded. This session uses fresh fictional data; existing storage was not overwritten. '+String(error.message||error);store=createStore();}
@@ -40,7 +40,7 @@ function render({top=false,keepFocus=false}={}){
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  if(oldId){const next=byId(oldId);next?.focus({preventScroll:true});if(caret!==null&&next?.type==='search')try{next.setSelectionRange(caret,caret);}catch{}}
- if(detail&&detailDialog.open)try{refreshDetail();}catch{closeDetail();}
+ if(detail&&detailDialog.open&&!suspendDetailRefresh)try{refreshDetail();}catch{closeDetail();}
 }
 function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
 function clearFilters(){clearRegisterFilters();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
@@ -255,6 +255,7 @@ document.addEventListener('submit',event=>{
  }
  if(['unit-form','assessment-form','assessment-guard-form'].includes(event.target.id)){
   event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
+  suspendDetailRefresh=true;
   try{
    if(!record)throw Error('No selected assessment record');
    const [classId,assessmentId,enrolmentId]=unpackBookId(record.id),book=w.markbook(classId);
@@ -280,6 +281,7 @@ document.addEventListener('submit',event=>{
    if(detailStack.length)detailBack();else closeDetail();
    notify('Assessment updated. All dependent summaries recalculated.');
   }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=error.message;}else notify(error.message);}
+  finally{suspendDetailRefresh=false;}
   return;
  }
  if(['comment-form','target-form'].includes(event.target.id)){
