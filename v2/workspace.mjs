@@ -1,4 +1,5 @@
 import {finite} from './model.mjs';
+import {projectRegisterRow,sortValue} from './class-overview.mjs';
 export const NAV=[
   ['home','Home','home'],['notices','Notices','notice'],['classes','Classes','class'],
   ['students','Students','students'],['intervention','Intervention','support']
@@ -20,6 +21,15 @@ export const HELP={
   coverage:'Number of pupils with a calculated overall percentage, divided by pupils in the selected class or cohort. Results are not rounded until display.',
   target:'Current overall grade compared with the minimum target using the ordered course grading scheme. Unknown grades are kept separate.',
   predicted:'Teacher-entered predicted grade. It is distinct from the current grade calculated from assessment marks.',
+  studentAverage:'Weighted mean of complete included assessment percentages for this pupil and subject. Default equal assessment weighting. Zero is valid; missing, absent, incomplete, diagnostic and excluded results are omitted.',
+  overallGrade:'The overall percentage mapped to the course tracker grade boundaries. Letter grades are not averaged. Illustrative boundaries, not official exam predictions.',
+  latest:'Most recent complete, included published assessment by assessment date, not entry date. Grade uses that assessment’s own boundaries. Drafts, diagnostics and excluded results are omitted.',
+  minimumTarget:'Minimum target grade for this subject. Only authorised faculty leadership can edit it; it is separate from current attainment and teacher prediction.',
+  nextGrade:'Percentage-point difference from the unrounded overall average to the next boundary in the course tracker scheme. A dash means no scored result or highest grade reached.',
+  predictionGap:'Current calculated grade minus the teacher prediction, using the ordered course grade scale. Unknown if either is missing.',
+  resultCoverage:'Number of complete, included scored assessments out of eligible published assessment opportunities. Missing, absent, incomplete and individually excluded results are not counted as scored.',
+  soc:'SOC indicates at least one active academic intervention visible to you for this pupil. The wave shown relates only to the current subject. Other-subject cases may be visible to authorised staff. Closed cases do not trigger this tag.',
+  comments:'Subject-specific academic comments. Teachers assigned to this class may add comments and edit their own; relevant staff can read within their responsibilities. Do not record safeguarding or confidential clinical details here.',
   intervention:'Active subject cases, not the number of pupils. A pupil can have more than one case. Closed cases are retained in the history.',
   tutor:'Tutor group is independent of teaching class. Tutor access follows assigned tutor-group membership.',
   flags:'Fictional administrative tags: EAL = English as an additional language; SEN = special educational needs. HLP and access arrangements are illustrative administrative indicators; no sensitive details are included.',
@@ -43,7 +53,7 @@ export const matchText=(query,...values)=>{
 export function sortRows(rows,key,direction='asc'){
   const dir=direction==='desc'?-1:1;
   return [...rows].sort((a,b)=>{
-    const x=a[key],y=b[key];
+    const x=sortValue(a,key),y=sortValue(b,key);
     if(x==null||y==null)return x==null&&y==null?String(a.id).localeCompare(String(b.id)):x==null?1:-1;
     const cmp=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'en',{numeric:true,sensitivity:'base'});
     return cmp*dir||String(a.id).localeCompare(String(b.id));
@@ -88,6 +98,28 @@ export function createWorkspace(store,staffId,requestedScope){
     return {id:s.id,name:s.name,year:s.year,tutorGroupId:s.tutorGroupId,house:get('houses',s.houseId).name,
       tags:[...s.tags]};
   };
+  const notesFor=eId=>data.notes.filter(n=>n.enrolmentId===eId&&n.visibility==='subject'&&access.canViewNote(n.id))
+    .map(n=>({...n,author:get('staff',n.authorStaffId)?.name,editable:access.canEditSubjectNote(n.id)}))
+    .sort((a,b)=>(b.updatedDate??b.date).localeCompare(a.updatedDate??a.date)||b.date.localeCompare(a.date)||b.id.localeCompare(a.id,undefined,{numeric:true}));
+  const activeByStudent=new Map();
+  for(const c of visibleCases.filter(c=>c.state!=='closed')){
+    const id=get('enrolments',c.enrolmentId).studentId;
+    if(!activeByStudent.has(id))activeByStudent.set(id,[]);
+    activeByStudent.get(id).push(c);
+  }
+  function subjectDetail(enrolmentId){
+    const e=get('enrolments',enrolmentId);
+    if(!e||!access.canViewEnrolment(e.id))throw new Error('Subject record outside current demo scope');
+    const d=studentDetail(e.studentId),summary=d.subjects.find(s=>s.enrolmentId===e.id);
+    if(!summary)throw new Error('Subject record outside current demo scope');
+    return {student:d.student,summary,notes:notesFor(e.id),cases:d.cases.filter(c=>c.enrolmentId===e.id),
+      canComment:access.canAddSubjectNote(e.id),targetEditable:access.canEditMinimumTarget(e.id)};
+  }
+  function noteDetail(id){
+    const n=data.notes.find(n=>n.id===id&&n.visibility==='subject'&&access.canViewNote(n.id));
+    if(!n)throw new Error('Comment outside current demo scope');
+    return {...n,editable:access.canEditSubjectNote(id),subject:subjectDetail(n.enrolmentId)};
+  }
   const enrichCase=c=>{
     const p=studentInfo(get('enrolments',c.enrolmentId).studentId),cls=enrolmentClass(c.enrolmentId);
     return {...c,student:p,classInfo:cls,studentName:p.name,classCode:cls.code,faculty:cls.faculty.name,house:p.house,
@@ -109,7 +141,10 @@ export function createWorkspace(store,staffId,requestedScope){
       total,partial:summary.coverage.eligible<total,below:summary.belowTarget.length,cases:cases.length,
       summary,roster:summary.rows.map(r=>{
         const p=studentInfo(r.studentId),active=cases.filter(i=>i.enrolmentId===r.enrolmentId);
-        return {...p,...r,id:r.enrolmentId,name:p.name,active,editable:access.canEditPrediction(r.enrolmentId)};
+        return projectRegisterRow(r,p,{cases:activeByStudent.get(p.id)??[],subjectCases:active,notes:notesFor(r.enrolmentId),
+          grades:get('gradeSchemes',c.course.gradeSchemeId).bands.map(b=>b.grade),
+          editable:access.canEditPrediction(r.enrolmentId),targetEditable:access.canEditMinimumTarget(r.enrolmentId),
+          canComment:access.canAddSubjectNote(r.enrolmentId)});
       })};
     classCache.set(id,row);return row;
   }
@@ -175,6 +210,6 @@ export function createWorkspace(store,staffId,requestedScope){
     return get({faculty:'faculties',house:'houses',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
-    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,
+    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,subjectDetail,noteDetail,
     caseRows,caseDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
 }
