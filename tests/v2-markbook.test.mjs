@@ -91,7 +91,7 @@ test('validation rejects invalid definitions and locks marked structures',()=>{
  ])assert.throws(()=>s.saveAssessment('sam',cls,null,input));
  const old=b(s).detail(a3);
  const original={...old.assessment,bands:old.bands,confirmed:true,reason:'Demo revision'};
- assert.throws(()=>s.saveAssessment('sam',cls,a3,{...original,items:old.assessment.items.map((i,n)=>n?i:{...i,maxMarks:i.maxMarks+1})}),/structure is locked/);
+ assert.throws(()=>s.saveAssessment('sam',cls,a3,{...original,items:old.assessment.items.map((i,n)=>n?i:{...i,label:'Renamed Q1'})}),/structure is locked/);
  assert.throws(()=>s.saveAssessment('sam',cls,a3,{...original,classIds:[cls]}),/assignments are locked/);
  assert.equal(s.revision(),0);
 });

@@ -681,3 +681,21 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 .gradebook-table thead .sticky-first{z-index:4;background:#f7f8fa}
 .gradebook-table .tracker-cell{min-width:80px}
 @media(max-width:760px){.gradebook-save-bar{flex-wrap:wrap;padding:6px 8px}.gradebook-instructions{padding:5px 8px}.gradebook-scroll{max-height:52dvh;min-height:140px;scroll-padding-left:128px}.gradebook-table .sticky-first{min-width:125px;max-width:165px}.gradebook-table .assessment-heading{min-width:95px}.gradebook-table .tracker-assessment{min-width:90px}.gradebook-table .gradebook-entry{min-width:82px}}
+
+/* Assessment setup: simple defaults with structured, optional advanced controls. */
+.assessment-editor #assessment-format{display:grid;gap:10px}
+.assessment-editor fieldset{border:0;margin:0;padding:0;min-width:0}
+.assessment-editor fieldset[hidden]{display:none!important}
+.assessment-editor #assessment-total-pane:not([hidden]),.assessment-editor #assessment-items-pane:not([hidden]){display:grid;gap:8px}
+.assessment-editor #assessment-total-pane .assessment-max{max-width:180px}
+.assessment-editor .assessment-total-line{padding:8px 10px;background:#f5f7fa;border-radius:5px;color:var(--ink)}
+.assessment-editor .assessment-advanced{border:1px solid var(--line);border-radius:7px;padding:10px}
+.assessment-editor .assessment-advanced>summary{font-weight:650;cursor:pointer}
+.assessment-advanced-body{display:grid;gap:12px;padding-top:10px}
+.assessment-item-scroll{max-height:45dvh}
+.assessment-item-scroll .data-table{min-width:510px}
+.assessment-item-scroll input,.assessment-item-scroll .select{width:100%;min-width:72px}
+.assessment-item-scroll [name="item-label"],.assessment-item-scroll [name="item-topic"]{min-width:104px}
+.assessment-item-scroll td{padding:4px}
+.assessment-item-scroll .btn{padding:4px 8px}
+.assessment-management{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}

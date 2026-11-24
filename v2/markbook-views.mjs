@@ -3,6 +3,7 @@ import {maxMarks,previewRow,csvTemplate} from './markbook.mjs';
 import {pct,displayDate} from './workspace.mjs';
 import {assessmentCoverage} from './assessment-refinement.mjs';
 import {canEnter,entryValue} from './gradebook-entry.mjs';
+import {assessmentFormat} from './assessment-editor.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const btn=(label,action,id='',kind='')=>'<button type="button" class="btn '+kind+'" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
 const link=(label,action,id)=>'<button type="button" class="inline-link" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
@@ -28,7 +29,7 @@ export function renderMarkbook(w,s,r){
   return '<div class="tracker-assessment"><span class="gradebook-title">'+e(a.title)+'</span><span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span>'+
    '<span class="cell-sub">'+(a.status==='draft'?'Draft · not counted':!a.includeInSummary?'Diagnostic · not counted':a.date>w.asOf?'Future · not counted':a.classIds.length>1?'Common assessment':'Published')+'</span>'+
    '<span class="tracker-coverage" data-gradebook-coverage="'+e(a.id)+'">'+c.scored+'/'+c.eligible+' scored</span>'+
-   '<div class="gradebook-head-actions">'+link(a.mode==='total'?'Details':a.mode==='topics'?'Topics':'Questions','open-markbook',bookId(r.id,a.id))+
+   '<div class="gradebook-head-actions">'+link(a.mode==='total'?'Details':a.mode==='topics'?'Topics':'Questions','open-markbook',bookId(r.id,a.id))+(a.manageable?link('Settings','assessment-settings',bookId(r.id,a.id)):'')+
    (a.status==='published'&&a.date<=w.asOf?btn('Analyse','markbook-analysis',bookId(r.id,a.id),'btn-quiet tracker-analysis'):'')+'</div></div>';
  };
  const cell=(a,p,i,j)=>{
@@ -72,20 +73,36 @@ export function renderBookDetail(w,detail){
   const unitId=a?.unitId??(b.units.some(u=>u.id===assessmentId)?assessmentId:b.units[0]?.id??'');
   const assigned=old?a.classIds:[classId];
   const classes=b.assignmentOptions.map(c=>'<label class="check-field"><input type="checkbox" name="assigned" value="'+e(c.id)+'" '+(assigned.includes(c.id)?'checked ':'')+(locked||c.id===classId?'disabled':'')+'> '+e(c.code)+' · '+e(c.name)+'</label>').join('');
-  const boundaries='<div class="boundary-grid">'+bands.map((x,i)=>'<label>'+e(x.grade)+' <input class="input boundary-input" type="number" name="boundary" min="0" max="100" step="any" required value="'+e(x.min)+'" aria-label="Minimum percentage for '+e(x.grade)+'" '+(i===0?'readonly':'')+'></label>').join('')+'</div>';
-  const itemConfig=area('items','Items: label | maximum mark | topic | AO',itemLines(a?.items??[{label:'Total',maxMarks:40,topic:null,ao:null}]),true,5).replace('<textarea ','<textarea '+(locked?'readonly ':''));
-  return {title:old?'Edit assessment':template?'Reuse assessment':'New assessment',sub:b.classCode+' · '+b.course.name,body:
-   '<form id="assessment-form" class="form-stack">'+(template?'<div class="info-box">Copies the structure and boundaries only. No results, publication status or exclusions are copied.</div>':'')+
+  const boundaries='<div class="boundary-grid">'+bands.map((x,i)=>'<label>'+e(x.grade)+' <input class="input boundary-input" type="number" name="boundary" min="0" max="100" step="any" required value="'+e(x.min)+'" aria-label="Minimum boundary for '+e(x.grade)+'" '+(i===0?'readonly':'')+'></label>').join('')+'</div>';
+  return {title:old?'Edit assessment':template?'Duplicate assessment':'New assessment',sub:b.classCode+' · '+b.course.name,body:
+   '<form id="assessment-form" class="form-stack assessment-editor">'+(template?'<div class="info-box">Copies the structure and boundaries only. No results, publication status or exclusions are copied.</div>':'')+
    textInput('title','Assessment title',template?template.title+' (copy)':a?.title??'')+
    '<div class="form-columns">'+textInput('date','Assessment date',old?a.date:w.asOf,'date')+choose('unitId','Curriculum unit',b.units.map(u=>[u.id,u.title]),unitId)+'</div>'+
-   section('Assigned classes',classes+'<p class="small muted">'+(locked?'Assignments are locked because results exist.':'Faculty leadership can create one common assessment across parallel classes.')+'</p>')+
-   section('Assessment format',(locked?'<input type="hidden" name="mode" value="'+e(a.mode)+'"><p>'+e(modeName[a.mode])+'</p>':choose('mode','Entry mode',Object.entries(modeName),a?.mode??'total'))+(locked?'<div class="info-box">The item structure is locked once any result exists. Reuse it as a new assessment to change questions or maximum marks.</div>':'')+itemConfig+
-    '<p class="small muted">One item per line. For total-only enter Total | 40. For topic/question mode enter a topic for each item. AO1, AO2 or AO3 is optional. Item labels must be unique.</p>')+
-   section('Weight and grade boundaries','<label>Summary weight<input class="input" type="number" name="weight" min="0.000001" max="1000" step="any" required value="'+e(a?.weight??b.course.defaultWeight)+'"></label><p class="small muted">A weight of 2 counts twice as much as a weight of 1. Boundaries are minimum percentages; the overall grade still uses the course tracker scheme.</p>'+boundaries+btn('Use course boundaries','reset-boundaries',key))+
-   (old&&a.status==='published'?'<div class="alert">'+area('reason','Reason for changing published assessment','',false,2)+check('confirmed','Confirm these changes affect calculated results in all assigned classes')+'</div>':'')+
-   error+submit(old?'Save definition':'Create draft')+'</form>'};
+   assessmentFormat(a,locked)+
+   '<details class="assessment-advanced" '+(old?'open':'')+'><summary>Advanced settings · classes, weighting, grade boundaries</summary><div class="assessment-advanced-body">'+
+   section('Assigned classes',classes+'<p class="small muted">'+(locked?'Assignments are locked because results exist.':'The current class is selected. Faculty leadership may also select parallel classes.')+'</p>')+
+   section('Weight and grade boundaries','<label>Summary weight<input class="input" type="number" name="weight" min="0.000001" max="1000" step="any" required value="'+e(a?.weight??b.course.defaultWeight)+'"></label><p class="small muted">Weight 1 is the normal default. Assessment boundaries are separate from course tracker boundaries.</p><label>Boundary units<select id="boundary-unit" name="boundary-unit" class="select" data-previous="percent"><option value="percent">Percentage</option><option value="marks">Raw marks</option></select></label>'+boundaries+btn('Use course boundaries','reset-boundaries',key))+
+   (!old?'<label>Availability<select class="select" name="initialStatus"><option value="published">Published · ready for mark entry</option><option value="draft">Draft · exclude from overall attainment until published</option></select></label>':'')+'</div></details>'+
+   (!old?'<p class="small muted">New assessments are ready for entry by default. Future-dated results count only from the assessment date.</p>':'')+
+   (old&&(a.status==='published'||locked)?'<div class="alert">'+area('reason','Reason for changes','',false,2)+check('confirmed','Confirm changes to calculated results in all assigned classes')+'</div>':'')+
+   error+submit(old?'Save changes':'Create assessment')+'</form>'};
+
  }
  const d=b.detail(assessmentId),a=d.assessment;
+ if(kind==='assessment-settings'){
+  if(!d.manageable)throw Error('Only authorised staff can manage this assessment');
+  return {title:'Assessment settings',sub:b.classCode+' · '+a.title,body:
+   facts([['Type',modeName[a.mode]],['Maximum mark',d.maxMarks],['Status',a.status],['Assigned classes',d.affectedClasses.join(', ')],['Results recorded',d.locked?'Yes':'No']])+
+   '<div class="assessment-management">'+btn('Edit assessment','edit-assessment',key,'btn-primary')+btn('Duplicate assessment','duplicate-assessment',key)+
+   (a.status==='draft'?btn('Publish draft','publish-assessment',key):'')+
+   btn(a.includeInSummary?'Exclude from summaries':'Re-include in summaries','assessment-exclusion',key)+
+   (a.status==='draft'&&!d.locked?btn('Delete empty draft','delete-assessment',key,'btn-danger'):'')+'</div>'+
+   '<p class="small muted">Duplicating copies the configuration only. Excluding retains all recorded marks. Only an empty draft can be deleted.</p>'};
+ }
+ if(kind==='delete-assessment'){
+  if(!d.manageable||a.status!=='draft'||d.locked)throw Error('Only empty drafts can be deleted');
+  return {title:'Delete empty draft',sub:a.title,body:'<div class="alert">This removes the draft from all assigned classes. No marks have been recorded.</div><form id="assessment-guard-form" class="form-stack">'+check('confirmed','Confirm deletion of this empty draft')+error+submit('Delete empty draft')+'</form>'};
+ }
  if(kind==='mark-grid'){
   if(enrolmentId&&!d.rows.some(r=>r.enrolmentId===enrolmentId))throw Error('Pupil outside current assessment scope');
   const stats=(label,key,n)=>'<div class="entry-stat"><span>'+e(label)+'</span><strong id="entry-stat-'+key+'">'+e(n)+'</strong></div>';
