@@ -25,5 +25,6 @@ jobs:
           node --check support-ui.js
           node --check app.js
           node --check tests/fixture.test.cjs
-      - name: Run fixture tests
-        run: node --test tests/*.test.cjs
+          for file in v2/*.mjs tests/v2-*.test.mjs; do node --check "$file"; done
+      - name: Run legacy and V2 foundation tests
+        run: node --test tests/*.test.cjs tests/v2-*.test.mjs
