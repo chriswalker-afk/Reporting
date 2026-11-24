@@ -115,7 +115,8 @@ try{
  const navigatePage=async page=>{
   if(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation==='overlay'))await action('mobile-menu');
   await activate('navigate',page,'#sidebar');
-  assert.equal(await evaluate(()=>location.hash),'#'+page);
+  const where=await evaluate(()=>({hash:location.hash,staff:document.querySelector('#staff')?.value,scope:document.querySelector('#scope')?.value,heading:document.querySelector('#workspace h1')?.textContent,error:document.querySelector('#gradebook-error')?.textContent,toast:document.querySelector('#toast')?.textContent,menu:document.querySelector('#sidebar')?.dataset.open}));
+  assert.equal(where.hash,'#'+page,'Navigation failed: '+JSON.stringify(where)+'; browser errors: '+JSON.stringify(errors));
  };
  const screen=async (width,height)=>{
   await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
@@ -179,7 +180,7 @@ try{
   await fill('#staff',id);
   const scopes=await evaluate(()=>[...document.querySelector('#scope').options].map(o=>o.value));
   for(const scope of scopes){
-   await fill('#scope',scope);scopeCount++;
+   await fill('#scope',scope);scopeCount++;console.log('Audit scope:',id,scope);
    for(const page of pages){await navigatePage(page);await inspect(id+' / '+scope+' / '+page);}
    await navigatePage('classes');
    const record=await visibleControl('open-class');
