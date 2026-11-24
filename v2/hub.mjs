@@ -254,7 +254,7 @@ document.addEventListener('click',event=>{
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
-  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);break;
+  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);gradebookFocus.fitPanel();break;
   case 'drawer-expand':drawerDisplay.toggle();break;
   case 'expand-panel':(detailDialog.contains(el)?drawerPanels:analysisPanels).toggle(el);break;
   case 'gradebook-entry-view':{
