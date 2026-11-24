@@ -4,7 +4,7 @@ import {pct,displayDate} from './workspace.mjs';
 import {assessmentCoverage} from './assessment-refinement.mjs';
 import {canEnter,canEditStructured,entryValue,gradebookColumns,structuredPreview} from './gradebook-entry.mjs';
 import {assessmentFormat} from './assessment-editor.mjs';
-import {normalizeLayout,projectGradebook,SUMMARY_FIELDS,groupSummary,targetGap,markDisplay,itemDisplay} from './gradebook-layout.mjs';
+import {projectGradebook,SUMMARY_FIELDS,groupSummary,targetGap,markDisplay,itemDisplay,reorderPeers} from './gradebook-layout.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const btn=(label,action,id='',kind='')=>'<button type="button" class="btn '+kind+'" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
 const link=(label,action,id)=>'<button type="button" class="inline-link" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
@@ -25,7 +25,7 @@ function renderLayoutOptions(book,s,projection){
  const p=projection.layout,open=Boolean(s.gradebookLayoutOpen),choices=(id,label,opts,value)=>'<label class="gradebook-layout-field">'+e(label)+select(id,opts,value,label)+'</label>';
  const checks=SUMMARY_FIELDS.map(([id,label])=>'<label class="check-field"><input type="checkbox" class="gradebook-summary-choice" value="'+id+'" '+(p.summary.includes(id)?'checked':'')+'> '+e(label)+'</label>').join('');
  const ordered=projection.ordered;
- const rows=ordered.map((a,i)=>'<div class="gradebook-column-option"><label class="check-field"><input type="checkbox" class="gradebook-assessment-choice" value="'+e(a.id)+'" '+(!p.hidden.includes(a.id)?'checked':'')+'> <span>'+e(a.title)+'<span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span></span></label><div class="gradebook-reorder"><button class="btn" type="button" data-action="gradebook-move-earlier" data-id="'+e(a.id)+'" aria-label="'+e('Move '+a.title+' earlier')+'" '+(i===0?'disabled':'')+'>↑</button><button class="btn" type="button" data-action="gradebook-move-later" data-id="'+e(a.id)+'" aria-label="'+e('Move '+a.title+' later')+'" '+(i===ordered.length-1?'disabled':'')+'>↓</button></div></div>').join('');
+ const rows=ordered.map(a=>{const peers=reorderPeers(ordered,p,a.id,book.units),i=peers.findIndex(x=>x.id===a.id);return '<div class="gradebook-column-option"><label class="check-field"><input type="checkbox" class="gradebook-assessment-choice" value="'+e(a.id)+'" '+(!p.hidden.includes(a.id)?'checked':'')+'> <span>'+e(a.title)+'<span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span></span></label><div class="gradebook-reorder"><button class="btn" type="button" data-action="gradebook-move-earlier" data-id="'+e(a.id)+'" aria-label="'+e('Move '+a.title+' earlier')+'" '+(i===0?'disabled':'')+'>↑</button><button class="btn" type="button" data-action="gradebook-move-later" data-id="'+e(a.id)+'" aria-label="'+e('Move '+a.title+' later')+'" '+(i===peers.length-1?'disabled':'')+'>↓</button></div></div>';}).join('');
  const body='<div id="gradebook-layout-panel" class="gradebook-layout-panel" '+(open?'':'hidden')+'><div class="gradebook-layout-grid">'+
  choices('gradebook-group','Group by',[['none','None'],['unit','Curriculum unit'],['term','Date periods (Sep–Dec / Jan–Mar / Apr–Aug)'],['type','Assessment type']],p.group)+
  choices('gradebook-order','Column order',[['oldest','Oldest first'],['newest','Newest first'],['title','Title A–Z'],['custom','Custom']],p.order)+
