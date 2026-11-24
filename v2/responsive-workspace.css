@@ -5,8 +5,9 @@
  .app-shell{height:100vh;height:100dvh;grid-template-columns:var(--workspace-nav-width) minmax(0,1fr);grid-template-rows:minmax(0,1fr);min-width:0;min-height:0}
  .app-main{min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr) auto}
  .sidebar{min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
- .workspace{padding:var(--workspace-padding);min-width:0;min-height:0;overflow:auto;overflow-x:hidden}
+ .workspace{padding:var(--workspace-padding);min-width:0;min-height:0;overflow:auto}
  .workspace-inner{width:100%;min-width:0;max-width:1800px}
+ .workspace-inner[data-workspace-fill="true"]{max-width:none}
  .workspace-inner>.surface,.workspace-inner>div,.surface,.panel-head,.panel-body,.toolbar,.page-heading,.page-actions{min-width:0;max-width:100%}
  .panel-head{flex-wrap:wrap}
  .page-heading>div{min-width:0;max-width:100%}
@@ -120,3 +121,5 @@
   .search-results{max-height:45dvh}
  }
 }
+
+@media print{.navigation-backdrop{display:none!important}}
