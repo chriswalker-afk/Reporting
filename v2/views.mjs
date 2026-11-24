@@ -234,6 +234,13 @@ const close=()=>'<button type="button" class="btn btn-icon" data-action="close-d
 const drawer=(title,sub,body,footer='')=>'<div class="dialog-head"><div><h2 id="detail-title">'+esc(title)+'</h2><p class="subtitle">'+esc(sub)+'</p></div>'+close()+'</div><div class="drawer-body">'+body+'</div><div class="drawer-footer">'+footer+btn('Close','close-detail')+'</div>';
 export function renderDetail(w,detail){
  const {kind,id}=detail;
+ if(kind==='demo-guide')return drawer('Demonstration guide','Version 2 · Fictional school records',
+  '<p class="info-box">Switch fictional staff roles to see how the same records connect across the school. These shortcuts do not reset or change the records.</p>'+
+  section('Faculty lead',listRow('Explore the Year 11 Mathematics tracker','Sam Taylor · enter a mark, open class analysis, inspect evidence','demo-scenario','faculty','class'))+
+  section('Tutor',listRow('Explore the tutor-group student directory','Jordan Evans · compare subjects and open a pupil profile','demo-scenario','tutor','students'))+
+  section('Head of House',listRow('Explore House interventions','Morgan Lee · review House cases and personal actions','demo-scenario','house','support'))+
+  section('School leadership',listRow('Explore the school-wide workspace','Avery Reed · check reporting, referral actions and school scope','demo-scenario','leadership','person'))+
+  note('Use Reset demo data in the footer to restore the original fictional examples. No live integration, real account or real pupil data is involved.'));
  if(kind==='analysis-evidence'){const d=renderAnalysisEvidence(w,id);return drawer(d.title,d.sub,d.body);}
  if(['unit-form','assessment-new','assessment-copy','assessment-edit','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
   const d=renderBookDetail(w,detail);return drawer(d.title,d.sub,d.body,d.footer??'');
