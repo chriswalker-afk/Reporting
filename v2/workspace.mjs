@@ -2,6 +2,7 @@ import {finite} from './model.mjs';
 import {projectRegisterRow,sortValue} from './class-overview.mjs';
 import {createMarkbook} from './markbook.mjs';
 import {createAcademicAnalysis} from './academic-analysis.mjs';
+import {directoryRow,studentCounts,orderedNotes,createProfileEvidence} from './student-profiles.mjs';
 export const NAV=[
   ['home','Home','home'],['notices','Notices','notice'],['classes','Classes','class'],
   ['students','Students','students'],['intervention','Intervention','support']
@@ -28,6 +29,10 @@ export const HELP={
   analysisAssessment:'Each assessment mean is the arithmetic mean of complete, non-excluded pupil percentages for that assessment. Coverage and paper difficulty may differ. Diagnostic results can be analysed separately.',
   analysisCoverage:'Scored, missing, absent, incomplete and excluded are mutually exclusive result states. All assigned pupils in the selected scope form the denominator.',
   analysisComparison:'Parallel class overall summaries use equal pupil averages, not equal class means. Compare identical shared assessment definitions for like-for-like evidence. Year/course summaries stay separate; no mixed-course grade or mean.',
+  profileScope:'Directory counts follow your selected cohort and its subject enrolments. A profile shows all records permitted by your combined assigned responsibilities. No inaccessible subject or case is counted.',
+  profileTargets:'Counts are numbers of subjects, not a cross-course average or combined grade. Below target means current calculated grade is lower than minimum target; unknown means attainment or target is missing. Two or more grades below refers to each course’s own grade order.',
+  profileHistory:'Published assessments up to the demo reference date, including diagnostic assessments. Diagnostics and excluded results are labelled and do not contribute to overall attainment; missing, absent and incomplete are not zero marks.',
+  profileComments:'Subject comments are read by staff with the relevant teaching, faculty or pastoral responsibility. Assigned teachers can add and edit their own comments. Pastoral academic notes are read-only here and limited to relevant tutors, House staff and leadership (or their author with access). Never enter safeguarding, clinical or other confidential details.',
   coverage:'Number of pupils with a calculated overall percentage, divided by pupils in the selected class or cohort. Results are not rounded until display.',
   target:'Current overall grade compared with the minimum target using the ordered course grading scheme. Unknown grades are kept separate.',
   predicted:'Teacher-entered predicted grade. It is distinct from the current grade calculated from assessment marks.',
@@ -171,12 +176,22 @@ export function createWorkspace(store,staffId,requestedScope){
     classCache.set(id,row);return row;
   }
   const classRows=()=>[...scopedClassIds].map(classRecord);
-  const studentRows=()=>[...scopeStudentIds].map(id=>{
-    const info=studentInfo(id);
-    const count=data.enrolments.filter(e=>e.studentId===id&&scopeIds.has(e.id)).length;
-    const cases=scopedCases.filter(c=>c.state!=='closed'&&get('enrolments',c.enrolmentId).studentId===id);
-    return {...info,subjects:count,cases:cases.length,wave:cases.length?Math.max(...cases.map(c=>c.wave)):0};
-  });
+  let studentRowsCache;
+  function studentRows(){
+    if(studentRowsCache)return studentRowsCache;
+    const subjectRows=new Map(),caseRows=new Map();
+    for(const c of home().cohort.courses)for(const r of c.rows){
+      if(!subjectRows.has(r.studentId))subjectRows.set(r.studentId,[]);
+      subjectRows.get(r.studentId).push(r);
+    }
+    for(const c of scopedCases){
+      const row=enrichCase(c),id=row.student.id;
+      if(!caseRows.has(id))caseRows.set(id,[]);
+      caseRows.get(id).push(row);
+    }
+    studentRowsCache=[...scopeStudentIds].map(id=>directoryRow(studentInfo(id),subjectRows.get(id)??[],caseRows.get(id)??[]));
+    return studentRowsCache;
+  }
   function studentDetail(id){
     const result=read.student(id);
     return {student:studentInfo(id),subjects:result.subjects.map(s=>({...s,classInfo:classInfo(s.classId),
@@ -184,6 +199,41 @@ export function createWorkspace(store,staffId,requestedScope){
       grades:get('gradeSchemes',classInfo(s.classId).course.gradeSchemeId).bands.map(b=>b.grade)})),
       cases:result.cases.map(enrichCase),notes:result.notes.map(n=>({...n,author:get('staff',n.authorStaffId)?.name,
         classInfo:enrolmentClass(n.enrolmentId)}))};
+  }
+  const profileCache=new Map();
+  let profileEngine;
+  const profileEvidence=()=>profileEngine??=createProfileEvidence(data,access);
+  function studentProfile(id){
+    if(!access.canViewStudent(id))throw Error('Student outside current demo scope');
+    if(profileCache.has(id))return profileCache.get(id);
+    const d=studentDetail(id),p=get('students',id),group=get('tutorGroups',p.tutorGroupId),house=get('houses',p.houseId);
+    const people=ids=>ids.map(id=>({id,name:get('staff',id).name}));
+    const notes=orderedNotes(d.notes).map(n=>({...n,editable:access.canEditSubjectNote(n.id)}));
+    const cases=[...d.cases].sort((a,b)=>Number(a.state==='closed')-Number(b.state==='closed')||
+      (a.state==='closed'?b.updatedDate.localeCompare(a.updatedDate):a.reviewDate.localeCompare(b.reviewDate))||a.id.localeCompare(b.id));
+    const subjects=d.subjects.map(s=>({...s,targetEditable:access.canEditMinimumTarget(s.enrolmentId),
+      canComment:access.canAddSubjectNote(s.enrolmentId),noteCount:notes.filter(n=>n.visibility==='subject'&&n.enrolmentId===s.enrolmentId).length,
+      activeCases:cases.filter(c=>c.state!=='closed'&&c.enrolmentId===s.enrolmentId)}))
+      .sort((a,b)=>a.classInfo.subject.name.localeCompare(b.classInfo.subject.name)||a.enrolmentId.localeCompare(b.enrolmentId));
+    const profile={student:{...d.student,tutors:people(group.tutorIds),houseHeads:people(house.headIds),tutorGroupName:group.name},
+      subjects,counts:studentCounts(subjects),cases,notes,activeCases:cases.filter(c=>c.state!=='closed'),
+      closedCases:cases.filter(c=>c.state==='closed'),asOf:data.asOf};
+    profileCache.set(id,profile);return profile;
+  }
+  function profileSubject(id,enrolmentId){
+    const p=studentProfile(id),s=p.subjects.find(s=>s.enrolmentId===enrolmentId);
+    if(!s)throw Error('Subject outside this pupil’s accessible profile');
+    return {...profileEvidence().subject(enrolmentId),subject:s};
+  }
+  function profileResult(id,enrolmentId,assessmentId){
+    const p=studentProfile(id);
+    if(!p.subjects.some(s=>s.enrolmentId===enrolmentId))throw Error('Subject outside this pupil’s accessible profile');
+    return profileEvidence().result(enrolmentId,assessmentId);
+  }
+  function profilePeers(id){
+    if(!access.canViewStudent(id))throw Error('Student outside current demo scope');
+    const ids=scopeStudentIds.has(id)?[...scopeStudentIds]:access.scopeStudents('accessible');
+    return ids.map(studentInfo).sort((a,b)=>a.name.localeCompare(b.name,'en',{numeric:true}));
   }
   function caseDetail(id){
     const c=visibleCases.find(c=>c.id===id);
@@ -232,6 +282,6 @@ export function createWorkspace(store,staffId,requestedScope){
     return get({faculty:'faculties',house:'houses',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
-    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,subjectDetail,noteDetail,markbook,academicAnalysis,
+    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,studentProfile,profileSubject,profileResult,profilePeers,subjectDetail,noteDetail,markbook,academicAnalysis,
     caseRows,caseDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
 }
