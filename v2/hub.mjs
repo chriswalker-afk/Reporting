@@ -6,7 +6,7 @@ import {profilePeers} from './student-profile-views.mjs';
 import {caseFormInput,unpackCaseAction} from './intervention-views.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
-import {GROUPS,DEFAULT_GROUPS} from './class-overview.mjs';
+import {GROUPS,DEFAULT_GROUPS,FULL_GROUPS,registerFocusFilter,visibleRegisterRows} from './class-overview.mjs';
 import {createWorkspace,parseRoute,routeHash,HELP,sortRows,matchText} from './workspace.mjs';
 import {sidebar,topbar,renderPage,renderDetail,renderSearchResults,esc,icon} from './views.mjs';
 
@@ -15,7 +15,7 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
@@ -50,7 +50,7 @@ function render({top=false,keepFocus=false}={}){
  if(oldId){const next=byId(oldId);next?.focus({preventScroll:true});if(caret!==null&&next?.type==='search')try{next.setSelectionRange(caret,caret);}catch{}}
  if(detail&&detailDialog.open&&!suspendDetailRefresh&&!formDirty&&!grid.isDirty())try{refreshDetail();}catch{closeDetail();}
 }
-function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
+function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';state.registerFiltersOpen=false;}
 function clearAnalysis(){state.analysisStudent='';state.analysisAssessment='';state.analysisCommon='';state.analysisUnit='';state.analysisFrom='';state.analysisTo='';}
 function clearStudentFilters(){clearRegisterFilters();state.studentYear='all';state.studentAttainment='all';state.studentSupport='all';}
 function clearFilters(){clearStudentFilters();clearAnalysis();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
@@ -120,11 +120,21 @@ function closeDetail(restore=true){
  if(restore)restoreFocus(drawerReturn);
  drawerReturn=null;detailDialog.classList.remove('wide-markbook','wide-profile');return true;
 }
-function openStudent(id,tab='overview'){
- const rows=state.page==='students'&&!detailDialog.open?filterStudents(w.studentRows(),state,matchText):null;
- const order=state.sorts.students??{key:'name',direction:'asc'};
- const peerIds=rows&&rows.some(p=>p.id===id)?sortRows(rows,order.key,order.direction).map(p=>p.id):undefined;
- openDetail('student',id,{tab,peerIds});
+function openStudent(id,tab='overview',subjectId=''){
+ let peerIds,peerLabel='',classContext='';
+ if(state.page==='classes'&&state.classId&&state.classTab==='information'&&w.scopedClassIds.has(state.classId)){
+  const r=w.classRecord(state.classId),rows=visibleRegisterRows(r.roster,state,matchText,sortRows);
+  const current=rows.find(p=>p.studentId===id);
+  if(current){peerIds=rows.map(p=>p.studentId);peerLabel=r.code+' register';classContext=r.id;subjectId=subjectId||current.enrolmentId;}
+ }else if(state.page==='students'){
+  const rows=filterStudents(w.studentRows(),state,matchText),order=state.sorts.students;
+  if(rows.some(p=>p.id===id)){peerIds=(order?sortRows(rows,order.key,order.direction):rows).map(p=>p.id);peerLabel='Student directory';}
+ }
+ openDetail('student',id,{tab,peerIds,peerLabel,classContext,subjectId});
+}
+function openPupilHistory(enrolmentId){
+ try{const d=w.subjectDetail(enrolmentId);openStudent(d.student.id,'assessments',enrolmentId);}
+ catch(error){notify(error.message);}
 }
 function changeProfile(values,focusId=null,action=null){
  if(detail?.kind!=='student')return;
@@ -139,7 +149,9 @@ function changeProfile(values,focusId=null,action=null){
 }
 function switchProfile(id){
  if(detail?.kind!=='student'||!profilePeers(w,detail).some(p=>p.id===id))return;
- changeProfile({id,subjectId:'',commentSubject:''},'profile-pupil');
+ const previous=w.studentProfile(detail.id).subjects,next=w.studentProfile(id).subjects;
+ const equivalent=oldId=>{const old=previous.find(s=>s.enrolmentId===oldId);return old?next.find(s=>s.classInfo.course.id===old.classInfo.course.id)?.enrolmentId??'':'';};
+ changeProfile({id,subjectId:equivalent(detail.subjectId)||next.find(s=>s.classId===detail.classContext)?.enrolmentId||'',commentSubject:equivalent(detail.commentSubject),subjectFilter:'all'},'profile-pupil');
 }
 function openProfileAnalysis(enrolmentId){
  if(detail?.kind!=='student')return;
@@ -252,6 +264,8 @@ document.addEventListener('click',event=>{
   case 'class-cases':navigate('intervention',{caseClass:id});break;
   case 'class-cases-current':navigate('intervention',{caseClass:state.classId});break;
   case 'open-student':openStudent(id);break;
+  case 'open-pupil-history':openPupilHistory(id);break;
+  case 'profile-focus':if(['all','below','unknown','support'].includes(id))changeProfile({subjectFilter:id},'profile-filter-'+id);break;
   case 'open-student-support':openStudent(id,'support');break;
   case 'profile-tab':if(PROFILE_TABS.some(([k])=>k===id))changeProfile({tab:id},null,'profile-tab');break;
   case 'profile-switch':switchProfile(id);break;
@@ -292,6 +306,17 @@ document.addEventListener('click',event=>{
   case 'subject-comments':openDetail('subject-comments',id);break;
   case 'edit-comment':openDetail('comment-edit',id);break;
   case 'clear-register-filters':clearRegisterFilters();render();main.querySelector('[data-action="clear-register-filters"]')?.focus({preventScroll:true});break;
+  case 'register-focus':
+    try{Object.assign(state,registerFocusFilter(id));render();main.querySelector('[data-action="register-focus"][data-id="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});}catch(error){notify(error.message);}break;
+  case 'toggle-register-filters':
+    state.registerFiltersOpen=!state.registerFiltersOpen;render();main.querySelector('[data-action="toggle-register-filters"]')?.focus({preventScroll:true});break;
+  case 'toggle-register-columns':
+    state.registerColumnsOpen=!state.registerColumnsOpen;render();main.querySelector('[data-action="toggle-register-columns"]')?.focus({preventScroll:true});break;
+  case 'register-preset':
+    if(!['daily','full'].includes(id))break;
+    state.columnGroups=[...(id==='daily'?DEFAULT_GROUPS:FULL_GROUPS)];saveColumns();render();
+    {const table=main.querySelector('.roster-table');if(table)table.scrollLeft=0;}
+    main.querySelector('[data-action="register-preset"][data-id="'+id+'"]')?.focus({preventScroll:true});break;
   case 'toggle-columns':
     if(!GROUPS.some(g=>g.id===id))break;
     state.columnGroups=state.columnGroups.includes(id)?state.columnGroups.filter(g=>g!==id):[...state.columnGroups,id];
