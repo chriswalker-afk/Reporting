@@ -982,6 +982,9 @@ try{
  await action('go-notices',undefined,'.home-lower ');
  await viewport(390,844);
  assert.ok(await visible('.communication-priority'));
+ assert.ok(await visible('.notices-header [data-action="show-active-notices"]'));
+ assert.ok(await visible('.notices-header [data-action="show-pending-notices"]'));
+ assert.equal(await q('[data-workspace-disclosure="communication-summary"]'),false);
  assert.ok(await q('.noticeboard-content .notice-paper'));
  const boardIds=()=>evaluate(()=>[...document.querySelectorAll('.notice-paper')].map(p=>p.dataset.noticeId));
  const allBoardIds=await boardIds();assert.equal(new Set(allBoardIds).size,allBoardIds.length);
@@ -994,7 +997,10 @@ try{
  await action('show-priority-notices');
  assert.equal(await evaluate(()=>document.querySelector('#notice-filter').value),'priority');
  assert.ok(await evaluate(()=>[...document.querySelectorAll('.notice-paper')].every(p=>p.dataset.priorityNotice==='true')));
- await fill('#notice-filter','active');
+ await action('show-pending-notices',undefined,'.notices-header ');
+ assert.equal(await evaluate(()=>document.querySelector('#notice-filter').value),'pending');
+ await action('show-active-notices',undefined,'.notices-header ');
+ assert.equal(await evaluate(()=>document.querySelector('#notice-filter').value),'active');
  assert.deepEqual(await boardIds(),allBoardIds);
  await fill('#deadline-filter','completed');await action('focus-schedule',undefined,'.communication-priority ');
  assert.equal(await evaluate(()=>document.querySelector('#deadline-filter').value),'open');
@@ -1004,6 +1010,17 @@ try{
   await viewport(width,height);
   assert.ok(await evaluate(()=>{const b=document.querySelector('.noticeboard-content');return [...b.querySelectorAll('.notice-paper')].every(p=>p.getBoundingClientRect().width<=b.clientWidth+1);}));
   assert.equal(await visible('.schedule-mobile-label'),width<=760);
+  const headerLayout=await evaluate(()=>{
+   const header=document.querySelector('.notices-header'),r=header.getBoundingClientRect();
+   const items=[...header.children].map(el=>el.getBoundingClientRect());
+   const centers=items.map(b=>b.top+b.height/2);
+   return {height:r.height,overflow:header.scrollWidth-header.clientWidth,inside:items.every(b=>b.left>=r.left-1&&b.right<=r.right+1),centerRange:Math.max(...centers)-Math.min(...centers)};
+  });
+  assert.ok(headerLayout.inside&&headerLayout.overflow<=1,'Notices header overflow at '+width+': '+JSON.stringify(headerLayout));
+  if(width>=1280){
+   assert.ok(headerLayout.centerRange<=2,'Notices header should fit a single row at '+width+': '+JSON.stringify(headerLayout));
+   assert.ok(headerLayout.height<=54,'Notices header consumes too much vertical space: '+JSON.stringify(headerLayout));
+  }
  }
  await viewport(390,844);
  await action('open-deadline',undefined,'#schedule-panel ');assert.ok(await q('#detail-dialog[open]'));await close();
