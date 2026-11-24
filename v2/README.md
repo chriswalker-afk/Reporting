@@ -285,3 +285,14 @@ Browser tests exercise 320×568, 390×844, 844×390, 768×1024, 1024×768, 1280�
 - PR32: Expandable analysis, student profiles and detail drawers.
 - PR33: Home and noticeboard responsive refinement.
 - PR34: Comprehensive responsive and accessibility audit, including orientation, browser zoom and all roles/screens.
+
+
+## Compact headers and on-demand help (PR29)
+
+Page titles, class identity and primary actions remain visible. Page details (longer descriptions, course/teacher context) can be expanded; they default to open in Standard and closed in Compact mode. Shared disclosure components also provide compact class and directory summaries, the intervention wave breakdown, and advanced filters on the class index, student directory, intervention register and academic analysis pages. The primary search, result counts, reset controls and workflow actions remain outside the optional filter panels. Collapsed filter headings indicate active filters; collapsing a filter panel does not clear or change the selection.
+
+Mark-entry guidance and keyboard shortcuts are collected into an on-demand gradebook help panel rather than repeated above and below the table. Reporting guidance and explanatory page notes are also available on demand. Gradebook save/discard controls, error messages, scope restrictions, read-only state, calculation policy, reporting deadline/cutoff, active SOC/support counts, student row flags, urgent notices and the fictional-data/safeguarding boundary remain available independently of disclosures.
+
+Disclosures use native details/summary semantics, so touch and keyboard users do not depend on hover. Explicit open/closed choices are remembered for each fictional staff identity and workspace page/tab during the session, including after ordinary rerenders. Reset workspace display clears those choices. Resizing and toggling do not replace the gradebook DOM, mutate records or discard drafts; an automatic collapse also avoids hiding a currently focused control.
+
+Regression tests cover disclosure defaults, markup escaping, active-filter counts, compact headers, responsive resizing, retaining unsaved marks and undo history, and keeping filters active through collapse. PR30 introduces the dedicated gradebook full-screen focus mode and consolidated tools; PR31 onward addresses mobile register entry, profiles/drawers and the dashboard.

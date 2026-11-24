@@ -1,4 +1,5 @@
 import {assetUrl,houseBadge,pupilIdentity,HOUSES} from './branding.mjs';
+import {disclosure,activeFilterCount,filterLabel as disclosureFilterLabel} from './workspace-disclosures.mjs';
 import {homeDashboard,HOME_PREVIEW} from './home-dashboard.mjs';
 import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,displayDate,gradeGap,matchText,sortRows,routeHash} from './workspace.mjs';
 import {EVENTS,safeLink} from './communications.mjs';
@@ -38,8 +39,8 @@ const option=(id,label,selected)=>'<option value="'+esc(id)+'" '+(id===selected?
 const select=(name,value,options,label)=>'<select class="select" id="'+esc(name)+'" aria-label="'+esc(label)+'">'+options.map(([id,title])=>option(id,title,value)).join('')+'</select>';
 const field=(id,value,placeholder)=>'<input class="input" id="'+esc(id)+'" type="search" value="'+esc(value||'')+'" placeholder="'+esc(placeholder)+'" aria-label="'+esc(placeholder)+'">';
 const panel=(title,content,actions='',info='')=>'<section class="surface"><div class="panel-head"><h2>'+esc(title)+(info?help(info,title):'')+'</h2>'+actions+'</div>'+content+'</section>';
-const heading=(title,subtitle,actions='',over='Workspace')=>'<div class="page-heading"><div><p class="eyebrow">'+esc(over)+'</p><h1>'+esc(title)+'</h1><p class="subtitle">'+esc(subtitle)+'</p></div><div class="page-actions">'+actions+'</div></div>';
-const note=text=>'<p class="stage-note">'+icon('info')+esc(text)+'</p>';
+const heading=(title,subtitle,actions='',over='Workspace')=>'<div class="page-heading workspace-heading"><div class="workspace-heading-main"><h1>'+esc(title)+'</h1>'+disclosure('page-context','Page details','<p class="eyebrow">'+esc(over)+'</p><p class="subtitle">'+esc(subtitle)+'</p>',{kind:'context'})+'</div><div class="page-actions">'+actions+'</div></div>';
+const note=text=>disclosure('page-help','About this view','<p class="stage-note">'+icon('info')+esc(text)+'</p>',{kind:'help',defaultOpen:'closed'});
 const metric=(label,value,foot='',hint='',action='')=>'<div class="metric"><div class="metric-head">'+esc(label)+(hint?help(hint,label):'')+'</div><div class="metric-value">'+esc(value)+'</div>'+(action?'<button class="metric-action" data-action="'+esc(action)+'">'+esc(foot)+' '+icon('arrow')+'</button>':'<div class="metric-foot">'+esc(foot)+'</div>')+'</div>';
 const listRow=(title,subtitle,action,id,ic='arrow',right='')=>'<button type="button" class="list-row" data-action="'+esc(action)+'" data-id="'+esc(id)+'"><span class="list-icon">'+icon(ic)+'</span><span class="row-text"><strong>'+esc(title)+'</strong><small>'+esc(subtitle)+'</small></span>'+right+icon('arrow')+'</button>';
 const sortHeader=(column,table,state)=>{
@@ -179,9 +180,7 @@ export function renderClasses(w,s){
   (!s.classYear||s.classYear==='all'||String(r.year)===s.classYear)&&(!s.classFaculty||s.classFaculty==='all'||r.faculty.name===s.classFaculty));
  if(!s.classId||!w.scopedClassIds.has(s.classId)){
   return heading('Classes',SCOPE_LABELS[w.scope]+' · '+all.length+' teaching groups',quick,'Academic workspace')+
-  '<section class="surface"><div class="toolbar">'+field('page-query',s.query,'Filter class, subject or teacher')+
-  filter('class-year',s.classYear,'All years',unique(all,'year'))+filter('class-faculty',s.classFaculty,'All faculties',[...new Set(all.map(c=>c.faculty.name))].sort())+
-  '<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Classes with pupils below target</label>'+btn('Clear filters','clear-register-filters','','btn-quiet')+'<span class="count">'+rows.length+' classes</span></div>'+table('classes',classColumns,rows,classCell,s)+'</section>'+note('Means and coverage use the selected pupil scope. Select a class to open its Student Information tracker.');
+  '<section class="surface"><div class="toolbar workspace-primary-filters">'+field('page-query',s.query,'Filter class, subject or teacher')+btn('Clear filters','clear-register-filters','','btn-quiet')+'<span class="count">'+rows.length+' classes</span></div>'+disclosure('class-index-filters',disclosureFilterLabel(activeFilterCount([s.classYear],[s.classFaculty],[Boolean(s.below),false])),'<div class="toolbar register-filters">'+filter('class-year',s.classYear,'All years',unique(all,'year'))+filter('class-faculty',s.classFaculty,'All faculties',[...new Set(all.map(c=>c.faculty.name))].sort())+'<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Classes with pupils below target</label></div>',{kind:'filters'})+table('classes',classColumns,rows,classCell,s)+'</section>'+note('Means and coverage use the selected pupil scope. Select a class to open its Student Information tracker.');
  }
  const r=w.classRecord(s.classId),groups=s.columnGroups??DEFAULT_GROUPS,layout=registerLayout(groups),daily=layout==='daily',selected=visibleRegisterRows(r.roster,s,matchText,sortRows);
  const headingMarkup='<div class="class-heading">'+heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,'<div class="class-switcher">'+btn('All classes','go-classes','','btn-quiet','back')+previous+quick+next+'</div>','Classes')+'</div>';
@@ -217,7 +216,7 @@ export function renderClasses(w,s){
  const toggle=(label,action,expanded,controls)=>'<button type="button" class="btn btn-quiet register-options-button" data-action="'+action+'" aria-expanded="'+expanded+'" aria-controls="'+controls+'">'+esc(label)+' <span aria-hidden="true">'+(expanded?'▴':'▾')+'</span></button>';
  const preset=(id,label)=>'<button type="button" class="column-toggle register-preset" data-action="register-preset" data-id="'+id+'" aria-pressed="'+(layout===id)+'">'+esc(label)+'</button>';
  return headingMarkup+classTabs('information')+
- '<div class="metrics class-metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>'+
+ disclosure('class-summary','Class summary','<div class="metrics class-metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>',{kind:'metrics',note:r.students+' pupils · '+r.below+' below MTG · '+r.cases+' active cases'})+
  (r.partial?'<div class="info-box">This register is restricted to pupils in your selected scope. '+help('partial','partial class')+'</div>':'')+
  '<section class="surface class-register" data-register-layout="'+layout+'"><div class="panel-head register-heading"><div><h2>Class register '+help('registerViews','register views')+'</h2><p class="small muted">'+selected.length+' of '+r.students+' pupils · '+(daily?'Daily view':layout==='full'?'Full detail':'Custom columns')+'</p></div>'+
  (latest?'<div class="register-mark-shortcut">'+btn('Latest published assessment','open-markbook',bookId(r.id,latest.id),'btn-primary','book')+'<span class="small muted">'+esc(latest.title+' · '+displayDate(latest.date)+(latest.includeInSummary?'':' · Diagnostic / excluded'))+'</span></div>':'')+'</div>'+
@@ -237,18 +236,18 @@ export function renderStudents(w,s){
  const options=(values,label)=>[['all',label],...values.map(v=>[String(v),String(v)])];
  const unique=key=>[...new Set(all.map(p=>p[key]))].sort((a,b)=>String(a).localeCompare(String(b),'en',{numeric:true}));
  return heading('Students',SCOPE_LABELS[w.scope]+' · '+all.length+' unique pupils',help('profileScope','student directory scope'),'Student directory')+
- '<div class="metrics">'+metric('Pupils in scope',c.pupils,'Clear directory filters','profileScope','students-reset')+
+ disclosure('student-summary','Directory summary','<div class="metrics">'+metric('Pupils in scope',c.pupils,'Clear directory filters','profileScope','students-reset')+
  metric('Below target',c.below,c.severe+' with a subject at least two grades below','profileTargets','students-below')+
  metric('Active SOC',c.soc,'Pupils with visible active cases','soc','students-soc')+
- metric('Reviews due',c.due,'Pupils with due or overdue cases','due','students-due')+'</div>'+
- '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter name, ID, year or tutor group')+
+ metric('Reviews due',c.due,'Pupils with due or overdue cases','due','students-due')+'</div>',{kind:'metrics',note:c.pupils+' pupils · '+c.below+' below MTG · '+c.soc+' active SOC · '+c.due+' reviews due'})+
+ '<section class="surface"><div class="toolbar workspace-primary-filters">'+field('page-query',s.query,'Filter name, ID, year or tutor group')+btn('Clear','students-reset','','btn-quiet')+'<span class="count">'+rows.length+' of '+all.length+' pupils</span></div>'+disclosure('student-filters',disclosureFilterLabel(activeFilterCount([s.studentYear],[s.tutorFilter],[s.houseFilter],[s.flag],[s.studentAttainment],[s.studentSupport])),'<div class="toolbar register-filters">'+
  select('student-year',s.studentYear??'all',options(unique('year'),'All years'),'Year group')+
  select('tutor-filter',s.tutorFilter??'all',options(unique('tutorGroupId'),'All tutor groups'),'Tutor group')+
  select('house-filter',s.houseFilter??'all',options(unique('house'),'All Houses'),'House')+
  select('flag-filter',s.flag??'all',[['all','All flags'],...['EAL','SEN','HLP','Access arrangements','SOC'].map(t=>[t,t])],'Student flags')+
  select('student-attainment',s.studentAttainment??'all',[['all','Any attainment'],['below','At least one subject below MTG'],['severe','At least two grades below MTG'],['on','All subjects on / above MTG'],['unknown','Unknown subject status']],'Attainment status')+
  select('student-support',s.studentSupport??'all',[['all','Any support'],['active','Active SOC'],['due','Reviews due'],['none','No active case']],'Support status')+
- btn('Clear','students-reset','','btn-quiet')+'<span class="count">'+rows.length+' of '+all.length+' pupils</span></div>'+
+ '</div>',{kind:'filters'})+
  table('students',[['name','Student'],['year','Year'],['tutorGroupId','Tutor group','tutor'],['house','House'],['directoryFlags','Flags','flags'],['subjects','Subjects','profileScope'],['below','Below MTG','profileTargets'],['unknown','Unknown','profileTargets'],['cases','Active cases','intervention'],['due','Reviews due','due']],rows,(p,k)=>{
   if(k==='name')return pupilIdentity(link(p.name,'open-student',p.id)+'<span class="cell-sub">'+esc(p.id)+'</span>',p);
   if(k==='tutorGroupId')return tag(p.tutorGroupId);
@@ -291,14 +290,13 @@ export function renderIntervention(w,s){
  metric('Reviews due',counts.due,active.filter(c=>c.overdue).length+' overdue · case review dates','due','filter-due')+
  metric('My actions',personal.length,personal.filter(a=>a.reviewDate<w.asOf).length+' overdue · All responsibilities','caseQueue','go-personal-actions')+
  metric('Closed cases',counts.closed,'Retained in history','','filter-closed')+'</div>'+
- '<section class="surface case-pipeline"><div class="panel-head"><h2>Active wave progression '+help('caseWorkflow','wave progression')+'</h2><span class="small muted">Counts in selected scope</span></div><div class="case-stage-grid">'+stage(1,'Classroom')+stage(2,'Faculty & House')+stage(3,'Leadership')+'</div><p class="small muted case-pipeline-note">Each active case is counted once, at its current or requested wave. Select a wave to filter the records below.</p></section>'+
+ disclosure('case-progression','Active wave progression','<section class="surface case-pipeline"><div class="panel-head"><h2>Wave breakdown '+help('caseWorkflow','wave progression')+'</h2><span class="small muted">Counts in selected scope</span></div><div class="case-stage-grid">'+stage(1,'Classroom')+stage(2,'Faculty & House')+stage(3,'Leadership')+'</div><p class="small muted case-pipeline-note">Each active case is counted once, at its current or requested wave. Select a wave to filter the records below.</p></section>',{kind:'metrics',note:active.length+' active cases'})+
  '<section class="surface intervention-register"><div class="panel-head"><div><h2>'+esc(actionMode?'My outstanding actions':'Intervention register')+'</h2><p class="small muted">'+rows.length+(actionMode?' actions':' cases')+' · '+esc(actionMode?'All my responsibilities':filterLabel)+'</p></div></div>'+
  '<div class="case-focus-bar" role="group" aria-label="Intervention focus">'+chip('active','Active')+chip('actions','My actions')+chip('due','Reviews due')+chip('referrals','Referrals')+chip('house','House requests')+chip('study','Study reviews')+chip('closed','Closed')+'</div>'+
- '<div class="toolbar register-filters case-filters">'+field('page-query',s.query,'Filter pupil, class, owner or House')+
- select('case-filter',filter,CASE_FILTERS,'Intervention status')+
+ '<div class="toolbar register-filters case-filters workspace-primary-filters">'+field('page-query',s.query,'Filter pupil, class, owner or House')+select('case-filter',filter,CASE_FILTERS,'Intervention status')+(s.caseClass?btn('Clear class filter','clear-case-class'):'')+btn('Clear filters','cases-reset','','btn-quiet')+'</div>'+disclosure('case-filters',disclosureFilterLabel(activeFilterCount([s.tutorFilter],[s.houseFilter])),'<div class="toolbar register-filters case-filters">'+
  select('tutor-filter',s.tutorFilter??'all',opts(unique(c=>c.student.tutorGroupId),'All tutor groups'),'Tutor group')+
  select('house-filter',s.houseFilter??'all',opts(unique(c=>c.house),'All Houses'),'House')+
- (s.caseClass?btn('Clear class filter','clear-case-class'):'')+btn('Clear filters','cases-reset','','btn-quiet')+'</div>'+
+ '</div>',{kind:'filters'})+
  table('cases',columns,rows,(c,k)=>{
   if(k==='studentName')return pupilIdentity(link(c.studentName,'open-case',c.id)+'<span class="cell-sub">'+esc(c.classCode+' · TG '+c.student.tutorGroupId)+'</span>',c.student);
   if(k==='status')return compactWave(c);
@@ -308,7 +306,7 @@ export function renderIntervention(w,s){
   if(k==='nextActions')return nextTask(c);
   if(k==='studyStatus')return c.studyStatus==='none'?'<span class="muted">No plan</span>':link(studyStatusLabel(c.studyStatus),'open-case-plan',c.id);
   return esc(c[k]);
- },s)+'</section>'+note('One shared case per pupil and subject. Wave counts and case filters follow the selected scope; My actions covers all assigned responsibilities. Safeguarding remains separate; no external submission or email is performed.');
+ },s)+'</section><p class="workspace-safety-note small muted">Academic support only · Safeguarding remains separate · No external submission or email</p>'+note('One shared case per pupil and subject. Wave counts and case filters follow the selected scope; My actions covers all assigned responsibilities.');
 }
 
 export function renderPage(w,s){return '<div class="workspace-inner" data-workspace-page="'+esc(s.page)+'" data-workspace-tab="'+esc(s.classTab??'')+'"'+(s.page==='classes'&&s.classId&&['markbook','report-grades'].includes(s.classTab)?' data-workspace-fill="true"':'')+'>'+({home:renderHome,notices:renderNotices,classes:renderClasses,students:renderStudents,intervention:renderIntervention}[s.page]||renderHome)(w,s)+'</div>';}

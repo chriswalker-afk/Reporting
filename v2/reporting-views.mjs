@@ -1,3 +1,4 @@
+import {disclosure} from './workspace-disclosures.mjs';
 import {METHODS,methodLabel} from './calculation-policy.mjs';
 import {pct,displayDate} from './workspace.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
@@ -29,7 +30,7 @@ export function renderReportGrades(w,s,r){
  '<div class="toolbar report-grade-toolbar">'+(d?'<label>Reporting period '+select('report-period',book.periods.map(p=>[p.id,p.title+' · '+displayDate(p.dueDate)+(p.archived?' (archived)':'')]),d.id)+'</label>':'')+
  (d?'<span class="count">'+c.submitted+'/'+c.eligible+' submitted · '+c.draft+' drafts · '+c.missing+' not entered</span>':'')+'</div>'+
  (d?'<div class="info-box scope-inline">'+e(d.archived?'Archived period · read-only.':'Evidence cutoff: '+displayDate(d.dueDate<w.asOf?d.dueDate:w.asOf)+'. Submitted rows show frozen evidence; unsubmitted rows show current calculated evidence.')+'</div>':'')+
- table+'<div class="panel-body small muted">A report grade is a separate teacher judgement for this period. Enter a grade, save a draft or confirm submission. An authorised leadership member can reopen a submitted grade with a reason. This records a fictional submission inside JIS Hub only; it does not submit to SIMS, parents or an external system.</div></section>';
+ table+disclosure('report-grade-help','About report grades','<div class="panel-body small muted">A report grade is a separate teacher judgement for this period. Enter a grade, save a draft or confirm submission. An authorised leadership member can reopen a submitted grade with a reason.</div>',{kind:'help',defaultOpen:'closed'})+'<div class="reporting-demo-note small muted">Fictional internal submission only · No external submission to SIMS or parents.</div></section>';
 }
 export function renderReportingDetail(w,detail){
  const [classId,periodId,enrolmentId]=unpackBookId(detail.id);

@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {disclosure,activeFilterCount,filterLabel,defaultDisclosureOpen} from '../v2/workspace-disclosures.mjs';
+import {createStore} from '../v2/store.mjs';
+import {createWorkspace} from '../v2/workspace.mjs';
+import {renderPage} from '../v2/views.mjs';
+
+test('disclosure defaults and active filters',()=>{
+ assert.equal(defaultDisclosureOpen('standard','compact'),false);
+ assert.equal(defaultDisclosureOpen('standard','standard'),true);
+ assert.equal(defaultDisclosureOpen('closed','standard'),false);
+ assert.equal(defaultDisclosureOpen('always','compact'),true);
+ assert.equal(activeFilterCount(['all'],['7'],[''],[false,false],[true,false],['2026-01-01','2026-01-01']),2);
+ assert.equal(filterLabel(0),'Filters');
+ assert.equal(filterLabel(2),'Filters (2 active)');
+ const html=disclosure('a','Details < &','<p>Body</p>',{note:'<script>',kind:'help',defaultOpen:'closed'});
+ assert.match(html,/Details &lt; &amp;/);
+ assert.match(html,/&lt;script&gt;/);
+ assert.doesNotMatch(html,/<script>/);
+ assert.doesNotMatch(html,/<details[^>]* open/);
+});
+test('page disclosures preserve important identity, flags, status and controls',()=>{
+ const w=createWorkspace(createStore(),'sam','faculty');
+ const state={page:'classes',classId:'11-maths-1',classTab:'markbook',unitId:'',query:'',flag:'all',below:false,sorts:{}};
+ const gradebook=renderPage(w,state);
+ assert.match(gradebook,/<h1>[^<]*Mathematics/);
+ assert.match(gradebook,/data-workspace-disclosure="page-context"/);
+ assert.match(gradebook,/data-workspace-disclosure="gradebook-help"/);
+ assert.ok(gradebook.indexOf('id="gradebook-save-status"')<gradebook.indexOf('data-workspace-disclosure="gradebook-help"'));
+ assert.ok(gradebook.indexOf('id="gradebook-error"')<gradebook.indexOf('data-workspace-disclosure="gradebook-help"'));
+ const register=renderPage(w,{...state,classTab:'information'});
+ assert.match(register,/data-workspace-disclosure="class-summary"/);
+ assert.match(register,/active cases/);
+ assert.match(register,/data-action="register-focus"/);
+ const directory=renderPage(w,{...state,page:'students',classId:null,studentYear:'11'});
+ assert.match(directory,/data-workspace-disclosure="student-filters"/);
+ assert.match(directory,/Filters \(1 active\)/);
+ assert.match(directory,/reviews due/);
+ const analysis=renderPage(w,{...state,classTab:'class-analysis'});
+ assert.match(analysis,/data-workspace-disclosure="analysis-filters"/);
+ assert.match(analysis,/Published results through/);
+ const report=renderPage(w,{...state,classTab:'report-grades'});
+ assert.match(report,/data-workspace-disclosure="report-grade-help"/);
+ assert.match(report,/Fictional internal submission only/);
+});
