@@ -2,11 +2,13 @@ import {assertData,clone,SCHEMA_VERSION,resultKey,isText,isDate} from './model.m
 import {createAccess} from './access.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {createDemoData} from './demo-data.mjs';
+import {upgradeDemoGradeScales} from './grade-scales.mjs';
 import {normalizeDefinition,resultInput} from './markbook.mjs';
 import {startCase,changeCase,changeStudyPlan,pendingCaseActions} from './interventions.mjs';
 import {communicationPolicy,communicationView,noticeFields,deadlineFields,noticeVersion} from './communications.mjs';
 
 export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
+export const LEGACY_GRADE_STORAGE_KEY='jis-hub-v2-synthetic-schema-1';
 
 /** A fresh permission-filtered read model, intended for all V2 screens. */
 export function createReadModel(data,staffId){
@@ -82,6 +84,11 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   if(persisted!==null&&persisted!==undefined){
     const parsed=JSON.parse(persisted);
     current=assertData(parsed);
+  }else if(storage&&storageKey===STORAGE_KEY){
+    const legacy=storage.getItem(LEGACY_GRADE_STORAGE_KEY);
+    // Keep the original v1 data untouched. The upgraded state is saved under
+    // the v2 key only on the next successful edit/reset.
+    if(legacy!=null)current=assertData(upgradeDemoGradeScales(JSON.parse(legacy),SCHEMA_VERSION));
   }
   const listeners=new Set();
   const snapshot=()=>clone(current);
