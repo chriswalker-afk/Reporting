@@ -2,7 +2,8 @@
  * JIS Hub V2: normalized, fictional-data-only model.
  * These browser-compatible modules do not authenticate users.
  */
-export const SCHEMA_VERSION = 1;
+import {supportedGradeLabels} from './grade-scales.mjs';
+export const SCHEMA_VERSION = 2;
 export const TABLES = [
   'staff','faculties','houses','tutorGroups','students','subjects','gradeSchemes',
   'courses','classes','enrolments','units','assessments','results','targets',
@@ -95,6 +96,7 @@ export function validateData(data) {
   const schemeLabels=id=>maps.gradeSchemes.get(id)?.bands?.map(b=>b.grade)||[];
   for(const c of data.courses){
     ref(c.id,'subjects',c.subjectId);ref(c.id,'gradeSchemes',c.gradeSchemeId);
+    if(!supportedGradeLabels(schemeLabels(c.gradeSchemeId)))err(c.id,'course must use an ordered 9–1/U, A*–G/U or A*–E/U grading scale');
     if(!Number.isInteger(c.year)||c.year<7||c.year>13||!isText(c.academicYear))err(c.id,'invalid course year');
     if(!finite(c.defaultWeight)||c.defaultWeight<=0)err(c.id,'invalid default assessment weight');
   }
