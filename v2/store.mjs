@@ -157,10 +157,21 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       }
       const before=old?clone(old):null;
       if(old){Object.assign(old,fields,{gradeSchemeId});return {before,after:old,reason:input.reason?.trim()??null};}
-      const record={id:recordId,...fields,gradeSchemeId,status:'draft',includeInSummary:true,exclusionReason:null};
+      const status=input.initialStatus??'draft';
+      must(['draft','published'].includes(status),'Invalid assessment availability');
+      const record={id:recordId,...fields,gradeSchemeId,status,includeInSummary:true,exclusionReason:null};
       d.assessments.push(record);return {before:null,after:record};
     });
     return {...result,id:recordId};
+  }
+  function deleteEmptyAssessment(staffId,id,{confirmed=false}={}){
+    return transaction(staffId,'deleteEmptyAssessment',id,(d,a)=>{
+      const r=lookup(d,'assessments',id);
+      must(r&&a.canManageAssessment(id)&&r.status==='draft'&&!d.results.some(x=>x.assessmentId===id),'Only authorised staff may delete an empty draft');
+      must(confirmed===true,'Confirm deleting the empty draft');
+      const before=clone(r);d.assessments=d.assessments.filter(x=>x.id!==id);
+      return {before,after:null};
+    });
   }
   function publishAssessment(staffId,id,{confirmed=false}={}){
     return transaction(staffId,'publishAssessment',id,(d,a)=>{
@@ -300,7 +311,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
     });
   }
   function nextId(table,prefix){
-    let n=1;while(current[table].some(r=>r.id===prefix+n))n++;return prefix+n;
+    let n=1;while(current[table].some(r=>r.id===prefix+n)||table==='assessments'&&current.audit.some(r=>r.recordId===prefix+n))n++;return prefix+n;
   }
   function saveNotice(staffId,id,input){
     const recordId=id??nextId('notices','NO');
@@ -383,6 +394,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    addUnit,saveAssessment,publishAssessment,saveResultBatch,saveGradebookBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
+    addUnit,saveAssessment,deleteEmptyAssessment,publishAssessment,saveResultBatch,saveGradebookBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
     saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }
