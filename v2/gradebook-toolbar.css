@@ -2,7 +2,7 @@
 @media screen{
  .gradebook-surface .gradebook-focus-top{position:relative;z-index:10;min-width:0;background:#fff}
  #app[data-gradebook-focus="true"] .gradebook-surface .gradebook-focus-top{position:sticky;top:0;z-index:10}
- .gradebook-surface .markbook-toolbar{padding:4px 6px;gap:4px;align-items:center}
+ .gradebook-surface .markbook-toolbar{padding:3px 6px;gap:4px;align-items:center}
  .gradebook-surface .markbook-toolbar>.select{height:28px;min-height:28px;font-size:11px;padding:3px 5px}
  .gradebook-surface #markbook-unit{max-width:min(145px,100%)}
  .gradebook-surface #gradebook-quick-display{width:auto;min-width:0;max-width:120px}
