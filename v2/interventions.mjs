@@ -47,8 +47,8 @@ function referral(data,c,staffId,input,wave){
  record(c,data,staffId,'requestWave'+wave,'Wave '+wave+' requested: '+trigger+' — '+reason,{referral:clone(request),reviewDate:c.reviewDate});
 }
 export function startCase(data,access,staffId,id,enrolmentId,input){
- need(access.canStartWave1(enrolmentId),'Only an assigned class teacher can start Wave 1');
  need(!data.interventions.some(c=>c.enrolmentId===enrolmentId&&c.state!=='closed'),'An active subject intervention already exists; open that case instead');
+ need(access.canStartWave1(enrolmentId),'Only an assigned class teacher can start Wave 1');
  const c={id,enrolmentId,ownerStaffId:staffId,state:'wave1',wave:1,reason:field(input.reason,'academic concern'),
   strategies:lines(input.strategies,'Classroom strategies'),wave1Plan:field(input.plan,'specific classroom intervention and success measure'),
   openedDate:data.asOf,updatedDate:data.asOf,reviewDate:date(input.reviewDate,data.asOf),evaluation:null,
@@ -113,8 +113,8 @@ export function changeStudyPlan(data,access,staffId,caseId,id,action,input){
  let plan=old;
  if(action==='saveStudyPlan'){
   const fields={target:field(input.target,'specific measurable study target',1000),actions:lines(input.actions,'Study actions',12),
-   reviewDate:date(input.reviewDate,data.asOf),ownerStaffId:old?.ownerStaffId??staffId};
-  if(old){Object.assign(old,fields);old.updatedDate=data.asOf;}
+   reviewDate:date(input.reviewDate,data.asOf),ownerStaffId:staffId};
+  if(old){if(old.completedDate)confirmed(input);Object.assign(old,fields,{completedDate:null});old.updatedDate=data.asOf;}
   else{plan={id,interventionId:caseId,...fields,createdDate:data.asOf,updatedDate:data.asOf,history:[]};data.studyPlans.push(plan);}
   record(c,data,staffId,action,old?'Individual study plan updated.':'Individual study plan created.',{studyPlan:clone(fields)});
  }else{
