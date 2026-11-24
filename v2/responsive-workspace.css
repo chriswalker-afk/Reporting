@@ -174,3 +174,9 @@
  .disclosure-filters,.disclosure-help{display:none!important}
  .workspace-heading .subtitle{font-size:11px}
 }
+
+@media screen{
+ .workspace-safety-note{margin:6px 0}
+ .app-shell[data-workspace-density="compact"] .workspace-heading-main:has(>.disclosure-context:not([open])){display:flex;align-items:center;gap:3px 8px;flex-wrap:wrap}
+ .app-shell[data-workspace-density="compact"] .workspace-heading-main:has(>.disclosure-context:not([open])) .disclosure-context{margin:0}
+}
