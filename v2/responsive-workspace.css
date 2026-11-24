@@ -247,3 +247,72 @@
 @media print{
  .gradebook-focus-heading,.gradebook-focus-panel-buttons,.gradebook-focus-toggle{display:none!important}
 }
+
+
+/* PR31: table/card register presentation and narrow single-assessment entry. */
+@media screen{
+ .responsive-register{display:flex;flex-direction:column;min-width:0;max-width:100%;min-height:0}
+ .register-presentation-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 9px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+ .register-presentation-bar>div{display:flex;flex-wrap:wrap;gap:3px}
+ .register-presentation-bar .btn{min-height:30px;padding:4px 8px;font-size:11px}
+ .register-presentation-bar .btn[aria-pressed="true"],.gradebook-entry-switch .btn[aria-pressed="true"]{background:#f0e1e9;border-color:#b68a9e;color:var(--accent-dark);font-weight:650}
+ .register-cards{display:none;min-width:0;gap:8px;padding:8px}
+ .responsive-register[data-register-view="cards"]>.table-scroll{display:none}
+ .responsive-register[data-register-view="cards"]>.register-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));align-content:start}
+ .register-card-sort{grid-column:1/-1;padding:4px 8px;background:#f8f7f9;border:1px solid var(--line);border-radius:6px}
+ .register-card-sort summary,.register-card-details summary{cursor:pointer;font-size:12px;font-weight:650;color:var(--accent-dark);padding:5px 0}
+ .register-card-sort-options{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0}
+ .register-card{display:flex;flex-direction:column;min-width:0;border:1px solid var(--line);border-radius:8px;padding:9px 10px;gap:8px;background:white}
+ .register-card-identity{min-width:0;overflow-wrap:anywhere;font-size:14px;font-weight:650}
+ .register-card-identity .pupil-identity{min-width:0}
+ .register-card dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,100px),1fr));gap:8px 10px;margin:0;min-width:0}
+ .register-card-field{min-width:0;overflow-wrap:anywhere}
+ .register-card-field dt{font-size:11px;color:var(--muted);font-weight:600;margin:0 0 3px}
+ .register-card-field dd{margin:0;font-size:12px;min-width:0}
+ .register-card-field .btn,.register-card-field .inline-link{max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere}
+ .register-card-field:has(.case-next-task),.register-card-field:has(.case-quick-action){grid-column:1/-1}
+ .register-card-details{border-top:1px solid var(--line);padding-top:2px}
+ .register-card-details dl{padding-top:5px}
+ .report-grades>.responsive-register{flex:1 0 auto;min-height:0}
+ .report-grades>.responsive-register>.table-scroll{height:0;flex:1 0 var(--workspace-table-min);min-height:var(--workspace-table-min);max-height:none;overflow:auto}
+ .report-grades>.responsive-register>.register-cards{height:0;flex:1 0 var(--workspace-table-min);min-height:var(--workspace-table-min);overflow:auto}
+ .report-grades>.responsive-register>.register-presentation-bar{flex-shrink:0}
+ .gradebook-entry-controls{min-width:0;max-width:100%;border-bottom:1px solid var(--line)}
+ .gradebook-entry-switch{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px 8px}
+ .gradebook-entry-switch .btn{min-height:30px;padding:4px 8px;font-size:12px}
+ .gradebook-single-controls{display:flex;align-items:flex-end;gap:6px 10px;flex-wrap:wrap;padding:4px 8px 7px;min-width:0}
+ .gradebook-single-controls>label{display:grid;gap:3px;min-width:0;max-width:100%;flex:1 1 220px;font-size:11px;font-weight:650}
+ .gradebook-single-controls .select{min-width:0;width:100%;max-width:100%;font-size:12px}
+ .gradebook-single-info{display:flex;flex-wrap:wrap;align-items:center;gap:4px 9px;flex:1 1 100%;min-width:0;font-size:12px}
+ .gradebook-single-info strong{overflow-wrap:anywhere}
+ .gradebook-single-controls>p{margin:0;flex:1 1 100%}
+ .gradebook-single-table{width:100%;table-layout:fixed;min-width:0!important}
+ .gradebook-single-table .sticky-first{width:42%;min-width:0!important;max-width:none}
+ .gradebook-single-table .gradebook-single-heading,.gradebook-single-table .gradebook-entry,.gradebook-single-table .gradebook-item-entry,.gradebook-single-table .gradebook-result{min-width:0!important;max-width:none}
+ .gradebook-single-table .gradebook-cell{width:100%;min-width:0;max-width:100%;height:38px;font-size:16px}
+ .gradebook-single-table .gradebook-result-status{width:100%;min-width:0;max-width:100%;height:32px;font-size:12px}
+ .gradebook-single-table .tracker-cell{min-width:0;max-width:100%;width:100%;white-space:normal;overflow-wrap:anywhere}
+ .gradebook-single-table .cell-sub,.gradebook-single-table .gradebook-single-heading{white-space:normal;overflow-wrap:anywhere}
+ .gradebook-single-table .pupil-identity{min-width:0;max-width:100%;overflow-wrap:anywhere}
+ .gradebook-single-table .inline-link{white-space:normal;overflow-wrap:anywhere;text-align:left}
+ @media(max-width:760px){
+  .responsive-register[data-register-view="auto"]>.table-scroll{display:none}
+  .responsive-register[data-register-view="auto"]>.register-cards{display:grid;grid-template-columns:1fr;align-content:start}
+  .register-card{padding:9px;gap:6px}
+  .register-card .btn{min-height:34px}
+  .register-presentation-bar{padding:4px 7px}
+  .gradebook-entry-switch .btn{min-height:34px}
+  .gradebook-single-controls{padding:5px 7px}
+  .gradebook-single-controls>label{flex-basis:100%}
+  .gradebook-single-controls .select{min-height:36px}
+  .gradebook-single-table td,.gradebook-single-table th{padding:5px 4px}
+  .gradebook-single-table .gradebook-entry{padding:4px}
+  .gradebook-single-table .gradebook-cell{height:42px}
+  .gradebook-single-table .sticky-first .house-badge{width:20px;height:20px;flex-shrink:0}
+  .gradebook-single-table .pupil-identity{gap:3px}
+ }
+}
+@media print{
+ .register-presentation-bar,.register-cards,.gradebook-entry-switch{display:none!important}
+ .responsive-register>.table-scroll{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important}
+}
