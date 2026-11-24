@@ -1,9 +1,11 @@
 import {createStore} from './store.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
+import {filterStudents,PROFILE_TABS} from './student-profiles.mjs';
+import {profilePeers} from './student-profile-views.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {GROUPS,DEFAULT_GROUPS} from './class-overview.mjs';
-import {createWorkspace,parseRoute,routeHash,HELP} from './workspace.mjs';
+import {createWorkspace,parseRoute,routeHash,HELP,sortRows,matchText} from './workspace.mjs';
 import {sidebar,topbar,renderPage,renderDetail,renderSearchResults,esc,icon} from './views.mjs';
 
 const byId=id=>document.getElementById(id);
@@ -11,7 +13,7 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:''};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
@@ -45,11 +47,12 @@ function render({top=false,keepFocus=false}={}){
 }
 function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
 function clearAnalysis(){state.analysisStudent='';state.analysisAssessment='';state.analysisCommon='';state.analysisUnit='';state.analysisFrom='';state.analysisTo='';}
-function clearFilters(){clearRegisterFilters();clearAnalysis();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
-function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information'}={}){
+function clearStudentFilters(){clearRegisterFilters();state.studentYear='all';state.studentAttainment='all';state.studentSupport='all';}
+function clearFilters(){clearStudentFilters();clearAnalysis();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
+function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information',analysisStudent=''}={}){
  if(!closeDetail(false))return;closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
- state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';
+ state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';state.analysisStudent=analysisStudent;
  const hash=routeHash(page,classId);if(location.hash!==hash)history.pushState(null,'',hash);
  render({top:true});main.focus({preventScroll:true});
 }
@@ -64,13 +67,14 @@ function restoreFocus(token){
  const node=token.element?.isConnected?token.element:token.id?byId(token.id):token.action?document.querySelector('[data-action="'+CSS.escape(token.action)+'"]'+(token.record!==undefined?'[data-id="'+CSS.escape(token.record)+'"]':'')):null;
  node?.focus({preventScroll:true});
 }
-function openDetail(kind,id){
+function openDetail(kind,id,options={}){
  hideHelp();
- const next={kind,id};
+ const next={kind,id,...options};
  try{
   const markup=renderDetail(w,next);
   if(!grid.canLeave())return;
   detailDialog.classList.toggle('wide-markbook',kind==='mark-grid');
+  detailDialog.classList.toggle('wide-profile',kind==='student');
   if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
   grid.init();detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
@@ -85,13 +89,14 @@ function addBack(){
 function refreshDetail(){
  const scroll=detailDialog.querySelector('.drawer-body')?.scrollTop||0;
  detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
+ detailDialog.classList.toggle('wide-profile',detail.kind==='student');
  detailDialog.innerHTML=renderDetail(w,detail);addBack();grid.init();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=scroll;
 }
 function detailBack(){
  if(!detailStack.length){closeDetail();return;}
  if(!grid.canLeave())return;
- const old=detailStack.pop();detail={kind:old.kind,id:old.id};refreshDetail();
+ const old=detailStack.pop(),{scroll,...previous}=old;detail=previous;refreshDetail();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=old.scroll;
  detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
 }
@@ -99,7 +104,35 @@ function closeDetail(restore=true){
  if(!grid.canLeave())return false;
  detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
  if(restore)restoreFocus(drawerReturn);
- drawerReturn=null;detailDialog.classList.remove('wide-markbook');return true;
+ drawerReturn=null;detailDialog.classList.remove('wide-markbook','wide-profile');return true;
+}
+function openStudent(id,tab='overview'){
+ const rows=state.page==='students'&&!detailDialog.open?filterStudents(w.studentRows(),state,matchText):null;
+ const order=state.sorts.students??{key:'name',direction:'asc'};
+ const peerIds=rows&&rows.some(p=>p.id===id)?sortRows(rows,order.key,order.direction).map(p=>p.id):undefined;
+ openDetail('student',id,{tab,peerIds});
+}
+function changeProfile(values,focusId=null,action=null){
+ if(detail?.kind!=='student')return;
+ const next={...detail,...values};
+ try{
+  if(!w.access.canViewStudent(next.id))throw Error('Student outside current demo scope');
+  renderDetail(w,next);detail=next;refreshDetail();
+  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=0;
+  if(focusId)byId(focusId)?.focus({preventScroll:true});
+  else if(action)detailDialog.querySelector('[data-action="'+action+'"][data-id="'+CSS.escape(String(values.tab??values.id??''))+'"]')?.focus({preventScroll:true});
+ }catch(error){notify(error.message);}
+}
+function switchProfile(id){
+ if(detail?.kind!=='student'||!profilePeers(w,detail).some(p=>p.id===id))return;
+ changeProfile({id,subjectId:'',commentSubject:''},'profile-pupil');
+}
+function openProfileAnalysis(enrolmentId){
+ if(detail?.kind!=='student')return;
+ const s=w.studentProfile(detail.id).subjects.find(s=>s.enrolmentId===enrolmentId);
+ if(!s){notify('Subject outside your accessible profile.');return;}
+ if(!w.scopedClassIds.has(s.classId)||!w.scopeStudentIds.has(detail.id)||!w.academicAnalysis(s.classId).roster.some(p=>p.id===enrolmentId))state.scope='accessible';
+ navigate('classes',{classId:s.classId,classTab:'student-analysis',analysisStudent:enrolmentId});
 }
 function openSearch(){
  if(searchDialog.open)return;
@@ -112,7 +145,7 @@ function closeSearch(restore=true){
 }
 function pickSearch(value){
  const i=value.indexOf(':'),kind=value.slice(0,i),id=value.slice(i+1);closeSearch();
- if(kind==='class')openClass(id);else openDetail(kind,id);
+ if(kind==='class')openClass(id);else if(kind==='student')openStudent(id);else openDetail(kind,id);
 }
 function showHelp(anchor,pin=false){
  const content=HELP[anchor?.dataset.help];if(!content)return;
@@ -193,7 +226,20 @@ document.addEventListener('click',event=>{
   case 'go-actions':navigate('intervention',{caseFilter:'actions'});break;
   case 'class-cases':navigate('intervention',{caseClass:id});break;
   case 'class-cases-current':navigate('intervention',{caseClass:state.classId});break;
-  case 'open-student':openDetail('student',id);break;
+  case 'open-student':openStudent(id);break;
+  case 'open-student-support':openStudent(id,'support');break;
+  case 'profile-tab':if(PROFILE_TABS.some(([k])=>k===id))changeProfile({tab:id},null,'profile-tab');break;
+  case 'profile-switch':switchProfile(id);break;
+  case 'profile-select-subject':
+    if(detail?.kind==='student'&&w.studentProfile(detail.id).subjects.some(s=>s.enrolmentId===id))changeProfile({tab:'assessments',subjectId:id},'profile-subject');break;
+  case 'profile-result':openDetail('profile-result',id);break;
+  case 'profile-open-analysis':openProfileAnalysis(id);break;
+  case 'profile-open-class':openClass(id);break;
+  case 'open-profile-staff':openDetail('staff',id);break;
+  case 'students-reset':clearStudentFilters();render();break;
+  case 'students-below':clearStudentFilters();state.studentAttainment='below';render();break;
+  case 'students-soc':clearStudentFilters();state.studentSupport='active';render();break;
+  case 'students-due':clearStudentFilters();state.studentSupport='due';render();break;
   case 'open-case':openDetail('case',id);break;
   case 'open-notice':openDetail('notice',id);break;
   case 'open-deadline':openDetail('deadline',id);break;
@@ -243,6 +289,11 @@ document.addEventListener('input',event=>{
 document.addEventListener('change',event=>{
  const el=event.target;
  if(grid.onChange(el))return;
+ if(el.id==='profile-pupil'){switchProfile(el.value);return;}
+ if(el.id==='profile-subject'){changeProfile({subjectId:el.value},'profile-subject');return;}
+ if(el.id==='profile-comment-subject'){changeProfile({commentSubject:el.value},'profile-comment-subject');return;}
+ const studentFields={'student-year':'studentYear','student-attainment':'studentAttainment','student-support':'studentSupport'};
+ if(studentFields[el.id]){state[studentFields[el.id]]=el.value;render({keepFocus:true});return;}
  if(el.id==='markbook-unit'){state.unitId=el.value;render({keepFocus:true});return;}
  const analysisFields={'analysis-student':'analysisStudent','analysis-assessment':'analysisAssessment','analysis-common':'analysisCommon','analysis-unit':'analysisUnit','analysis-from':'analysisFrom','analysis-to':'analysisTo'};
  if(analysisFields[el.id]){
