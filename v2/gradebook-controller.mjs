@@ -81,10 +81,11 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
  function focus(el,{extend=false,select=true}={}){
   if(!el)return false;
   const next=point(el);
-  // focusin runs synchronously, so set the desired range after focus.
-  const start=extend?(anchor??next):next;el.focus();if(select)el.select();anchor=start;end=next;paintSelection();return true;
+  const current=document.activeElement?.matches?.('.gradebook-cell')?point(document.activeElement):next;
+  const start=extend?(anchor??current):next;
+  anchor=start;end=next;el.focus();if(select)el.select();paintSelection();return true;
  }
- function onFocus(el){if(!el.matches?.('.gradebook-cell'))return;anchor=end=point(el);paintSelection();}
+ function onFocus(el){if(!el.matches?.('.gradebook-cell'))return;const p=point(el);if(end?.row===p.row&&end?.col===p.col)return;anchor=end=p;paintSelection();}
  function pointer(event){
   const el=event.target.closest?.('.gradebook-cell');if(!el||!event.shiftKey)return;
   event.preventDefault();focus(el,{extend:true});
@@ -137,7 +138,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   const available=cells().map(input=>({...point(input),input}));
   const next=nextMarkCell(available,point(el),key,event.shiftKey);
   if(!next&&key!=='Enter')return false;
-  event.preventDefault();if(next)focus(next.input,{extend:event.shiftKey&&key.startsWith('Arrow')});return true;
+  event.preventDefault();if(next){if(event.shiftKey&&key.startsWith('Arrow')&&(!anchor||!end||end.row!==point(el).row||end.col!==point(el).col))anchor=end=point(el);focus(next.input,{extend:event.shiftKey&&key.startsWith('Arrow')});}return true;
  }
  return {mount,isDirty:dirty,guard,onInput,onFocus,pointer,paste,keyboard,save,discard};
 }
