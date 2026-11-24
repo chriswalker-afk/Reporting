@@ -24,7 +24,7 @@ export const ACTION_LABELS=CASE_ACTION_LABELS;
 export const HELP={
   scope:'Changes the displayed cohort, not your permissions. All my access combines your assigned responsibilities. House and tutor views use only members of those groups.',
   average:'Weighted mean of complete, included assessment percentages for each pupil, then the mean of those pupil percentages. Missing and excluded marks are omitted; zero is valid.',
-  analysisTrend:'The teal line is the cumulative weighted mean of eligible complete assessment percentages in the selected range. The dashed line shows individual assessment results. The MTG boundary is the course tracker threshold, not a prediction. Points are spaced by assessment sequence, not elapsed time.',
+  analysisTrend:'The teal line shows cumulative attainment using the course’s calculation policy and eligible complete assessments in the selected range. The dashed line shows individual assessment results. The MTG boundary is the course tracker threshold, not a prediction. Points are spaced by assessment sequence, not elapsed time.',
   analysisDistribution:'Frequency of pupils by calculated grade. The overall distribution uses the course tracker scheme; a standalone assessment uses its own boundaries. Only scored pupils contribute.',
   analysisBins:'10-percentage-point bins include the lower bound but exclude the upper bound, except the last bin includes 100%. Select a bin to inspect the exact underlying pupils.',
   analysisBox:'Minimum, lower quartile, median, upper quartile and maximum of scored percentages, with quartiles linearly interpolated at (n−1)p. Whiskers are minimum/maximum; SD is population standard deviation in percentage points.',
@@ -43,7 +43,7 @@ export const HELP={
   target:'Current overall grade compared with the minimum target using the ordered course grading scheme. Unknown grades are kept separate.',
   predicted:'Teacher-entered predicted grade. It is distinct from the current grade calculated from assessment marks.',
   studentAverage:'Weighted mean of complete included assessment percentages for this pupil and subject. Default equal assessment weighting. Zero is valid; missing, absent, incomplete, diagnostic and excluded results are omitted.',
-  overallGrade:'The overall percentage mapped to the course tracker grade boundaries. Letter grades are not averaged. Illustrative boundaries, not official exam predictions.',
+  overallGrade:'Attainment calculated using the course’s calculation policy, mapped to its tracker grade boundaries. Letter grades are not averaged. Illustrative boundaries, not official exam predictions.',
   latest:'Most recent complete, included published assessment by assessment date, not entry date. Grade uses that assessment’s own boundaries. Drafts, diagnostics and excluded results are omitted.',
   minimumTarget:'Minimum target grade for this subject. Only authorised faculty leadership can edit it; it is separate from current attainment and teacher prediction.',
   nextGrade:'Percentage-point difference from the unrounded overall average to the next boundary in the course tracker scheme. A dash means no scored result or highest grade reached.',
