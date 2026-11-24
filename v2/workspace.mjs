@@ -1,6 +1,7 @@
 import {finite} from './model.mjs';
 import {projectRegisterRow,sortValue} from './class-overview.mjs';
 import {createMarkbook} from './markbook.mjs';
+import {createAcademicAnalysis} from './academic-analysis.mjs';
 export const NAV=[
   ['home','Home','home'],['notices','Notices','notice'],['classes','Classes','class'],
   ['students','Students','students'],['intervention','Intervention','support']
@@ -19,6 +20,14 @@ export const ACTION_LABELS={activateWave2:'Complete Wave 2 plan',respondHouse:'R
 export const HELP={
   scope:'Changes the displayed cohort, not your permissions. All my access combines your assigned responsibilities. House and tutor views use only members of those groups.',
   average:'Weighted mean of complete, included assessment percentages for each pupil, then the mean of those pupil percentages. Missing and excluded marks are omitted; zero is valid.',
+  analysisTrend:'The teal line is the cumulative weighted mean of eligible complete assessment percentages in the selected range. The dashed line shows individual assessment results. The MTG boundary is the course tracker threshold, not a prediction. Points are spaced by assessment sequence, not elapsed time.',
+  analysisDistribution:'Frequency of pupils by calculated grade. The overall distribution uses the course tracker scheme; a standalone assessment uses its own boundaries. Only scored pupils contribute.',
+  analysisBins:'10-percentage-point bins include the lower bound but exclude the upper bound, except the last bin includes 100%. Select a bin to inspect the exact underlying pupils.',
+  analysisBox:'Minimum, lower quartile, median, upper quartile and maximum of scored percentages, with quartiles linearly interpolated at (n−1)p. Whiskers are minimum/maximum; SD is population standard deviation in percentage points.',
+  analysisTopics:'Marks earned divided by marks available, across complete scored results. Overall topic summaries use included published assessments only. Standalone analysis uses its selected assessment, even if diagnostic. No inferred topic evidence from total-only marks.',
+  analysisAssessment:'Each assessment mean is the arithmetic mean of complete, non-excluded pupil percentages for that assessment. Coverage and paper difficulty may differ. Diagnostic results can be analysed separately.',
+  analysisCoverage:'Scored, missing, absent, incomplete and excluded are mutually exclusive result states. All assigned pupils in the selected scope form the denominator.',
+  analysisComparison:'Parallel class overall summaries use equal pupil averages, not equal class means. Compare identical shared assessment definitions for like-for-like evidence. Year/course summaries stay separate; no mixed-course grade or mean.',
   coverage:'Number of pupils with a calculated overall percentage, divided by pupils in the selected class or cohort. Results are not rounded until display.',
   target:'Current overall grade compared with the minimum target using the ordered course grading scheme. Unknown grades are kept separate.',
   predicted:'Teacher-entered predicted grade. It is distinct from the current grade calculated from assessment marks.',
@@ -138,6 +147,12 @@ export function createWorkspace(store,staffId,requestedScope){
     if(!markbooks.has(id))markbooks.set(id,createMarkbook(data,access,id,scope));
     return markbooks.get(id);
   }
+  const analysisCache=new Map();
+  function academicAnalysis(id){
+    if(!scopedClassIds.has(id))throw Error('Class outside current scope');
+    if(!analysisCache.has(id))analysisCache.set(id,createAcademicAnalysis(data,access,scope,id));
+    return analysisCache.get(id);
+  }
   function classRecord(id){
     if(!scopedClassIds.has(id))throw new Error('Class is not in the selected scope');
     if(classCache.has(id))return classCache.get(id);
@@ -217,6 +232,6 @@ export function createWorkspace(store,staffId,requestedScope){
     return get({faculty:'faculties',house:'houses',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
-    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,subjectDetail,noteDetail,markbook,
+    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,subjectDetail,noteDetail,markbook,academicAnalysis,
     caseRows,caseDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
 }
