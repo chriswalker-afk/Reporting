@@ -198,3 +198,12 @@ The class Assessment tracker now supports direct editing of total-only assessmen
 The main grid stages changes in memory, validates against each assessment's own maximum, previews grades using its own boundaries, and recalculates the eligible weighted summary using the existing analytics functions. One explicit save commits every changed result in a permission-checked, revision-checked transaction. Clearing recorded marks requires confirmation. Leaving or changing the gradebook is blocked until changes are saved or discarded. Existing audit and storage safeguards remain.
 
 Keyboard navigation (Enter, arrows, Tab), Shift+arrow or Shift+click rectangular selection, and tab-separated block paste follow the visible register order. Paste cannot silently cross a structured or read-only result column; blank pasted cells leave marks unchanged and CLEAR explicitly clears. Name column and headers are sticky. Selection is visual in this pass; full range copy, fill and undo/redo are later work. PR22 simplifies creation and management; PR23 expands topic and question columns directly within the gradebook.
+
+
+## Simplified assessment setup (PR22)
+
+The default assessment form asks for a title, date, curriculum unit and maximum mark. Overall-mark assessments are ready for mark entry immediately by default; select Draft under Advanced settings to postpone inclusion. Only completed, published, included assessments on or before the reference date affect overall attainment.
+
+Topic and question-level formats use structured rows for item label, maximum mark, topic and optional AO, with a live total. Advanced settings contain class assignment, weight and grade boundaries; boundary inputs can be expressed as percentage thresholds or equivalent raw marks, with percentages stored as before.
+
+Each assessment header offers Settings to authorised staff, with edit, duplicate, publish (draft only), exclude/re-include, and delete (empty draft only). Duplicating copies configuration but never results, publication state or exclusion state. When results already exist, item identity/order and assignments remain locked; maximum-mark corrections require a reason and confirmation, and cannot reduce a maximum below any recorded mark in any assigned class. The original marks and audit records are retained.
