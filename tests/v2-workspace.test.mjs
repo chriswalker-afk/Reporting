@@ -41,7 +41,9 @@ test('global search uses accessible responsibilities, not every pupil or all cla
  assert.ok(outside);
  assert.equal(w.search(outside.id).some(r=>r.kind==='class'&&r.id===outside.id),false);
  assert.throws(()=>w.studentDetail(inaccessible.id),/outside/);
- assert.throws(()=>w.caseDetail('I001'),/outside/);
+ const inaccessibleCase=data.interventions.find(c=>!w.access.canViewCase(c.id));
+ assert.ok(inaccessibleCase);
+ assert.throws(()=>w.caseDetail(inaccessibleCase.id),/outside/);
  assert.ok(w.search('demo staff notice').some(r=>r.kind==='notice'));
 });
 test('class, student and home views use the same current marks and coverage',()=>{
