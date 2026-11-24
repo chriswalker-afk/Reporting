@@ -10,6 +10,7 @@ import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {createGradebookController} from './gradebook-controller.mjs';
 import {createWorkspaceDisplay} from './responsive-workspace.mjs';
+import {createPageZoom,zoomControls} from './page-zoom.mjs';
 import {createWorkspaceDisclosures} from './workspace-disclosures.mjs';
 import {createGradebookFocus,focusContext} from './gradebook-focus.mjs';
 import {REGISTER_NAMES,REGISTER_VIEWS} from './responsive-register.mjs';
@@ -29,6 +30,8 @@ const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const display=createWorkspaceDisplay({app:byId('app'),main,sidebar:nav,topbar:bar,backdrop:byId('navigation-backdrop'),getStaff:()=>state.staffId,notify});
+const pageZoom=createPageZoom({app:byId('app'),main,getStaff:()=>state.staffId,getView:()=>state,notify});
+document.querySelector('.demo-footer .footer-actions').insertAdjacentHTML('beforeend',zoomControls());
 const disclosures=createWorkspaceDisclosures({root:main,getContext:()=>[state.staffId,state.page,state.page==='classes'?state.classId?'class:'+state.classTab:'index':''],getDensity:()=>byId('app').dataset.workspaceDensity});
 const gradebookFocus=createGradebookFocus({app:byId('app'),root:main,getContext:()=>focusContext(state),restoreDisclosures:()=>disclosures.sync()});
 const analysisPanels=createExpandablePanels({root:main,getContext:()=>[state.staffId,state.scope,state.page,state.classId,state.classTab]});
@@ -87,7 +90,7 @@ function render({top=false,keepFocus=false}={}){
  const planned=nav.querySelector('.sidebar-future'),navScroll=nav.querySelector('.sidebar-scroll');if(planned)planned.open=plannedOpen;if(navScroll)navScroll.scrollTop=oldNavScroll;
  display.sync();
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
- disclosures.sync();gradebookFocus.sync();analysisPanels.sync();nameScrollRegions(main);
+ pageZoom.sync();disclosures.sync();gradebookFocus.sync();analysisPanels.sync();nameScrollRegions(main);
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  gradebook.mount();
@@ -247,10 +250,11 @@ document.addEventListener('click',event=>{
  if(disclosures.click(event))return;
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-entry-view','drawer-expand','expand-panel','toggle-workspace-topbar'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-entry-view','drawer-expand','expand-panel','toggle-workspace-topbar','page-zoom-in','page-zoom-out','page-zoom-reset'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
+  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);break;
   case 'drawer-expand':drawerDisplay.toggle();break;
   case 'expand-panel':(detailDialog.contains(el)?drawerPanels:analysisPanels).toggle(el);break;
   case 'gradebook-entry-view':{
@@ -297,7 +301,7 @@ document.addEventListener('click',event=>{
   case 'close-menu':display.closeMenu();break;
   case 'toggle-workspace-navigation':display.toggleNavigation();break;
    case 'toggle-workspace-topbar':display.toggleTopbar();break;
-  case 'reset-workspace-display':display.reset();disclosures.reset();break;
+  case 'reset-workspace-display':display.reset();disclosures.reset();pageZoom.resetAll();break;
   case 'search':openSearch();break;
   case 'close-search':closeSearch();break;
   case 'search-result':pickSearch(id);break;
