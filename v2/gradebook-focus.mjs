@@ -26,7 +26,7 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   for(const id of FOCUS_PANELS){const button=panelButton(id);if(button)button.setAttribute('aria-expanded',String(active&&panel===id));}
   // In focus mode Help is a top-level panel. Outside focus, the ordinary
   // disclosure controller owns its open/closed state.
-  if(active){const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';}
+  if(active){const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';const tools=node.querySelector('[data-workspace-disclosure="single-tools"]');if(tools)tools.open=panel==='tools';}
  }
  function setActive(value){
   if(!surface()||!getContext())return false;
