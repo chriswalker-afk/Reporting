@@ -398,3 +398,14 @@ The normal assessment tracker now uses the same grouped toolbar as full-screen f
 The class header and tabs use tighter spacing on the gradebook only. Longer class context starts collapsed. The default compact grid uses smaller mark inputs and tighter row padding, shorter assessment metadata, a clickable assessment title for details, and compact action links. Draft, diagnostic and future evidence labels, coverage, calculation method and unsaved/error warnings remain accessible. Comfortable row density remains available through Layout.
 
 Regression coverage measures the usable table area and visible pupil rows in the normal workspace at 1366×768, 1280×720 and 1024×768, in addition to the existing responsive and focus-mode matrix. These are representative CSS viewports, not a claim about a particular physical school monitor.
+
+
+## Page zoom (PR38)
+
+The existing footer contains **− / percentage / +** controls on every page. In full-screen gradebook focus mode, the same controls appear in the focus heading instead. Adjust the working content between 70% and 150% in 10-point steps. Select the percentage to restore 100%. Navigation, the top bar, footer and the normal zoom controls retain their size. The gradebook focus zoom controls compensate for content scaling so they also remain readable.
+
+Zoom uses native CSS layout-aware scaling, not a transform that leaves unusable whitespace or an instruction to change the browser's global zoom. Personal zoom preferences are remembered per fictional staff member and page type (including each class tab; the same tab's setting applies to all classes). Settings are separate from school records and gradebook layouts. Reset workspace display clears the current staff member's page zoom preferences. Detail dialogs retain their existing sizing and full-screen controls; printing uses the normal unscaled layout.
+
+Zoom updates the existing DOM without re-rendering the page or calling save/discard. Scroll offsets are retained within the new scroll bounds; mark values, selected ranges, pending edits and undo history remain in place. The controls have accessible names, normal keyboard button behaviour and disabled limits.
+
+Tests cover preference validation, per-view/staff isolation, persistence after reload, physical mark row scaling and visible row capacity, responsive bounds, gradebook focus mode and draft preservation. The separate responsive audit also visits all main destinations and class tabs at 70% and 150% on desktop and phone widths.
