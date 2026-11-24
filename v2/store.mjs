@@ -213,7 +213,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       for(const entry of entries){
         const assessment=lookup(d,'assessments',entry.assessmentId),enrolment=lookup(d,'enrolments',entry.enrolmentId);
         must(assessment&&enrolment?.classId===classId&&a.canEditResult(entry.assessmentId,entry.enrolmentId),'Only assigned teaching staff may edit this class gradebook');
-        must(assessment.mode==='total'&&assessment.items.length===1,'Edit topic/question results in the assessment detail');
         const old=resultRecord(d,entry.assessmentId,entry.enrolmentId),clean=resultInput(assessment,entry.status,entry.marks);
         must(!old?.exclusionReason,'Edit excluded results in the assessment detail');
         const clears=old&&Object.keys(old.marks).some(id=>!Object.hasOwn(clean.marks,id));
