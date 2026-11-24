@@ -47,8 +47,9 @@ function referral(data,c,staffId,input,wave){
  record(c,data,staffId,'requestWave'+wave,'Wave '+wave+' requested: '+trigger+' — '+reason,{referral:clone(request),reviewDate:c.reviewDate});
 }
 export function startCase(data,access,staffId,id,enrolmentId,input){
- need(!data.interventions.some(c=>c.enrolmentId===enrolmentId&&c.state!=='closed'),'An active subject intervention already exists; open that case instead');
- need(access.canStartWave1(enrolmentId),'Only an assigned class teacher can start Wave 1');
+ const e=data.enrolments.find(e=>e.id===enrolmentId);
+ need(e&&access.teaches(e.classId),'Only an assigned class teacher can start Wave 1');
+ need(access.canStartWave1(enrolmentId),'An active subject intervention already exists; open that case instead');
  const c={id,enrolmentId,ownerStaffId:staffId,state:'wave1',wave:1,reason:field(input.reason,'academic concern'),
   strategies:lines(input.strategies,'Classroom strategies'),wave1Plan:field(input.plan,'specific classroom intervention and success measure'),
   openedDate:data.asOf,updatedDate:data.asOf,reviewDate:date(input.reviewDate,data.asOf),evaluation:null,
