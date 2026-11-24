@@ -1,0 +1,57 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createStore} from '../v2/store.mjs';
+import {createWorkspace} from '../v2/workspace.mjs';
+import {renderPage} from '../v2/views.mjs';
+import {normalizeLayout,layoutKey,loadLayout,saveLayout,revealLayout,projectGradebook,groupSummary,moveAssessment,orderedAssessments,groupOf,markDisplay,itemDisplay} from '../v2/gradebook-layout.mjs';
+import {liveSummary,blockEntries} from '../v2/gradebook-entry.mjs';
+import {selectedRectangle,exportGradebook} from '../v2/gradebook-bulk.mjs';
+const cls='11-maths-1',a1='11-maths-A1',qla='11-maths-A3';
+const state={page:'classes',classId:cls,classTab:'markbook',unitId:'',query:'',flag:'all',below:false,sorts:{}};
+const setup=()=>{const s=createStore(),w=createWorkspace(s,'sam','faculty'),b=w.markbook(cls),o=b.overview('');return {s,w,b,o};};
+test('preferences are normalized, scoped to teacher and class, and tolerate bad storage',()=>{
+ const map=new Map(),storage={getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,v)};
+ const p=normalizeLayout({group:'unit',display:'grade',hidden:[a1,a1,3],summary:['gap','mtg','fake'],from:'2026-09-01',to:'2026-11-24'});
+ assert.deepEqual(p.hidden,[a1]);assert.deepEqual(p.summary,['mtg','gap']);
+ assert.equal(saveLayout(storage,'sam',cls,p),true);
+ assert.deepEqual(loadLayout(storage,'sam',cls),p);
+ assert.equal(loadLayout(storage,'avery',cls).group,'none');
+ assert.equal(loadLayout(storage,'sam','different-class').group,'none');
+ map.set(layoutKey('sam',cls),'broken');assert.equal(loadLayout(storage,'sam',cls).display,'marks');
+ assert.equal(normalizeLayout({from:'2026-02-30'}).from,'');
+ assert.equal(normalizeLayout({from:'2026-12-01',to:'2026-01-01'}).to,'');
+ assert.deepEqual(revealLayout(p).hidden,[]);assert.equal(revealLayout(p).display,'marks');
+});
+test('layout grouping, hiding and collapse never change the underlying results or group evidence',()=>{
+ const {s,b,o,w}=setup(),a=o.assessments.find(a=>a.id===a1),g=groupOf(a,'unit',b.units),scheme={bands:b.defaultBands};
+ const full=projectGradebook(o,b.units,{group:'unit'},[qla],w.asOf);
+ const partial=projectGradebook(o,b.units,{group:'unit',hidden:[qla],collapsed:[g.id]},[qla],w.asOf);
+ assert.equal(partial.shownIds.has(a1),false);
+ assert.equal(partial.columns.some(c=>c.assessment?.id===qla),false);
+ const group=full.groups.find(x=>x.id===g.id),collapsed=partial.groups.find(x=>x.id===g.id);
+ assert.ok(collapsed?.collapsed);
+ assert.deepEqual(group.all,collapsed.all);
+ const p=o.rows[0],expected=liveSummary({...p.summary,results:p.summary.results.filter(x=>group.all.includes(x.assessmentId))},new Map(),scheme);
+ assert.deepEqual(groupSummary(p.summary,collapsed,new Map(),scheme),expected);
+ const all=projectGradebook(o,b.units,{hidden:o.assessments.map(x=>x.id)},[],w.asOf);
+ assert.equal(all.columns.length,0);assert.ok(exportGradebook(o).includes(a1));assert.equal(s.revision(),0);
+});
+test('custom order is stable across grouping and filters; summary cells are not editable',()=>{
+ const {w,b,o}=setup(),first=orderedAssessments(o.assessments,{}),moved=moveAssessment(o.assessments,{},first[1].id,-1,b.units);
+ assert.equal(moved.order,'custom');assert.equal(orderedAssessments(o.assessments,moved)[0].id,first[1].id);
+ const p=projectGradebook(o,b.units,{...moved,hidden:[first[1].id]},[],w.asOf);
+ assert.equal(p.columns[0].assessment.id,first[0].id);
+ const grouped=projectGradebook(o,b.units,{group:'unit'},[],w.asOf),col=grouped.columns.findIndex(c=>c.kind==='group');
+ assert.throws(()=>selectedRectangle(o,grouped.columns,{row:0,col},{row:0,col}),/calculated or read-only/);
+ assert.throws(()=>blockEntries(o,0,col,'1',grouped.columns),/read-only or structured/);
+ const term=projectGradebook(o,b.units,{group:'term'},[],w.asOf);assert.ok(term.groups.length);
+ const type=projectGradebook(o,b.units,{group:'type',format:'questions'},[],w.asOf);assert.ok(type.visible.every(a=>a.mode==='questions'));
+});
+test('display modes and summary options render without altering marks or inventing item grades',()=>{
+ const {w}=setup(),preview={state:'scored',grade:'7',percent:75,total:30,maxMarks:40,entered:1},pct=x=>x+'%';
+ assert.equal(markDisplay(preview,'marks',pct),'30/40');assert.equal(markDisplay(preview,'grade',pct),'7');assert.equal(markDisplay(preview,'percent',pct),'75%');
+ assert.equal(itemDisplay(5,{maxMarks:10},'grade',pct),'5');assert.equal(itemDisplay(5,{maxMarks:10},'percent',pct),'50%');
+ const html=renderPage(w,{...state,gradebookLayout:{group:'unit',display:'grade',summary:['gap'],hidden:[a1]},gradebookLayoutOpen:true});
+ assert.match(html,/gradebook-group-heading/);assert.match(html,/data-gradebook-gap/);assert.doesNotMatch(html,/class="gradebook-cell"/);assert.doesNotMatch(html,/data-gradebook-summary="/);
+ assert.match(renderPage(w,state),/class="gradebook-cell"/);
+});
