@@ -123,3 +123,54 @@
 }
 
 @media print{.navigation-backdrop{display:none!important}}
+
+/* PR29: explicit secondary information. Titles, primary actions, warnings,
+   status bars and record flags stay outside these disclosures. */
+@media screen{
+ .workspace-disclosure{min-width:0;max-width:100%;margin-bottom:8px}
+ .workspace-disclosure>summary{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;min-height:32px;padding:4px 9px;cursor:pointer;color:var(--accent-dark);font-size:12px;font-weight:650;list-style:none;border-radius:5px}
+ .workspace-disclosure>summary::-webkit-details-marker{display:none}
+ .workspace-disclosure>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);flex:none;margin:0 2px}
+ .workspace-disclosure[open]>summary::before{transform:rotate(45deg);margin-top:-3px}
+ .workspace-disclosure>summary:hover{background:#f1e8ec}
+ .disclosure-note{color:var(--muted);font-size:11px;font-weight:450;overflow-wrap:anywhere}
+ .disclosure-body{min-width:0;max-width:100%}
+ .workspace-heading-main{min-width:0;flex:1 1 220px}
+ .workspace-heading{align-items:center}
+ .workspace-heading-main .disclosure-context{margin:2px 0 0}
+ .disclosure-context>summary{display:inline-flex;padding:3px 5px;min-height:26px}
+ .disclosure-context .eyebrow{margin:3px 0 0}
+ .disclosure-context .subtitle{margin:2px 0 0}
+ .disclosure-context[open] .disclosure-body{padding-left:5px}
+ .disclosure-metrics{border:1px solid var(--border);border-radius:7px;background:#fff}
+ .disclosure-metrics>.disclosure-body{padding:5px 8px}
+ .disclosure-metrics .metrics,.disclosure-metrics .case-pipeline{margin-bottom:0}
+ .disclosure-filters{border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:0}
+ .disclosure-filters>summary{background:#f8f7f9}
+ .disclosure-filters .toolbar{border-top:0}
+ .disclosure-help{margin:5px 0 0;border:1px solid var(--border);border-radius:6px;background:#faf8fa}
+ .disclosure-help>summary{font-size:11px;min-height:29px}
+ .disclosure-help .stage-note{margin:0;padding:6px 9px}
+ .gradebook-surface>.disclosure-help,.report-grades>.disclosure-help{margin:0;border-inline:0;border-radius:0}
+ .gradebook-surface .disclosure-help .panel-body{padding:6px 10px}
+ .gradebook-surface .disclosure-help .gradebook-instructions{padding:6px 10px}
+ .reporting-demo-note{padding:5px 9px}
+ .workspace-primary-filters{flex-wrap:wrap}
+ .app-shell[data-workspace-density="compact"] .workspace-heading h1{font-size:clamp(19px,2vw,23px);line-height:1.25}
+ .app-shell[data-workspace-density="compact"] .workspace-heading{gap:4px;margin-bottom:6px}
+ .app-shell[data-workspace-density="compact"] .workspace-heading-main .disclosure-context>summary{font-size:11px;min-height:22px}
+ .app-shell[data-workspace-density="compact"] .disclosure-metrics>summary{min-height:30px}
+ .app-shell[data-workspace-density="compact"] .class-switcher .btn{min-height:30px;padding:3px 6px}
+ @media(max-width:760px){
+  .workspace-heading-main{flex-basis:100%}
+  .workspace-heading>.page-actions{width:100%;min-width:0}
+  .workspace-disclosure>summary{min-height:34px}
+  .disclosure-context>summary{min-height:29px!important}
+  .disclosure-note{font-size:11px}
+ }
+}
+@media print{
+ .workspace-disclosure>summary{display:none!important}
+ .disclosure-filters,.disclosure-help{display:none!important}
+ .workspace-heading .subtitle{font-size:11px}
+}
