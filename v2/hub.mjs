@@ -122,6 +122,7 @@ document.addEventListener('click',event=>{
  switch(action){
   case 'navigate':navigate(id);break;
   case 'mobile-menu':{const open=nav.dataset.open!=='true';nav.dataset.open=String(open);el.setAttribute('aria-expanded',String(open));break;}
+  case 'close-menu':nav.dataset.open='false';bar.querySelector('.mobile-toggle')?.setAttribute('aria-expanded','false');bar.querySelector('.mobile-toggle')?.focus();break;
   case 'search':openSearch();break;
   case 'close-search':closeSearch();break;
   case 'search-result':pickSearch(id);break;
@@ -180,7 +181,7 @@ document.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&helpAnchor){event.preventDefault();hideHelp();return;}
  if(searchDialog.open){
   const items=[...searchDialog.querySelectorAll('.search-result')],i=items.indexOf(document.activeElement);
-  if((event.key==='ArrowDown'||event.key==='ArrowUp')&&items.length){event.preventDefault();items[(i+(event.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();return;}
+  if((event.key==='ArrowDown'||event.key==='ArrowUp')&&items.length){event.preventDefault();items[i<0?(event.key==='ArrowDown'?0:items.length-1):(i+(event.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();return;}
   if(event.key==='Enter'&&document.activeElement?.id==='global-query'&&items.length){event.preventDefault();pickSearch(items[0].dataset.id);return;}
   return;
  }
