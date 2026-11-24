@@ -1,5 +1,6 @@
 import {demoHouses,demoHouseFor} from './branding.mjs';
 import {assertData,SCHEMA_VERSION} from './model.mjs';
+import {demoGradeSchemes,demoCourseScheme} from './grade-scales.mjs';
 
 /** Fixed, generated examples: never imported from school systems. */
 export function createDemoData(){
@@ -30,12 +31,7 @@ export function createDemoData(){
     add('subjects',{id:s.id,name:s.name,facultyId:s.faculty});
   }
   for(const h of demoHouses())add('houses',h);
-  const scheme=(id,name,labels,mins)=>add('gradeSchemes',{id,name,
-    bands:labels.map((grade,i)=>({grade,min:mins[i]})),illustrative:true});
-  scheme('ks3','KS3 illustrative attainment',['Emerging','Developing','Secure','Extending'],[0,40,60,80]);
-  scheme('igcse','IGCSE illustrative 9–1',['U','1','2','3','4','5','6','7','8','9'],[0,12,23,33,43,53,63,73,83,92]);
-  scheme('alevel','A level illustrative A*–E',['U','E','D','C','B','A','A*'],[0,35,45,55,65,75,88]);
-  scheme('ib','IB illustrative 7–1',['1','2','3','4','5','6','7'],[0,20,35,50,65,78,90]);
+  data.gradeSchemes.push(...demoGradeSchemes());
   const schemeById=id=>data.gradeSchemes.find(g=>g.id===id);
   const tutors=['sam','jordan','morgan','alex','robin'];
   for(let year=7;year<=13;year++){
@@ -54,9 +50,9 @@ export function createDemoData(){
     }
     for(const [si,s] of specs.entries()){
       const courseId=year+'-'+s.id;
-      const gradeSchemeId=year<=9?'ks3':year<=11?'igcse':s.id==='science'?'ib':'alevel';
+      const gradeSchemeId=demoCourseScheme(year,s.id);
       add('courses',{id:courseId,subjectId:s.id,year,academicYear:data.academicYear,
-        name:(year<=9?'KS3':year<=11?'IGCSE':s.id==='science'?'IB':'A level')+' '+s.name,
+        name:(year<=9?'KS3':year<=11?'IGCSE':'A level')+' '+s.name,
         gradeSchemeId,defaultWeight:1});
       const classIds=[courseId+'-1',courseId+'-2'];
       for(let j=0;j<2;j++)add('classes',{id:classIds[j],courseId,name:'Y'+year+' '+s.name+' '+(j+1),
