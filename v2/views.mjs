@@ -183,7 +183,6 @@ export function renderStudents(w,s){
  btn('Clear','students-reset','','btn-quiet')+'<span class="count">'+rows.length+' of '+all.length+' pupils</span></div>'+
  table('students',[['name','Student'],['year','Year'],['tutorGroupId','Tutor group','tutor'],['house','House'],['directoryFlags','Flags','flags'],['subjects','Subjects','profileScope'],['below','Below MTG','profileTargets'],['unknown','Unknown','profileTargets'],['cases','Active cases','intervention'],['due','Reviews due','due']],rows,(p,k)=>{
   if(k==='name')return pupilIdentity(link(p.name,'open-student',p.id)+'<span class="cell-sub">'+esc(p.id)+'</span>',p);
-  if(k==='house')return houseBadge(p,{label:true});
   if(k==='tutorGroupId')return tag(p.tutorGroupId);
   if(k==='directoryFlags')return tags({...p,tags:p.flags});
   if(k==='subjects')return esc(p.scored+'/'+p.subjects)+'<span class="cell-sub">Scored / visible</span>';
@@ -221,7 +220,6 @@ export function renderIntervention(w,s){
  '<span class="count">'+rows.length+(actionMode?' actions':' records')+'</span></div>'+
  table('cases',columns,rows,(c,k)=>{
   if(k==='studentName')return pupilIdentity(link(c.studentName,'open-case',c.id)+'<span class="cell-sub">TG '+esc(c.student.tutorGroupId)+'</span>',c.student);
-  if(k==='house')return houseBadge(c.student,{label:true});
   if(k==='status')return waveTag(c);
   if(k==='reviewDate'||k==='actionDate')return esc(displayDate(c[k]))+(c.state!=='closed'&&c[k]<w.asOf?' '+tag('Overdue','tag-danger'):c.state!=='closed'&&c[k]===w.asOf?' '+tag('Due today','tag-warning'):'');
   if(k==='actionType')return btn(ACTION_LABELS[c.actionType],'case-action',caseActionId(c.id,c.actionType),'btn-primary');
