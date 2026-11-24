@@ -24,8 +24,8 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   const control=toggle();
   if(control){control.textContent=active?'Exit focus':'Full screen';control.setAttribute('aria-pressed',String(active));control.title=active?'Exit focus mode (Escape)':'Maximise the gradebook within the browser window';}
   for(const id of FOCUS_PANELS){const button=panelButton(id);if(button)button.setAttribute('aria-expanded',String(panel===id));}
-  // In focus mode Help is a top-level panel. Outside focus, the ordinary
-  // disclosure controller owns its open/closed state.
+  // The same exclusive tools panels drive the normal and full-screen views.
+  // Open their inner disclosures only while the corresponding panel is shown.
   {const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';const tools=node.querySelector('[data-workspace-disclosure="single-tools"]');if(tools)tools.open=panel==='tools';}
  }
  function setActive(value){
