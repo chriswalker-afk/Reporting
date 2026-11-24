@@ -1,9 +1,11 @@
 import {entryKey,canEnter,canEditStructured,entryValue,gradebookColumns,draftFromResult,draftValue,editDraftItem,editDraftStatus,decodeDraft,isChanged,structuredPreview,liveSummary,blockEntries,selectionBounds} from './gradebook-entry.mjs';
+import {createEditHistory,selectedRectangle,copyRectangle,planRangeEdit,exportGradebook,planKeyedImport} from './gradebook-bulk.mjs';
 import {nextMarkCell} from './assessment-refinement.mjs';
 import {pct} from './workspace.mjs';
 
 export function createGradebookController({root,getWorkspace,getStore,getStaff,notify}){
  let context=null,layout=null,book=null,overview=null,columns=[],records=new Map(),revision=null,edits=new Map(),anchor=null,end=null,saving=false;
+ const history=createEditHistory();let stagedImport=null;
  const surface=()=>root.querySelector('#gradebook-surface');
  const cells=()=>[...root.querySelectorAll('.gradebook-cell')];
  const at=(row,col)=>root.querySelector('.gradebook-cell[data-row="'+row+'"][data-col="'+col+'"]');
@@ -15,12 +17,13 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(!dirty())return true;
   error('Save or discard gradebook changes before leaving this view.');return false;
  }
- function reset(){edits.clear();anchor=end=null;context=layout=null;overview=book=null;columns=[];records.clear();revision=null;}
+ function reset(){edits.clear();history.reset();stagedImport=null;anchor=end=null;context=layout=null;overview=book=null;columns=[];records.clear();revision=null;}
  function mount(){
   const node=surface();
   if(!node){if(!dirty())reset();return;}
+  stagedImport=null;
   const w=getWorkspace(),key=JSON.stringify([getStaff(),w.scope,node.dataset.classId,node.dataset.unitId]);
-  if(context!==key){if(dirty()){error('Unsaved changes belong to a different gradebook. Return to that view.');return;}context=key;anchor=end=null;revision=getStore().revision();}
+  if(context!==key){if(dirty()){error('Unsaved changes belong to a different gradebook. Return to that view.');return;}context=key;anchor=end=null;history.reset();revision=getStore().revision();}
   if(!dirty())revision=getStore().revision();
   book=w.markbook(node.dataset.classId);overview=book.overview(node.dataset.unitId);
   columns=gradebookColumns(overview,JSON.parse(node.dataset.expanded??'[]'));
@@ -28,7 +31,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(layout!==nextLayout){anchor=end=null;layout=nextLayout;}
   records=new Map();
   for(const p of overview.rows)for(const a of overview.assessments)records.set(entryKey(a.id,p.enrolmentId),{a,r:p.results[a.id]});
-  syncValues();refresh();
+  syncValues();refresh();invalidateImport();
  }
  function syncValues(skip=null){
   for(const el of cells()){
@@ -107,6 +110,8 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   }
   const label=root.querySelector('#gradebook-selection');
   if(label)label.textContent=count>1?count+' editable cells selected':count===1?'1 cell selected':'Select a mark cell';
+  let rectangle=null;try{if(overview)rectangle=selectedRectangle(overview,columns,anchor,end);}catch{}
+  for(const [name,disabled] of [['copy',!rectangle],['clear',!rectangle],['fill',!rectangle||rectangle.length<2],['undo',!history.canUndo()],['redo',!history.canRedo()]]){const control=root.querySelector('[data-action="gradebook-'+name+'"]');if(control)control.disabled=disabled;}
  }
  function focus(el,{extend=false,select=true}={}){
   if(!el)return false;
@@ -117,22 +122,22 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
  }
  function onFocus(el){if(!el.matches?.('.gradebook-cell'))return;const p=point(el);if(end?.row===p.row&&end?.col===p.col)return;anchor=end=p;paintSelection();}
  function pointer(event){
-  const el=event.target.closest?.('.gradebook-cell');if(!el||!event.shiftKey)return;
-  event.preventDefault();focus(el,{extend:true});
+  const el=event.target.closest?.('.gradebook-cell');if(!el)return;
+  if(event.shiftKey){event.preventDefault();focus(el,{extend:true});}else{anchor=end=point(el);paintSelection();}
  }
  function onInput(el){
+  if(el.id==='gradebook-import-text'){invalidateImport();return true;}
   if(!el.matches?.('.gradebook-cell')||!overview)return false;
-  try{setEntry(el,el.value);syncValues(el);error('');refresh();}catch(e){error(e.message);}
-  return true;
+  perform(()=>setEntry(el,el.value),el);return true;
  }
  function onChange(el){
+  if(el.id==='gradebook-import-file'){loadImportFile(el);return true;}
   if(!el.matches?.('.gradebook-result-status')||!overview)return false;
-  try{
+  perform(()=>{
    const key=keyOf(el),{a,r}=records.get(key);
    if(!canEditStructured(a,r))throw Error('This result is read-only');
    setDraft(key,editDraftStatus(a,edits.get(key)?.draft??draftFromResult(a,r),el.value));
-   syncValues();error('');refresh();
-  }catch(e){error(e.message);}return true;
+  });return true;
  }
  function paste(event){
   if(!event.target.matches?.('.gradebook-cell')||!overview)return false;
@@ -142,9 +147,98 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   try{
    const {row,col}=point(event.target),changes=blockEntries(overview,row,col,text,columns);
    for(const c of changes){const el=at(c.row,c.col);if(!el)throw Error('The pasted block is no longer editable');}
-   for(const c of changes)setEntry(at(c.row,c.col),c.raw);
-   syncValues();error('');refresh();notify(changes.length+' cells pasted. Review and save.');
+   if(perform(()=>{for(const c of changes)setEntry(at(c.row,c.col),c.raw);}))notify(changes.length+' cells pasted. Review and save.');
   }catch(e){error(e.message);}return true;
+ }
+ function invalidateImport(){
+  stagedImport=null;
+  const panel=root.querySelector('#gradebook-import-preview'),apply=root.querySelector('[data-action="gradebook-import-apply"]');
+  if(panel)panel.replaceChildren();if(apply)apply.disabled=true;
+ }
+ function perform(fn,skip=null){
+  const before=new Map(edits);
+  try{fn();history.record(before,edits);invalidateImport();syncValues(skip);error('');refresh();return true;}
+  catch(e){edits=before;syncValues();refresh();error(e.message);return false;}
+ }
+ function historyMove(direction){
+  const snapshot=direction==='undo'?history.undo():history.redo();
+  if(!snapshot)return;edits=snapshot;invalidateImport();syncValues();error('');refresh();
+  notify(direction==='undo'?'Unsaved edit undone.':'Unsaved edit redone.');
+ }
+ const rectangle=()=>selectedRectangle(overview,columns,anchor,end);
+ const rangeValue=({a,r,item})=>{const changed=edits.get(entryKey(a.id,r.enrolmentId));return changed?draftValue(a,changed.draft,item.id):entryValue(a,r,item.id);};
+ function rangeEdit(operation){
+  try{
+   const planned=planRangeEdit(rectangle(),operation,rangeValue);
+   for(const p of planned)if(!at(p.row,p.col))throw Error('Selection changed; select the marks again');
+   if(perform(()=>{for(const p of planned)setEntry(at(p.row,p.col),p.raw);}))notify(planned.length+' cells '+(operation==='fill'?'filled down':'cleared')+'. Review and save.');
+  }catch(e){error(e.message);}
+ }
+ function copy(event){
+  if(!surface()||!event.target.matches?.('.gradebook-cell')||!event.clipboardData)return false;
+  event.preventDefault();
+  try{event.clipboardData.setData('text/plain',copyRectangle(rectangle(),rangeValue));notify('Selected marks copied.');}
+  catch(e){error(e.message);}return true;
+ }
+ function copyFallback(value){
+  const field=root.querySelector('#gradebook-copy-fallback');if(!field)return;
+  field.hidden=false;field.value=value;field.focus();field.select();notify('Copy the selected text with Ctrl / Cmd+C.');
+ }
+ function copyButton(){
+  try{
+   const value=copyRectangle(rectangle(),rangeValue);
+   const fallback=root.querySelector('#gradebook-copy-fallback');if(fallback)fallback.hidden=true;
+   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>notify('Selected marks copied.'),()=>copyFallback(value));
+   else copyFallback(value);
+  }catch(e){error(e.message);}
+ }
+ function downloadCSV(){
+  if(!overview)return;
+  const value=exportGradebook(overview),url=URL.createObjectURL(new Blob(['\uFEFF',value],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
+  link.href=url;link.download='gradebook-'+book.classCode.replace(/[^a-z0-9_-]/gi,'-')+'.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  notify('Saved gradebook exported. Unsaved changes are not included.');
+ }
+ async function loadImportFile(el){
+  invalidateImport();const file=el.files?.[0],node=surface();
+  if(!file)return;
+  try{if(file.size>500000)throw Error('Import must be under 500 KB');
+   const text=await file.text();if(node!==surface()||!el.isConnected)return;
+   root.querySelector('#gradebook-import-text').value=text;invalidateImport();notify('File loaded. Preview the import before applying.');
+  }catch(e){error(e.message);}
+ }
+ function previewImport(){
+  invalidateImport();error('');
+  try{
+   const text=root.querySelector('#gradebook-import-text').value;
+   const changes=planKeyedImport(overview,text,(a,r)=>edits.get(entryKey(a.id,r.enrolmentId))?.draft??draftFromResult(a,r));
+   stagedImport=changes;
+   const panel=root.querySelector('#gradebook-import-preview'),summary=document.createElement('strong');
+   const clears=changes.filter(c=>c.clears).length;
+   summary.textContent=changes.length+' changed results across '+new Set(changes.map(c=>c.entry.enrolmentId)).size+' pupils'+(clears?' · '+clears+' clear recorded marks':'');
+   panel.append(summary);
+   const list=document.createElement('ul'),describe=(status,raw)=>status+(Object.entries(raw).some(([,v])=>String(v).trim()!=='')?' ('+Object.entries(raw).filter(([,v])=>String(v).trim()!=='').map(([id,v])=>id+': '+v).join(', ')+')':'');
+   for(const c of changes.slice(0,20)){const li=document.createElement('li');li.textContent=c.pupil+' · '+c.title+': '+describe(c.before.status,c.before.raw)+' → '+describe(c.entry.status,c.entry.marks);list.append(li);}
+   panel.append(list);if(changes.length>20){const more=document.createElement('p');more.textContent='Showing first 20 of '+changes.length+' results.';panel.append(more);}
+   root.querySelector('[data-action="gradebook-import-apply"]').disabled=false;
+  }catch(e){error(e.message);}
+ }
+ function applyImport(){
+  if(!stagedImport)return;
+  const changes=stagedImport;
+  if(perform(()=>{for(const c of changes)setDraft(c.key,c.draft);}))notify(changes.length+' imported results staged. Review and save.');
+ }
+ function bulkAction(action){
+  if(!surface())return;
+  switch(action){
+   case 'gradebook-undo':historyMove('undo');break;
+   case 'gradebook-redo':historyMove('redo');break;
+   case 'gradebook-copy':copyButton();break;
+   case 'gradebook-fill':rangeEdit('fill');break;
+   case 'gradebook-clear':rangeEdit('clear');break;
+   case 'gradebook-export':downloadCSV();break;
+   case 'gradebook-import-preview':previewImport();break;
+   case 'gradebook-import-apply':applyImport();break;
+  }
  }
  function save(){
   if(!dirty()||saving)return;
@@ -158,16 +252,23 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
    saving=true;edits.clear();
    try{getStore().saveGradebookBatch(getStaff(),book.classId,pending.map(c=>c.entry),{confirmed:true,confirmClear:true,expectedRevision});}
    catch(e){edits=backup;syncValues();refresh();throw e;}
-   revision=getStore().revision();error('');refresh();
+   revision=getStore().revision();history.reset();invalidateImport();error('');refresh();
    if(activePoint)focus(at(activePoint.row,activePoint.col));notify(count+' result'+(count===1?'':'s')+' saved across the gradebook.');
   }catch(e){error(e.message);}finally{saving=false;}
  }
  function discard(){
   if(!dirty()||!window.confirm('Discard unsaved gradebook changes?'))return;
-  edits.clear();revision=getStore().revision();syncValues();error('');refresh();
+  edits.clear();history.reset();revision=getStore().revision();invalidateImport();syncValues();error('');refresh();
  }
  function keyboard(event){
   if(!surface()||document.querySelector('dialog[open]'))return false;
+  const inEditor=event.target.matches?.('.gradebook-cell,.gradebook-result-status,.gradebook-bulk-tools button');
+  const command=event.ctrlKey||event.metaKey,keyName=event.key.toLowerCase();
+  if(inEditor&&command&&!event.altKey&&!event.isComposing){
+   if(keyName==='z'||keyName==='y'){event.preventDefault();historyMove(keyName==='y'||event.shiftKey?'redo':'undo');return true;}
+   if(keyName==='d'&&!event.shiftKey){event.preventDefault();rangeEdit('fill');return true;}
+  }
+  if(inEditor&&event.key==='Delete'&&!command&&anchor&&end&&(anchor.row!==end.row||anchor.col!==end.col)){event.preventDefault();rangeEdit('clear');return true;}
   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'&&dirty()){event.preventDefault();save();return true;}
   const el=event.target;if(!el.matches?.('.gradebook-cell')||event.ctrlKey||event.metaKey||event.altKey||event.isComposing)return false;
   const key=event.key;
@@ -178,5 +279,5 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(!next&&key!=='Enter')return false;
   event.preventDefault();if(next){if(event.shiftKey&&key.startsWith('Arrow')&&(!anchor||!end||end.row!==point(el).row||end.col!==point(el).col))anchor=end=point(el);focus(next.input,{extend:event.shiftKey&&key.startsWith('Arrow')});}return true;
  }
- return {mount,isDirty:dirty,guard,onInput,onChange,onFocus,pointer,paste,keyboard,save,discard};
+ return {mount,isDirty:dirty,guard,onInput,onChange,onFocus,pointer,paste,copy,keyboard,save,discard,bulkAction};
 }
