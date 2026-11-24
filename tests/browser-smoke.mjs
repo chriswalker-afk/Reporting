@@ -121,8 +121,8 @@ try{
  assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
  // Edit several assessment columns without leaving the main gradebook.
- const inline=(id)=>'.gradebook-cell[data-assessment="'+id+'"][data-enrolment="P121@11-maths"]';
- const inlineA1=inline('11-maths-A1'),inlineA4=inline('11-maths-A4'),inlineA5=inline('11-maths-A5');
+ const inline=(id,pupil='P121')=>'.gradebook-cell[data-assessment="'+id+'"][data-enrolment="'+pupil+'@11-maths"]';
+ const inlineA1=inline('11-maths-A1'),inlineA4=inline('11-maths-A4','P123'),inlineA5=inline('11-maths-A5','P123');
  assert.ok(await q(inlineA1));assert.ok(await q(inlineA4));assert.ok(await q(inlineA5));
  await fill(inlineA1,'999');assert.ok(await q(inlineA1+'[aria-invalid]'));
  assert.equal(await evaluate(()=>document.querySelector('[data-action="gradebook-save"]').disabled),true);
