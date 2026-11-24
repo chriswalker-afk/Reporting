@@ -234,3 +234,20 @@ Use the quick display selector to switch between editable raw marks, read-only p
 Grouped columns retain a calculated group summary even when collapsed. All eligible published and included evidence in a group remains in its calculation, regardless of whether particular assessments are hidden. Overall/unit attainment and CSV exchange continue to use the full selected unit/class scope rather than the visible columns. Display and grouping changes never modify assessment definitions, saved marks or the assessment evidence included in attainment.
 
 Layout preferences persist locally by staff and class, and individual assessment expansion remains session-local. Reordering stays within the selected unit and group when applicable. Hidden unsaved results remain staged, including invalid entries, and the toolbar flags hidden changes. Show all assessments removes filters, unhides columns, expands groups and returns to raw marks; Reset personal layout restores the defaults. Undo/redo and saving remain available with hidden or collapsed results. Rectangular operations cannot include calculated summary columns. Changing class or unit still requires saving or discarding pending edits.
+
+
+## Calculation policy and independent reporting grades (PR26)
+
+### Calculated attainment
+
+The assessment tracker continues to store raw marks and calculate grades using the course's ordered grade boundaries. Faculty and school leadership can set a faculty default or a course override in Calculation settings. The existing weighted-percentage method is the school default for legacy and new demo data. Other choices are equal assessment percentages, weighted total marks (percentage weights are assessment maxima multiplied by assessment weights), and the most recent complete assessment. A course may inherit its faculty policy and independently set the default weight for new assessments. Changing that default does not rewrite existing weights; edit an individual assessment to change its weight. Changes to calculation policy require a reason and confirmation and are recorded in the audit history.
+
+The same selector is used in class and pupil summaries, group/unit summaries, live gradebook previews and cumulative analysis. Only complete, published, included results through the applicable evidence date contribute. Zero is a valid mark; missing, absent, incomplete and excluded work is not treated as zero. Assessment grades still use the assessment's own boundaries; overall attainment uses the course tracker boundaries. Changing a view layout cannot change the calculation.
+
+### Reporting grades
+
+The Reporting grades class tab shows applicable Reports or SIMS grades deadlines from the reporting schedule. The register follows class and pupil scope, period audience and the course's grade scale. The evidence cutoff is the earlier of the reporting deadline and the current demo date. Each pupil's MTG, calculated attainment, teacher prediction and independently entered report grade are distinguished.
+
+Assigned teachers can save a report-grade draft or confirm submission. A differing grade (or a grade without calculated evidence) needs a reason at submission. Submission freezes the calculated percentage/grade, target, prediction, method, source, evidence cutoff and eligible/scored assessment references at that moment. Later marks, policy changes and predictions do not overwrite the submitted record. Relevant faculty/school leadership can reopen it to a draft with an audited reason. Archived deadlines remain readable but cannot accept changes; the event and audience of a deadline with report records cannot be changed. The workflow records fictional internal submissions only and is not a SIMS integration or parent-facing publication.
+
+Existing synthetic schema-2 snapshots without report grades are accepted; the optional collection is initialized when needed. All report grades and calculation-policy edits use the existing transaction, revision, persistence, validation and audit mechanisms.
