@@ -99,6 +99,13 @@ try{
  for(const page of ['notices','classes','students','intervention','home']){
   await action('navigate',page);assert.ok(await heading());assert.equal(await evaluate(()=>location.hash),'#'+page);
  }
+ // Expandable staffroom board preserves access to the notice detail drawer.
+ await action('navigate','notices');
+ assert.ok(await q('.noticeboard-content .notice-paper'));
+ await action('toggle-noticeboard');
+ assert.ok(await q('.board-expanded [aria-expanded="true"][data-action="toggle-noticeboard"]'));
+ await action('toggle-noticeboard');
+ assert.ok(await q('[data-action="toggle-noticeboard"][aria-expanded="false"]'));
  // Notice acknowledgement is visible immediately and stays committed across navigation.
  await action('open-notice','NO1','#workspace ');
  assert.match(await detail(),/Demo staff notice/);

@@ -631,3 +631,26 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 @media(max-width:1080px){.case-stage-card{padding:8px;gap:6px}.case-stage-card>b{font-size:21px}.stage-number{width:27px;height:27px}.case-stage-name strong{font-size:12px}.case-stage-name>span{font-size:10px}}
 @media(max-width:760px){.intervention-metrics .metric{padding:7px 8px}.intervention-metrics .metric-value{font-size:21px}.case-stage-grid{grid-template-columns:1fr;padding:7px;gap:5px}.case-stage-card{padding:6px 9px}.case-stage-name{display:flex;align-items:center;flex-wrap:wrap;gap:5px}.case-stage-card>b{font-size:19px}.case-focus-bar{gap:4px;padding:6px 8px}.case-overview-grid{grid-template-columns:1fr}.case-identity{grid-template-columns:1fr;padding:9px}.case-workspace{gap:8px}.case-workspace .drawer-section .content{padding:8px}.case-task{padding:7px}.case-task .btn{flex-shrink:0}.case-task-main{flex-basis:100%}.case-plan-actions .btn{white-space:normal}.case-workspace .case-steps{gap:4px}.case-workspace .case-step{padding:6px 4px}.case-workspace .case-step strong{font-size:10px}.case-workspace .case-step small{font-size:9px}.intervention-register .data-table .sticky-first{min-width:135px;max-width:160px}.study-plan-meta .drawer-summary{gap:5px}.case-pipeline-note{padding:0 8px 8px}}
 @media print{.case-focus-bar,.case-filters,.case-action-strip,.case-plan-actions,.case-task .btn{display:none!important}}
+
+/* Staffroom noticeboard: tactile but legible, with no essential colour-only cues. */
+.noticeboard-shell{margin-bottom:16px;min-width:0}
+.noticeboard-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;padding:20px;border:5px solid #755b43;border-radius:5px;background-color:#c9aa81;background-image:radial-gradient(#795e4730 .8px,transparent .8px),radial-gradient(#fff5dc60 .7px,transparent .7px);background-size:5px 7px,9px 11px;box-shadow:inset 0 2px 8px #543b2940}
+.board-section{min-width:0}
+.board-section h2{font-size:1.05rem;color:#fff;background:#173b4b;padding:8px 12px;border-radius:3px;margin:0 0 12px}
+.board-section-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.board-section-heading h2{margin:0}
+.board-section-heading .btn{background:#fff}
+.board-label,.noticeboard-content .week-label{font-size:.84rem;color:#392a20;font-weight:750;margin:12px 0 8px}
+.paper-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.notice-paper{position:relative;min-width:0;background:#fffdf5;color:#263740;padding:24px 16px 14px;border:1px solid #d5c8ab;border-radius:2px;box-shadow:2px 4px 7px #4d392b45;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.paper-pin{position:absolute;top:7px;left:calc(50% - 5px);height:10px;width:10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8a2a3,#982c36 60%);box-shadow:1px 2px 2px #35201566}
+.paper-ack{background:#fff0bc}.paper-urgent{background:#ffe2df}.paper-important{background:#e5eef8}
+.notice-paper h3{font-size:1.05rem;line-height:1.35;margin:0;color:#20313a}
+.paper-meta{font-size:.76rem;color:#4b5359}
+.paper-tags{display:flex;flex-wrap:wrap;gap:4px}
+.paper-preview{white-space:pre-wrap;margin:0;line-height:1.5;font-size:.88rem}
+.paper-open{align-self:flex-start;margin-top:auto;background:#ffffffb8}
+.board-expanded .noticeboard-content{grid-template-columns:minmax(0,1fr)}
+.board-expanded .paper-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.board-expanded .paper-preview{font-size:.96rem}
+@media(max-width:800px){.noticeboard-content{grid-template-columns:minmax(0,1fr);padding:12px;gap:16px}.noticeboard-shell .panel-head{flex-wrap:wrap;gap:8px}}
