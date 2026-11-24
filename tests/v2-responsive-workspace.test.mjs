@@ -47,3 +47,14 @@ test('shared layout markers and named navigation controls retain accessible iden
  assert.doesNotMatch(renderPage(w,{...state,page:'home',classId:null}),/data-workspace-fill="true"/);
  assert.equal(store.revision(),0);
 });
+
+test('navigation prioritises working pages with a collapsed planned modules disclosure',()=>{
+ const store=createStore(),w=createWorkspace(store,'sam','faculty'),html=sidebar('notices',w);
+ assert.match(html,/class="sidebar-scroll" role="region" aria-label="Staff workspace navigation" tabindex="0"/);
+ assert.match(html,/<details class="sidebar-future"><summary[^>]*aria-label="Planned modules"/);
+ assert.equal((html.match(/data-action="navigate"/g)||[]).length,5);
+ assert.equal((html.match(/class="future-link" aria-disabled="true"/g)||[]).length,7);
+ assert.ok(html.indexOf('class="brand"')<html.indexOf('class="sidebar-scroll"'));
+ assert.ok(html.indexOf('aria-current="page"')<html.indexOf('class="sidebar-future"'));
+ assert.equal(store.revision(),0);
+});
