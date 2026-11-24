@@ -2,6 +2,7 @@ import {assertData,clone,SCHEMA_VERSION,resultKey,isText,isDate} from './model.m
 import {createAccess} from './access.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {createDemoData} from './demo-data.mjs';
+import {communicationPolicy,communicationView,noticeFields,deadlineFields,noticeVersion} from './communications.mjs';
 
 export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
 
@@ -10,6 +11,8 @@ export function createReadModel(data,staffId){
   const access=createAccess(data,staffId),analytics=createAnalytics(data);
   const byId=(table,id)=>data[table].find(r=>r.id===id);
   const visibleCaseIds=data.interventions.filter(c=>access.canViewCase(c.id)).map(c=>c.id);
+  let communicationsCache;
+  const communications=()=>communicationsCache??=communicationView(data,staffId);
   const assert=(condition,message)=>{if(!condition)throw new Error(message);};
   function cohort(scope='accessible',options={}){
     const enrolmentIds=access.scopeEnrolments(scope);
@@ -28,9 +31,11 @@ export function createReadModel(data,staffId){
       if(c.reviewDate<=data.asOf&&acts.includes('review'))action.push('review');
       return action.map(type=>({caseId:c.id,type,reviewDate:c.reviewDate}));
     });
+    actions.sort((a,b)=>a.reviewDate.localeCompare(b.reviewDate)||a.caseId.localeCompare(b.caseId)||a.type.localeCompare(b.type));
+    const comm=communications();
     return {scope,cohort:cohort(scope,options),actions,
-      notices:data.notices.filter(n=>access.audienceMatches(n.audience)&&n.publishedDate<=data.asOf&&(!n.expiryDate||n.expiryDate>=data.asOf)),
-      deadlines:data.deadlines.filter(d=>access.audienceMatches(d.audience)&&d.dueDate>=data.asOf).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))};
+      notices:comm.activeNotices,deadlines:comm.deadlines.filter(d=>!d.archived&&d.dueDate>=data.asOf),
+      pendingAcknowledgements:comm.pendingAcknowledgements,openDeadlines:comm.openDeadlines};
   }
   function student(studentId,options={}){
     assert(access.canViewStudent(studentId),'Student outside current demo scope');
@@ -62,7 +67,7 @@ export function createReadModel(data,staffId){
     assert(classIds.length&&classIds.every(id=>permitted.includes(id)),'Assessment outside current demo class scope');
     return analytics.assessmentAnalysis(assessmentId,{...options,classIds});
   }
-  return {access,cohort,home,student,classSummary,classSlice,assessment,
+  return {access,cohort,home,student,classSummary,classSlice,assessment,communications,
     interventionSummary:()=>analytics.interventionSummary(visibleCaseIds),
     cases:()=>data.interventions.filter(c=>access.canViewCase(c.id))};
 }
@@ -162,6 +167,81 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       const before=d.asOf;d.asOf=date;return {before,after:date};
     });
   }
+  function nextId(table,prefix){
+    let n=1;while(current[table].some(r=>r.id===prefix+n))n++;return prefix+n;
+  }
+  function saveNotice(staffId,id,input){
+    const recordId=id??nextId('notices','NO');
+    return transaction(staffId,id?'editNotice':'publishNotice',recordId,(d)=>{
+      const p=communicationPolicy(d,staffId),old=id?lookup(d,'notices',id):null;
+      must(!id||p.canEditNotice(old)&&!old.archived,'Only authorised publishers can edit an active or scheduled notice');
+      must(p.canPublish(input.audience),'You cannot publish to this audience');
+      const fields=noticeFields(input),before=old?clone(old):null;
+      if(old){
+        const same=Object.keys(fields).every(k=>JSON.stringify(fields[k])===JSON.stringify(old[k]));
+        if(same)return {before,after:old};
+        must(input.confirmed===true,'Confirm that publishing changes resets acknowledgements');
+        Object.assign(old,fields,{version:noticeVersion(old)+1,acknowledgements:[]});
+        return {before,after:old,reason:'Notice revised; previous acknowledgements retained in audit history'};
+      }
+      const record={id:recordId,authorStaffId:staffId,...fields,version:1,archived:false,acknowledgements:[]};
+      d.notices.push(record);return {before:null,after:record};
+    });
+  }
+  function archiveNotice(staffId,id,{confirmed=false}={}){
+    return transaction(staffId,'archiveNotice',id,d=>{
+      const p=communicationPolicy(d,staffId),n=lookup(d,'notices',id);
+      must(p.canEditNotice(n),'You cannot archive this notice');
+      must(confirmed===true,'Confirm archiving the notice');
+      const before=clone(n);n.archived=true;return {before,after:n};
+    });
+  }
+  function acknowledgeNotice(staffId,id){
+    return transaction(staffId,'acknowledgeNotice',id,d=>{
+      const p=communicationPolicy(d,staffId),n=lookup(d,'notices',id);
+      must(p.canAcknowledge(n),'No pending acknowledgement for this staff member');
+      const before=clone(n);(n.acknowledgements??=[]).push({staffId,date:d.asOf,version:noticeVersion(n)});
+      return {before,after:n};
+    });
+  }
+  function saveDeadline(staffId,id,input){
+    const recordId=id??nextId('deadlines','D');
+    return transaction(staffId,id?'editDeadline':'createDeadline',recordId,d=>{
+      const p=communicationPolicy(d,staffId),old=id?lookup(d,'deadlines',id):null;
+      must(p.canManageDeadline(),'Only school leadership can manage the reporting schedule');
+      must(!id||old&&!old.archived,'Unknown or archived deadline');
+      must(p.canPublish(input.audience),'Invalid deadline audience');
+      const fields=deadlineFields(input),before=old?clone(old):null;
+      if(old){
+        if(Object.keys(fields).every(k=>JSON.stringify(fields[k])===JSON.stringify(old[k])))return {before,after:old};
+        must(input.confirmed===true,'Confirm the revised deadline and reset of personal completion markers');
+        Object.assign(old,fields,{completions:[]});
+        return {before,after:old,reason:'Schedule revised; previous completion markers retained in audit'};
+      }
+      const record={id:recordId,...fields,archived:false,completions:[]};
+      d.deadlines.push(record);return {before:null,after:record};
+    });
+  }
+  function archiveDeadline(staffId,id,{confirmed=false}={}){
+    return transaction(staffId,'archiveDeadline',id,d=>{
+      const p=communicationPolicy(d,staffId),r=lookup(d,'deadlines',id);
+      must(p.canManageDeadline()&&r,'Only school leadership can archive this deadline');
+      must(confirmed===true,'Confirm archiving the deadline');
+      const before=clone(r);r.archived=true;return {before,after:r};
+    });
+  }
+  function setDeadlineCompletion(staffId,id,completed){
+    return transaction(staffId,'setDeadlineCompletion',id,d=>{
+      const p=communicationPolicy(d,staffId),r=lookup(d,'deadlines',id);
+      must(r&&!r.archived&&p.recipient(r.audience),'Deadline is not assigned to this staff member');
+      must(typeof completed==='boolean','Invalid completion status');
+      const before=clone(r),rows=r.completions??[];
+      if(p.deadlineCompleted(r)===completed)return {before,after:r};
+      r.completions=rows.filter(c=>c.staffId!==staffId);
+      if(completed)r.completions.push({staffId,date:d.asOf});
+      return {before,after:r};
+    });
+  }
   function reset({confirmed=false}={}){
     must(confirmed===true,'Confirm reset of fictional demo data');
     const next=clone(baseline);
@@ -171,5 +251,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,setDemoDate,reset};
+    saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,setDemoDate,
+    saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }
