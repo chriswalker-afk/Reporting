@@ -427,3 +427,11 @@ The spreadsheet starts with compact assessment headings. The sticky Student head
 The preference belongs to the existing personal gradebook layout, per staff member and class; existing layouts default to collapsed details. It applies in normal and full-screen spreadsheet views, survives reloads, and resets with the personal layout. Single-assessment entry retains its existing narrow headings. Header disclosure is independent of question and group expansion, and does not change displayed assessment columns, calculation eligibility, saved results or scope.
 
 The control toggles existing elements in place rather than recreating the grid. Pending marks, selection, history and scroll offsets (within new bounds) are preserved. Keyboard access uses a native button with aria-expanded; hidden details are explicitly removed from layout and focus order. Scroll padding follows the measured sticky header height. Regression tests compare the actual collapsed and expanded header heights, check draft preservation and verify persistence and responsive use.
+
+
+## Gradebook ease of use (PR43)
+
+- **Unsaved marks survive a refresh.** Staged gradebook entries are kept in this browser's local storage, per fictional staff member, class and unit, as they are typed. Reopening the gradebook restores them and shows a "Recovered N unsaved results" notice; they are still not saved until **Save** is pressed (or Ctrl/Cmd+S). A recovered entry is skipped if the saved result it was based on has since changed, so newer saved marks are never overwritten silently. Saving, discarding or **Reset demo data** removes the draft. The status line reads "draft kept on this device" while a draft exists.
+- **Spreadsheet-style clicking.** The first mouse click on a mark selects the whole value, so typing replaces it; click the same cell again to place the caret and edit within it.
+- **Clearer save button.** It shows the number of pending changes ("Save 3 changes").
+- **Faster assessment creation.** New, duplicated and unit forms open with the title field focused: type a name, press Enter, and the cursor lands in the new assessment's first mark cell.

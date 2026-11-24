@@ -28,7 +28,7 @@ const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
 const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},gradebookExpanded:{},gradebookLayout:null,gradebookLayoutOpen:false,classTab:'information',unitId:'',reportPeriod:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
-const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
+const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify,storage:(()=>{try{return window.localStorage;}catch{return null;}})()});
 const display=createWorkspaceDisplay({app:byId('app'),main,sidebar:nav,topbar:bar,backdrop:byId('navigation-backdrop'),getStaff:()=>state.staffId,notify});
 const pageZoom=createPageZoom({app:byId('app'),main,getStaff:()=>state.staffId,getView:()=>state,notify});
 document.querySelector('.demo-footer .footer-actions').insertAdjacentHTML('beforeend',zoomControls());
@@ -135,7 +135,7 @@ function openDetail(kind,id,options={}){
   detailDialog.classList.toggle('wide-case',kind==='case');
   if(!detailDialog.open){drawerDisplay.reset();drawerPanels.reset();drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
-  drawerDisplay.sync();drawerPanels.sync();nameScrollRegions(detailDialog);grid.init();detailDialog.querySelector('.dialog-head [data-action="detail-back"],.dialog-head [data-action="close-detail"]')?.focus({preventScroll:true});grid.focusRequested();
+  drawerDisplay.sync();drawerPanels.sync();nameScrollRegions(detailDialog);grid.init();{const title=['assessment-new','assessment-copy','unit-form'].includes(kind)?detailDialog.querySelector('#mb-title'):null;if(title){title.focus({preventScroll:true});title.select();}else detailDialog.querySelector('.dialog-head [data-action="detail-back"],.dialog-head [data-action="close-detail"]')?.focus({preventScroll:true});}grid.focusRequested();
  }catch(error){notify(String(error.message||error));}
 }
 function addBack(){
@@ -477,7 +477,7 @@ document.addEventListener('click',event=>{
   }
   case 'reset-demo':confirmReset();break;
   case 'cancel-reset':resetDialog.close();break;
-  case 'confirm-reset':try{store.reset({confirmed:true});resetDialog.close();notify('Fictional demo data restored.');}catch(error){notify(String(error.message||error));}break;
+  case 'confirm-reset':try{store.reset({confirmed:true});gradebook.clearSavedDrafts();resetDialog.close();notify('Fictional demo data restored.');}catch(error){notify(String(error.message||error));}break;
  }
 });
 document.addEventListener('paste',event=>{if(!gradebook.paste(event))grid.paste(event);});
