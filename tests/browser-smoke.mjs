@@ -429,6 +429,7 @@ try{
  assert.ok(await q('.gradebook-cell[data-assessment="11-maths-A2"][data-item="t1"]'));
  assert.ok(await q(qlaItem('item2')));
  await viewport(390,844);await viewport(1440,900);
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded expanded gradebook');
  await open('v2/#classes/11-maths-1/markbook');
  assert.ok(await q(qlaToggle+'[aria-expanded="false"]'));
  await click(qlaToggle);
