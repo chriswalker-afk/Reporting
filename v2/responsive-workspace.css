@@ -180,3 +180,70 @@
  .app-shell[data-workspace-density="compact"] .workspace-heading-main:has(>.disclosure-context:not([open])){display:flex;align-items:center;gap:3px 8px;flex-wrap:wrap}
  .app-shell[data-workspace-density="compact"] .workspace-heading-main:has(>.disclosure-context:not([open])) .disclosure-context{margin:0}
 }
+
+
+/* PR30: maximise the existing gradebook within the browser viewport.
+   These presentation-only rules leave the table and its inputs mounted. */
+@media screen{
+ .gradebook-focus-top,.gradebook-secondary-panels,.gradebook-focus-section{min-width:0;max-width:100%}
+ .gradebook-focus-heading,.gradebook-focus-panel-buttons{display:none}
+ .gradebook-assessment-options{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0;max-width:100%}
+ .gradebook-focus-toggle{margin-left:auto;white-space:nowrap;color:var(--accent-dark);font-weight:700}
+ .gradebook-hidden-warning{padding:5px 10px;margin:0;color:var(--accent-dark);font-weight:650}
+ .gradebook-hidden-warning:empty{display:none}
+ .gradebook-focus-section>.disclosure-help{margin:0;border-inline:0;border-radius:0}
+ #app[data-gradebook-focus="true"]{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+ #app[data-gradebook-focus="true"]>.sidebar,
+ #app[data-gradebook-focus="true"] .app-main>.topbar,
+ #app[data-gradebook-focus="true"] .app-main>.demo-footer,
+ #app[data-gradebook-focus="true"] .workspace-inner>.class-heading,
+ #app[data-gradebook-focus="true"] .workspace-inner>.tabs{display:none}
+ #app[data-gradebook-focus="true"] .app-main{height:100%;grid-template-rows:minmax(0,1fr)}
+ #app[data-gradebook-focus="true"] .workspace{padding:4px;scrollbar-gutter:auto}
+ #app[data-gradebook-focus="true"] .gradebook-surface{border-radius:5px;isolation:isolate}
+ #app[data-gradebook-focus="true"] .gradebook-focus-top{position:sticky;top:0;z-index:8;background:#fff}
+ #app[data-gradebook-focus="true"] .gradebook-focus-heading{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;padding:5px 9px;background:#f7f1f4;border-bottom:1px solid var(--line);min-width:0}
+ .gradebook-focus-heading h2{font-size:15px;line-height:1.3;margin:0;color:var(--accent-dark);overflow-wrap:anywhere}
+ .gradebook-focus-demo{margin-left:auto;color:var(--muted);font-size:10px;overflow-wrap:anywhere}
+ #app[data-gradebook-focus="true"] .markbook-toolbar{gap:5px;padding:5px 8px;align-items:center}
+ #app[data-gradebook-focus="true"] .markbook-toolbar>.select{max-width:min(205px,100%);min-width:0}
+ #app[data-gradebook-focus="true"] .markbook-toolbar .btn{min-height:30px;font-size:12px;padding:4px 8px}
+ #app[data-gradebook-focus="true"] .gradebook-focus-panel-buttons{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+ #app[data-gradebook-focus="true"] .gradebook-focus-panel-button[aria-expanded="true"]{background:#f0e1e9;border-color:#b68a9e;color:var(--accent-dark)}
+ #app[data-gradebook-focus="true"] .gradebook-focus-toggle{background:var(--accent-dark);border-color:var(--accent-dark);color:white}
+ #app[data-gradebook-focus="true"] [data-gradebook-focus-section]{display:none}
+ #app[data-gradebook-focus="true"][data-gradebook-focus-panel="assessment"] [data-gradebook-focus-section="assessment"]{display:flex;flex:1 1 100%;order:9;padding:5px 0;border-top:1px solid var(--line)}
+ #app[data-gradebook-focus="true"][data-gradebook-focus-panel="layout"] [data-gradebook-focus-section="layout"],
+ #app[data-gradebook-focus="true"][data-gradebook-focus-panel="tools"] [data-gradebook-focus-section="tools"],
+ #app[data-gradebook-focus="true"][data-gradebook-focus-panel="help"] [data-gradebook-focus-section="help"]{display:block}
+ #app[data-gradebook-focus="true"] .gradebook-secondary-panels{max-height:min(38dvh,340px);overflow:auto;overscroll-behavior:contain}
+ #app[data-gradebook-focus="true"] .gradebook-secondary-panels:has(>[data-gradebook-focus-section]:not([hidden])){border:0}
+ #app[data-gradebook-focus="true"] [data-gradebook-focus-section="help"] .workspace-disclosure>summary{display:none}
+ #app[data-gradebook-focus="true"] .gradebook-policy-line{padding:3px 8px;font-size:11px}
+ #app[data-gradebook-focus="true"] .gradebook-surface>.scope-inline{margin:0;padding:5px 8px}
+ #app[data-gradebook-focus="true"] .gradebook-save-bar{position:sticky;bottom:0;z-index:7;padding:5px 9px;box-shadow:0 -2px 6px #26354812}
+ #app[data-gradebook-focus="true"] .gradebook-save-bar .btn{min-height:32px}
+ #app[data-gradebook-focus="true"] .gradebook-save-bar #gradebook-selection{font-size:11px}
+ #app[data-gradebook-focus="true"] .gradebook-scroll{overscroll-behavior:contain}
+ @media(max-width:760px){
+  #app[data-gradebook-focus="true"] .workspace{padding:2px}
+  #app[data-gradebook-focus="true"] .gradebook-focus-heading{padding:4px 6px}
+  .gradebook-focus-heading h2{font-size:14px}
+  .gradebook-focus-demo{margin-left:0}
+  #app[data-gradebook-focus="true"] .markbook-toolbar{padding:4px 6px;gap:4px}
+  #app[data-gradebook-focus="true"] .markbook-toolbar>.select{flex:1 1 110px;max-width:none}
+  #app[data-gradebook-focus="true"] .markbook-toolbar .btn{min-height:32px;padding:3px 6px}
+  #app[data-gradebook-focus="true"] .gradebook-focus-panel-buttons{order:5;flex:1 1 100%}
+  #app[data-gradebook-focus="true"] .gradebook-focus-panel-buttons .btn{flex:1}
+  #app[data-gradebook-focus="true"] .markbook-toolbar .count{font-size:10px}
+  #app[data-gradebook-focus="true"] .gradebook-save-bar{gap:4px;padding:4px 6px}
+ }
+ @media(max-height:500px){
+  #app[data-gradebook-focus="true"] .gradebook-secondary-panels{max-height:30dvh}
+  #app[data-gradebook-focus="true"] .gradebook-focus-heading{padding-block:3px}
+  #app[data-gradebook-focus="true"] .gradebook-save-bar{padding-block:3px}
+ }
+}
+@media print{
+ .gradebook-focus-heading,.gradebook-focus-panel-buttons,.gradebook-focus-toggle{display:none!important}
+}
