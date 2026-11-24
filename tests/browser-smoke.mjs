@@ -1028,6 +1028,51 @@ try{
  await action('show-priority-notices');assert.equal(await evaluate(()=>document.querySelector('#notice-filter').value),'priority');
  await fill('#notice-filter','active');
  await viewport(1440,900);
+ // PR42: the directory header shares one desktop line and reflows on phones.
+ await action('navigate','classes');
+ const compactHeaderGeometry=()=>evaluate(()=>{
+  const header=document.querySelector('.compact-workspace-header'),r=header.getBoundingClientRect();
+  const items=[...header.children].map(el=>el.getBoundingClientRect());
+  const centers=items.map(b=>b.top+b.height/2);
+  const controls=[...header.querySelectorAll('button,input,select')].map(el=>el.getBoundingClientRect());
+  return {height:r.height,overflow:header.scrollWidth-header.clientWidth,centerRange:Math.max(...centers)-Math.min(...centers),contained:controls.every(b=>b.width>0&&b.height>0&&b.left>=r.left-1&&b.right<=r.right+1)};
+ });
+ for(const [width,height] of [[1440,900],[1366,768],[320,568],[390,844]]){
+  await viewport(width,height);
+  const geometry=await compactHeaderGeometry();
+  assert.ok(geometry.contained&&geometry.overflow<=1,'Class directory header overflow: '+JSON.stringify(geometry));
+  if(width>=1366)assert.ok(geometry.height<=54&&geometry.centerRange<=2,'Class directory header should fit one row: '+JSON.stringify(geometry));
+ }
+ await fill('#page-query','zzzz-no-match');
+ assert.match(await text('.compact-header-context'),/0 of [0-9]+ teaching groups/);
+ await action('clear-register-filters',undefined,'.compact-workspace-header ');
+ assert.doesNotMatch(await text('.compact-header-context'),/0 of /);
+ await click('[data-workspace-disclosure="class-index-filters"] > summary');
+ assert.ok(await visible('#class-year'));
+ await click('[data-workspace-disclosure="class-index-filters"] > summary');
+ await viewport(1440,900);
+ const firstClass=await evaluate(()=>document.querySelector('#quick-class').options[1].value);
+ await fill('#quick-class',firstClass);
+ assert.ok(await q('.compact-header-class'));
+ await action('go-classes');
+ await action('navigate','students');
+ assert.ok(await visible('.compact-header-students [data-action="students-due"]'));
+ await action('students-below',undefined,'.compact-header-students ');
+ assert.equal(await evaluate(()=>document.querySelector('#student-attainment').value),'below');
+ await action('students-reset',undefined,'.compact-header-students ');
+ await viewport(320,568);assert.ok((await compactHeaderGeometry()).contained);
+ await viewport(1440,900);
+ await action('navigate','intervention');
+ assert.ok(await visible('.compact-header-intervention [data-action="go-personal-actions"]'));
+ await action('go-personal-actions',undefined,'.compact-header-intervention ');
+ assert.equal(await evaluate(()=>document.querySelector('#case-filter').value),'actions');
+ assert.match(await text('.compact-header-context'),/All my responsibilities/);
+ await click('[data-workspace-disclosure="case-progression"] > summary');
+ assert.ok(await visible('.case-stage-card'));
+ await click('[data-workspace-disclosure="case-progression"] > summary');
+ await viewport(320,568);assert.ok((await compactHeaderGeometry()).contained);
+ await viewport(1440,900);
+ await action('navigate','notices');
  // PR35: ordinary navigation fits without a scrollbar; planned links are optional.
  await viewport(1366,768);
  await action('reset-workspace-display');
