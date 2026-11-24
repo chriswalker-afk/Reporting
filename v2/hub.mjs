@@ -1,4 +1,5 @@
 import {createStore,STORAGE_KEY} from './store.mjs';
+import {groupFilter} from './home-dashboard.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,PROFILE_TABS} from './student-profiles.mjs';
 import {profilePeers} from './student-profile-views.mjs';
@@ -53,9 +54,10 @@ function clearRegisterFilters(){state.query='';state.flag='all';state.below=fals
 function clearAnalysis(){state.analysisStudent='';state.analysisAssessment='';state.analysisCommon='';state.analysisUnit='';state.analysisFrom='';state.analysisTo='';}
 function clearStudentFilters(){clearRegisterFilters();state.studentYear='all';state.studentAttainment='all';state.studentSupport='all';}
 function clearFilters(){clearStudentFilters();clearAnalysis();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
-function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information',analysisStudent=''}={}){
+function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information',analysisStudent='',studentFilters=null}={}){
  if(!closeDetail(false))return;closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
+ if(page==='students'&&studentFilters)for(const key of ['studentYear','tutorFilter','houseFilter','studentAttainment'])if(Object.hasOwn(studentFilters,key))state[key]=studentFilters[key];
  state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';state.analysisStudent=analysisStudent;
  const hash=routeHash(page,classId,state.classTab);if(location.hash!==hash)history.pushState(null,'',hash);
  render({top:true});main.focus({preventScroll:true});
@@ -228,11 +230,19 @@ document.addEventListener('click',event=>{
   case 'go-classes':navigate('classes');break;
   case 'go-below':navigate('classes',{below:true});break;
   case 'go-students':navigate('students');break;
+  case 'go-students-below':navigate('students',{studentFilters:{studentAttainment:'below'}});break;
+  case 'home-markbook':if(w.scopedClassIds.has(id))navigate('classes',{classId:id,classTab:'markbook'});else notify('Class outside selected scope.');break;
+  case 'home-group':{
+    try{const [key,value,below]=JSON.parse(id);const filters=groupFilter(key,value,below===true);
+      if(!w.studentRows().some(p=>String(p[key])===String(value)))throw Error('Group outside selected scope');
+      navigate('students',{studentFilters:filters});
+    }catch(error){notify(error.message);}break;
+  }
   case 'go-notices':navigate('notices');break;
   case 'go-acknowledgements':navigate('notices',{noticeFilter:'pending'});break;
   case 'go-schedule':navigate('notices');byId('schedule-panel')?.focus();break;
   case 'focus-schedule':byId('schedule-panel')?.focus();break;
-  case 'focus-attention':byId('attention-panel')?.focus();break;
+  case 'focus-attention':{const panel=byId('attention-panel');panel?.focus({preventScroll:true});panel?.scrollIntoView({block:'nearest',behavior:'instant'});break;}
   case 'go-personal-actions':navigate('intervention',{caseFilter:'actions'});break;
   case 'show-active-notices':state.noticeFilter='active';render();break;
   case 'show-pending-notices':state.noticeFilter='pending';render();break;

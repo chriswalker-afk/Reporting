@@ -1,4 +1,5 @@
 import {assetUrl,houseBadge,pupilIdentity,HOUSES} from './branding.mjs';
+import {homeDashboard,HOME_PREVIEW} from './home-dashboard.mjs';
 import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,displayDate,gradeGap,matchText,sortRows,routeHash} from './workspace.mjs';
 import {EVENTS,safeLink} from './communications.mjs';
 import {GROUPS,DEFAULT_GROUPS,registerColumns,filterRegister} from './class-overview.mjs';
@@ -61,32 +62,74 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><img class="jis-crest" src="'+esc(assetUrl('jis-crest.webp'))+'" alt="Jerudong International School crest" width="44" height="44"><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Complete demo</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><img class="jis-crest" src="'+esc(assetUrl('jis-crest.webp'))+'" alt="Jerudong International School crest" width="44" height="44"><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Staff workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules <span class="nav-coming-soon">Planned</span></div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Complete demo</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
- return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
+ return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Viewing</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
 }
 const noticeBadge=n=>n.canAcknowledge?tag('Acknowledge','tag-warning'):n.acknowledged?tag('Acknowledged','tag-success'):n.priority==='urgent'?tag('Urgent','tag-danger'):n.priority==='important'?tag('Important','tag-warning'):n.status!=='active'?tag(n.status):'';
 const deadlineBadge=d=>tag(({archived:'Archived',completed:'Done',overdue:'Overdue',today:'Due today',upcoming:'Upcoming'})[d.status]||d.status,d.status==='overdue'?'tag-danger':d.status==='today'?'tag-warning':d.status==='completed'?'tag-success':'');
 const noticeRow=(w,n)=>listRow((n.pinned?'Pinned · ':'')+n.title,w.audienceLabel(n.audience)+' · '+displayDate(n.publishedDate),'open-notice',n.id,'notice',noticeBadge(n));
 const deadlineRow=(w,d)=>listRow(d.title,w.audienceLabel(d.audience)+' · '+displayDate(d.dueDate),'open-deadline',d.id,'calendar',(d.recipient?'':tag('Oversight'))+deadlineBadge(d));
+// Fixed-length previews keep Home an overview; the existing destinations hold the full data.
+const homeTable=(columns,rows,label)=>rows.length?'<div class="table-scroll home-preview-table" role="region" tabindex="0" aria-label="'+esc(label)+'"><table class="data-table"><thead><tr>'+columns.map((c,i)=>'<th scope="col"'+(i===0?' class="sticky-first"':'')+'>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map((c,i)=>'<td'+(i===0?' class="sticky-first"':'')+'>'+c+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No records in this scope');
+const homeCount=(n,kind='')=>'<span class="home-count '+kind+'">'+esc(n)+'</span>';
+const homeGroupId=(g,below=false)=>JSON.stringify([g.key,g.value,below]);
+function homeCohort(w,d){
+ if(d.kind==='classes'){
+  const rows=d.classes.slice(0,HOME_PREVIEW);
+  return panel(d.context.panel,
+   '<div class="home-panel-meta">Priority classes · highest number below MTG first</div>'+
+   homeTable(['Class','Scored / pupils','Below MTG','Tracker'],rows.map(c=>[
+    link(c.code,'open-class',c.id)+'<span class="cell-sub">'+esc(c.subject.name+' · '+c.teacher.replace(/ \(demo\)/g,''))+'</span>',
+    esc(c.scored+'/'+c.students),c.below?link(String(c.below),'open-below',c.id):homeCount(0),
+    btn('Tracker','home-markbook',c.id,'btn-quiet home-tracker')
+   ]),'Priority classes')+
+   '<div class="home-panel-footer"><span>Showing '+rows.length+' of '+d.classes.length+' classes</span>'+btn('All classes','go-classes','','btn-quiet','arrow')+'</div>','', 'belowSubjects');
+ }
+ if(d.kind==='pupils'){
+  const rows=d.priorityPupils.slice(0,HOME_PREVIEW);
+  return panel(d.context.panel,
+   '<div class="home-panel-meta">Overdue reviews, attainment and evidence gaps first · '+d.counts.unknown+' pupils with unknown status</div>'+
+   homeTable(['Student','Below MTG','Unknown','Cases'],rows.map(p=>[
+    pupilIdentity(link(p.name,'open-student',p.id)+'<span class="cell-sub">TG '+esc(p.tutorGroupId)+'</span>',p),
+    homeCount(p.below,p.below?'home-count-warning':''),homeCount(p.unknown),p.cases?link(String(p.cases),'open-student-support',p.id)+(p.due?' '+tag('Due','tag-warning'):''):homeCount(0)
+   ]),'Tutees to review')+
+   '<div class="home-panel-footer"><span>Showing '+rows.length+' of '+d.counts.pupils+' pupils</span>'+btn('All tutees','go-students','','btn-quiet','arrow')+'</div>','', 'profileTargets');
+ }
+ const groups=d.groups.slice(0,7);
+ return panel(d.context.panel,
+  '<div class="home-panel-meta">Unique pupils by '+(d.groupKey==='house'?'House':'year group')+' · '+d.counts.unknown+' pupils with unknown status</div>'+
+  homeTable([d.groupKey==='house'?'House':'Year','Pupils','Below MTG','Unknown','SOC'],groups.map(g=>[
+   g.houseId?pupilIdentity(link(g.label,'home-group',homeGroupId(g)),g.houseId):link(g.label,'home-group',homeGroupId(g)),
+   esc(g.pupils),g.below?'<button type="button" class="home-group-progress" data-action="home-group" data-id="'+esc(homeGroupId(g,true))+'" aria-label="'+esc(g.label+': '+g.below+' pupils below minimum target')+'"><span class="home-mini-track" aria-hidden="true"><span style="width:'+100*g.below/g.pupils+'%"></span></span><strong>'+g.below+'</strong></button>':homeCount(0),
+   homeCount(g.unknown),homeCount(g.cases)
+  ]),'Scoped pupil groups')+
+  '<div class="home-panel-footer"><span>Select a group or its below-MTG count</span>'+btn('All students','go-students','','btn-quiet','arrow')+'</div>','', 'homeGroupCounts');
+}
+function homeMetric(label,value,foot,hint,action,ic,tone=''){
+ return '<div class="metric home-metric '+esc(tone)+'"><div class="home-metric-top"><span class="home-metric-icon">'+icon(ic)+'</span><div class="metric-head">'+esc(label)+help(hint,label)+'</div></div><div class="metric-value">'+esc(value)+'</div><button type="button" class="metric-action" data-action="'+esc(action)+'">'+esc(foot)+' '+icon('arrow')+'</button></div>';
+}
 export function renderHome(w,s){
- const h=w.home(),c=h.cohort,classes=sortRows(w.classRows(),'code'),all=w.allHome(),comm=w.communications(),actions=all.actions;
- const classTable=table('homeClasses',classColumns,classes,classCell,s,{compact:true});
- const queue=[
-   ...comm.pendingAcknowledgements.map(n=>({kind:'notice',html:listRow('Acknowledge: '+n.title,w.audienceLabel(n.audience),'open-notice',n.id,'notice',tag('Pending','tag-warning'))})),
-   ...actions.map(a=>{const r=w.caseDetail(a.caseId);return {kind:'case',html:listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'case-action',caseActionId(r.id,a.type),'support',(a.reviewDate<w.asOf?tag('Overdue','tag-danger'):'')+houseBadge(r.student))};})
- ];
- const attention=queue.length?queue.slice(0,4).map(a=>a.html).join(''):empty('Nothing awaiting your attention','Your notice acknowledgements and intervention actions appear here.');
- const notices=comm.activeNotices.slice(0,3),reportingRows=w.access.has('leadership')?comm.deadlines.filter(d=>!d.archived&&(!d.recipient||!d.completed)):comm.openDeadlines,deadlines=reportingRows.slice(0,3);
- const scopeTitle=w.scope==='house'?'House academic overview':w.scope==='tutor'?'Tutee academic overview':w.scope==='faculty'?'Faculty class overview':w.scope==='school'?'School class overview':'Class overview';
- return '<section class="jis-welcome"><div class="jis-welcome-copy">'+heading('Welcome, '+w.staff.name.split(' ')[0],displayDate(w.asOf)+' · '+SCOPE_LABELS[w.scope],tag('Demo reference date')+help('date','reference date'),'Jerudong International School')+'</div><div class="jis-welcome-photo"><img src="'+esc(assetUrl('jis-campus.webp'))+'" alt="Aerial view of the JIS campus and coastline" width="240" height="120"></div></section>'+
- '<div class="metrics">'+metric('Pupils',c.students,c.enrolments+' subject enrolments','scope','go-students')+metric('Subjects below MTG',c.belowTarget.length,'View affected classes','belowSubjects','go-below')+metric('Active interventions',c.interventions.active,c.interventions.students+' individual pupils','intervention','go-cases')+metric('Actions requiring attention',queue.length,actions.length+' intervention · '+comm.pendingAcknowledgements.length+' notice','personalActions','focus-attention')+'</div>'+
- '<div class="home-grid">'+panel(scopeTitle,classTable,btn('View classes','go-classes','','btn-quiet','arrow'),'average')+
- '<div id="attention-panel" tabindex="-1">'+panel('Requires your attention','<div class="list">'+attention+'</div><div class="attention-footer">'+btn('Interventions ('+actions.length+')','go-personal-actions','','btn-quiet')+btn('Notices ('+comm.pendingAcknowledgements.length+')','go-acknowledgements','','btn-quiet')+'</div>','', 'personalActions')+'</div></div>'+
- '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>noticeRow(w,n)).join(''):empty('No active notices'))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+
- panel(w.access.has('leadership')?'School reporting schedule':'Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+reportingRows.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
- note('Academic figures follow the selected scope. Your action queue and communications cover all your assigned responsibilities. Open an intervention reminder to complete its action directly.');
+ const d=homeDashboard(w),c=d.counts;
+ const isClass=d.kind==='classes';
+ const attention=d.shown.length?d.shown.map(q=>{
+  if(q.kind==='notice')return listRow('Acknowledge: '+q.notice.title,w.audienceLabel(q.notice.audience),'open-notice',q.notice.id,'notice',tag(q.notice.priority==='urgent'?'Urgent':'Pending',q.notice.priority==='urgent'?'tag-danger':'tag-warning'));
+  const a=q.action,r=w.caseDetail(a.caseId);
+  return listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'case-action',caseActionId(r.id,a.type),'support',(a.reviewDate<w.asOf?tag('Overdue','tag-danger'):a.reviewDate===w.asOf?tag('Due today','tag-warning'):'')+houseBadge(r.student));
+ }).join(''):empty('You are up to date','No outstanding notice acknowledgements or intervention actions.');
+ const notices=d.notices.slice(0,3),deadlines=d.reportingRows.slice(0,3);
+ const attentionPanel='<section id="attention-panel" class="surface home-attention" tabindex="-1" aria-labelledby="attention-title"><div class="panel-head"><h2 id="attention-title">Requires your attention '+help('personalActions','personal action queue')+'</h2><span class="home-total">'+d.queue.length+'</span></div><div class="home-panel-meta">'+(d.overdue?d.overdue+' overdue · ':'')+'All assigned responsibilities</div><div class="list">'+attention+'</div><div class="home-panel-footer"><span>'+ (d.queue.length?'Showing '+d.shown.length+' of '+d.queue.length:'No outstanding actions')+'</span></div><div class="attention-footer">'+btn('Interventions ('+d.actionCount+')','go-personal-actions','','btn-quiet')+btn('Notices ('+d.ackCount+')','go-acknowledgements','','btn-quiet')+'</div></section>';
+ return '<div class="home-dashboard" data-home-scope="'+esc(w.scope)+'"><section class="jis-welcome home-welcome"><div class="jis-welcome-copy"><p class="eyebrow">Jerudong International School</p><h1>Welcome, '+esc(w.staff.name.split(' ')[0])+'</h1><div class="home-role-context"><span class="home-role-label">'+esc(d.context.label)+'</span><span class="home-context-name">'+esc(d.context.context)+'</span></div><div class="home-date">'+icon('calendar')+esc(displayDate(w.asOf))+' · Demo reference date '+help('date','reference date')+'</div></div><div class="jis-welcome-photo"><img src="'+esc(assetUrl('jis-campus.webp'))+'" alt="Aerial view of the JIS campus and coastline" width="240" height="120"><span class="home-values">Respect · Inspire · Challenge</span></div></section>'+
+ '<div class="home-section-heading"><h2>At a glance</h2><span>'+esc(SCOPE_LABELS[w.scope])+' '+help('scope','workspace scope')+'</span></div>'+
+ '<div class="metrics home-metrics">'+homeMetric('Pupils in scope',c.pupils,c.enrolments+' subject enrolments','scope','go-students','students')+
+ homeMetric(isClass?'Subjects below MTG':'Pupils below MTG',isClass?c.belowSubjects:c.below,isClass?'View affected classes':'View affected pupils',isClass?'belowSubjects':'homeGroupCounts',isClass?'go-below':'go-students-below','chart', (isClass?c.belowSubjects:c.below)>0?'home-metric-caution':'')+
+ homeMetric('Active interventions',c.activeCases,c.casePupils+' individual pupils','intervention','go-cases','support')+
+ homeMetric('My outstanding actions',d.queue.length,d.overdue?d.overdue+' overdue · Review queue':'Review personal queue','personalActions','focus-attention','clock',d.overdue?'home-metric-alert':'')+'</div>'+
+ '<div class="home-grid home-primary-grid">'+attentionPanel+'<div class="home-cohort">'+homeCohort(w,d)+'</div></div>'+
+ '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>noticeRow(w,n)).join(''):empty('No additional active notices',d.ackCount?'Required acknowledgements are in your action queue.':''))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+
+ panel(w.scope==='school'?'School reporting schedule':'Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+d.reportingRows.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
+ note('Academic figures follow your selected scope. Personal actions and notice acknowledgements include all your assigned responsibilities. Select a row to open the relevant record.')+'</div>';
 }
 export function renderNotices(w,s){
  const comm=w.communications(),filter=s.noticeFilter||'active',deadlineFilter=s.deadlineFilter||'open';
