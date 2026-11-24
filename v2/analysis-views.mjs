@@ -1,3 +1,4 @@
+import {disclosure,activeFilterCount,filterLabel} from './workspace-disclosures.mjs';
 import {rankedEvidence,evidenceShare} from './assessment-refinement.mjs';
 import {pupilIdentity} from './branding.mjs';
 import {pct,displayDate,gradeGap} from './workspace.mjs';
@@ -151,8 +152,10 @@ function facultyView(a,s,o){
 export function renderAcademicAnalysis(w,s,r){
  const a=w.academicAnalysis(r.id),options={from:s.analysisFrom||null,to:s.analysisTo||null,unitId:a.units.some(u=>u.id===s.analysisUnit)?s.analysisUnit:null};
  let o;try{o=a.filters(options);}catch(error){return '<section class="surface"><div class="panel-body"><p class="error">'+e(error.message)+'</p>'+btn('Reset analysis filters','analysis-reset')+'</div></section>';}
- const controls='<section class="surface analysis-controls"><div class="toolbar">'+select('analysis-unit',[['','All units'],...a.units.map(u=>[u.id,u.title])],o.unitId??'','Curriculum unit')+
- '<label class="analysis-field">From<input type="date" class="input" id="analysis-from" value="'+e(o.from??'')+'" max="'+e(a.asOf)+'"></label><label class="analysis-field">To<input type="date" class="input" id="analysis-to" value="'+e(o.to)+'" max="'+e(a.asOf)+'"></label>'+btn('Reset filters','analysis-reset','','btn-quiet')+btn('Print view','analysis-print')+'<span class="count">Published results through '+e(displayDate(a.asOf))+'</span></div></section>';
+ const filterCount=activeFilterCount([o.unitId,''],[o.from,''],[o.to,a.asOf]);
+ const controls='<section class="surface analysis-controls"><div class="toolbar workspace-primary-filters">'+btn('Reset filters','analysis-reset','','btn-quiet')+btn('Print view','analysis-print')+'<span class="count">Published results through '+e(displayDate(a.asOf))+'</span></div>'+
+ disclosure('analysis-filters',filterLabel(filterCount),'<div class="toolbar">'+select('analysis-unit',[['','All units'],...a.units.map(u=>[u.id,u.title])],o.unitId??'','Curriculum unit')+
+ '<label class="analysis-field">From<input type="date" class="input" id="analysis-from" value="'+e(o.from??'')+'" max="'+e(a.asOf)+'"></label><label class="analysis-field">To<input type="date" class="input" id="analysis-to" value="'+e(o.to)+'" max="'+e(a.asOf)+'"></label></div>',{kind:'filters',note:(o.unitId?'Selected unit · ':'All units · ')+(o.from?displayDate(o.from)+' – ':'Through ')+displayDate(o.to)})+'</section>';
  return '<div class="academic-analysis">'+controls+(r.partial?'<div class="info-box">Partial class: only pupils in your selected scope contribute to all charts and evidence.</div>':'')+
  (s.classTab==='student-analysis'?studentView(a,s,o):s.classTab==='faculty-analysis'?facultyView(a,s,o):classView(a,s,o))+'</div>';
 }
