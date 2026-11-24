@@ -56,12 +56,12 @@ export function trendChart(s){
  if(!points.length)return empty('No eligible scored assessments','Record and publish complete marks to see attainment over time.');
  const x=i=>points.length===1?254:40+i*(428/(points.length-1)),y=v=>140-1.12*v;
  const line=(key,color,dash='')=>'<polyline points="'+points.map((p,i)=>x(i)+','+y(p[key])).join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2.3" '+dash+'/>';
- return '<svg class="trend-chart" viewBox="0 0 500 172" role="img" aria-label="Assessment percentages and cumulative weighted attainment by assessment sequence">'+
+ return '<svg class="trend-chart" viewBox="0 0 500 172" role="img" aria-label="Assessment percentages and cumulative calculated attainment by assessment sequence">'+
  [0,25,50,75,100].map(v=>'<line x1="40" y1="'+y(v)+'" x2="468" y2="'+y(v)+'" stroke="#e0e7eb"/><text x="31" y="'+(y(v)+3)+'" font-size="10" fill="#607486" text-anchor="end">'+v+'%</text>').join('')+
  (s.targetBoundary==null?'':'<line x1="40" y1="'+y(s.targetBoundary)+'" x2="468" y2="'+y(s.targetBoundary)+'" stroke="#9d731e" stroke-dasharray="5 4" stroke-width="1.5"/>')+
  line('result','#8597a6','stroke-dasharray="4 3"')+line('percent','#176f70')+
  points.map((p,i)=>'<circle cx="'+x(i)+'" cy="'+y(p.result)+'" r="3" fill="#8597a6"/><circle cx="'+x(i)+'" cy="'+y(p.percent)+'" r="3.5" fill="#176f70"/>'+(points.length<=10||i===0||i===points.length-1?'<text x="'+x(i)+'" y="155" font-size="9" fill="#607486" text-anchor="middle">'+(i+1)+'</text>':'')).join('')+
- '<text x="254" y="169" text-anchor="middle" font-size="10" fill="#607486">Assessment sequence (dates below)</text></svg><div class="chart-legend"><span><i class="legend-dot"></i> Cumulative weighted %</span><span><i class="legend-dot result-dot"></i> Assessment %</span>'+(s.targetBoundary==null?'':'<span><i class="legend-dot target-dot"></i> MTG boundary '+num(s.targetBoundary)+'%</span>')+'</div>';
+ '<text x="254" y="169" text-anchor="middle" font-size="10" fill="#607486">Assessment sequence (dates below)</text></svg><div class="chart-legend"><span><i class="legend-dot"></i> Cumulative calculated %</span><span><i class="legend-dot result-dot"></i> Assessment %</span>'+(s.targetBoundary==null?'':'<span><i class="legend-dot target-dot"></i> MTG boundary '+num(s.targetBoundary)+'%</span>')+'</div>';
 }
 const evidenceAxis=()=>'<div class="teaching-axis" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>';
 function rankedBars(rows,idFor){
