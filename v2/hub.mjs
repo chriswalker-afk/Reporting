@@ -82,7 +82,10 @@ function render({top=false,keepFocus=false}={}){
   const entry=gradebookEntryViews.get(currentLayoutKey())??{};state.gradebookEntryView=entry.view??'spreadsheet';state.gradebookSingle=entry;
  }
  state.registerPresentation=registerPresentations.get(state.staffId)??{};
- nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);display.sync();
+ const oldNavScroll=nav.querySelector('.sidebar-scroll')?.scrollTop??0,plannedOpen=nav.querySelector('.sidebar-future')?.open??false;
+ nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);
+ const planned=nav.querySelector('.sidebar-future'),navScroll=nav.querySelector('.sidebar-scroll');if(planned)planned.open=plannedOpen;if(navScroll)navScroll.scrollTop=oldNavScroll;
+ display.sync();
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
  disclosures.sync();gradebookFocus.sync();analysisPanels.sync();nameScrollRegions(main);
  main.scrollTop=top?0:oldScroll;
