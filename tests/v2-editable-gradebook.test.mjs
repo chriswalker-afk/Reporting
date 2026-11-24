@@ -25,7 +25,7 @@ test('inline gradebook uses assessment-specific boundaries, preserves zero and d
  assert.equal(entryValue(a,cell(book(s),a1).r),'40');
 });
 test('multiple assessments save atomically, with confirmation for clears and revision protection',()=>{
- const s=createStore(),b=book(s),x=cell(b,a1),y=cell(b,a4);
+ const s=createStore(),b=book(s),x=cell(b,a1),y=cell(b,a4,'P123@11-maths');
  const edits=[decodeEntry(x.a,x.r,'39'),decodeEntry(y.a,y.r,'20')];
  const before=s.snapshot();
  assert.throws(()=>s.saveGradebookBatch('sam',cls,[edits[0],{...edits[1],marks:{total:99}}],{confirmed:true}),/Invalid mark/);
@@ -34,7 +34,7 @@ test('multiple assessments save atomically, with confirmation for clears and rev
  s.saveGradebookBatch('sam',cls,edits,{confirmed:true,expectedRevision:0});
  assert.equal(s.revision(),1);
  assert.equal(s.analytics().resultFor(a1,eid).rawMark,39);
- assert.equal(s.analytics().resultFor(a4,eid).rawMark,20);
+ assert.equal(s.analytics().resultFor(a4,'P123@11-maths').rawMark,20);
  assert.equal(s.snapshot().audit.at(-1).action,'saveGradebookBatch');
  assert.throws(()=>s.saveGradebookBatch('sam',cls,edits,{confirmed:true,expectedRevision:0}),/changed since/);
  const blank=decodeEntry(x.a,cell(book(s),a1).r,'');
@@ -43,7 +43,7 @@ test('multiple assessments save atomically, with confirmation for clears and rev
  assert.equal(s.analytics().resultFor(a1,eid).status,'missing');
 });
 test('draft/diagnostic results do not enter live overall grade; structured and read-only cells cannot be overwritten',()=>{
- const s=createStore(),b=book(s),x=cell(b,a4),p=x.p;
+ const s=createStore(),b=book(s),x=cell(b,a4,'P123@11-maths'),p=x.p;
  const live=liveSummary(p.summary,new Map([[a4,entryPreview(x.a,x.r,decodeEntry(x.a,x.r,'20'))]]),{bands:b.defaultBands});
  assert.equal(live.average,p.summary.average);
  const q=cell(b,'11-maths-A3');assert.equal(canEnter(q.a,q.r),false);
