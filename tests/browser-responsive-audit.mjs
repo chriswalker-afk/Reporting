@@ -246,6 +246,25 @@ try{
  assert.equal(await evaluate(s=>document.querySelector(s).value,keyboardCell),'19');
  assert.match(await text('#gradebook-save-status'),/unsaved/i);
  dialogs.push({contains:'Discard',accept:true});await activate('gradebook-discard');await activate('gradebook-entry-view','spreadsheet');await activate('gradebook-focus-toggle');
+ // Page zoom at both limits across the main routes and class tabs, using
+ // one desktop and one phone viewport. Controls remain outside the zoom.
+ await fresh();await fill('#staff','sam');await fill('#scope','faculty');
+ const inspectZoom=async(label)=>{
+  for(let i=0;i<3;i++)await activate('page-zoom-out',null,'.demo-footer');
+  assert.equal(await evaluate(()=>document.querySelector('#workspace').dataset.pageZoom),'70');
+  await inspect(label+' / 70%');
+  await activate('page-zoom-reset',null,'.demo-footer');
+  for(let i=0;i<5;i++)await activate('page-zoom-in',null,'.demo-footer');
+  assert.equal(await evaluate(()=>document.querySelector('#workspace').dataset.pageZoom),'150');
+  await inspect(label+' / 150%');
+  await activate('page-zoom-reset',null,'.demo-footer');
+ };
+ for(const [width,height,label] of [[1366,768,'page zoom desktop'],[390,844,'page zoom mobile']]){
+  await screen(width,height);await fresh();
+  for(const page of pages){await navigatePage(page);await inspectZoom(label+' / '+page);}
+  await navigatePage('classes');await activate('open-class','11-maths-1');
+  for(const tab of CLASS_TABS){await activate('class-tab',tab);await inspectZoom(label+' / '+tab);}
+ }
  assert.equal(dialogs.length,0);assert.deepEqual(errors,[]);
  // Findings are grouped rather than silently discarded. Non-blocking diagnostic
  // checks are listed in the CI log; assertions above enforce the critical gates.
