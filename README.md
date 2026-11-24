@@ -4,6 +4,10 @@ An interactive, **fictional-data-only** proof of concept for a unified school st
 
 > **Not production software.** The repository is public. No school data, secrets, identifiers or genuine safeguarding information should be committed, entered or copied into the prototype.
 
+## Version 2 rebuild (V2-01)
+
+The new implementation is being developed alongside the original prototype in the `v2/` directory. The existing `index.html` and legacy Pages interface remain unchanged until the new interface is ready. See [V2 roadmap and data contract](v2/README.md) for the development sequence, calculation definitions, synthetic data and APIs. Run the V2 tests with `node --test tests/v2-*.test.mjs`.
+
 ## Explore
 
 Open `index.html` locally in a modern browser or serve the repository with any static web server. Once GitHub Pages has been enabled (Settings → Pages → Source: GitHub Actions), the included deployment workflow publishes updates from `main`.
