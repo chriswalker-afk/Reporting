@@ -17,6 +17,7 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
  function sync(){
   const current=getContext(),node=surface();
   if(!node||!current||current!==context){active=false;panel='';context=current;outerScroll=0;}
+  if(panel&&!panelButton(panel))panel='';
   app.dataset.gradebookFocus=String(active);
   app.dataset.gradebookFocusPanel=active?panel:'';
   if(!node)return;
