@@ -1,0 +1,179 @@
+// Dependency-free real Chromium smoke test for the hosted demo.
+// Run with Node 22+ and Chrome/Chromium (CHROME_BIN can override detection).
+import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
+import {readFile,stat,mkdtemp,rm} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+import {spawn} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {resolve,join,extname,sep} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const root=fileURLToPath(new URL('../',import.meta.url));
+const chrome=[process.env.CHROME_BIN,'/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(x=>x&&existsSync(x));
+assert.ok(chrome,'Chrome not found. Install Chromium or set CHROME_BIN.');
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml'};
+const server=createServer(async(req,res)=>{
+ try{
+  const url=new URL(req.url,'http://localhost');
+  let path=resolve(root,'.'+decodeURIComponent(url.pathname));
+  if(path!==resolve(root)&&!path.startsWith(resolve(root)+sep)){res.writeHead(403).end();return;}
+  if((await stat(path)).isDirectory())path=join(path,'index.html');
+  res.writeHead(200,{'Content-Type':mime[extname(path)]??'application/octet-stream','Cache-Control':'no-store'}).end(await readFile(path));
+ }catch{res.writeHead(404).end();}
+});
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function until(fn,label,timeout=10000){
+ const end=Date.now()+timeout;
+ let last;
+ while(Date.now()<end){
+  try{const v=await fn();if(v)return v;}catch(error){last=error;}
+  await delay(70);
+ }
+ throw Error('Timed out: '+label+(last?' ('+last.message+')':''));
+}
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const origin='http://127.0.0.1:'+server.address().port;
+const profile=await mkdtemp(join(tmpdir(),'jis-hub-browser-'));
+const child=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','ignore']});
+let socket,serial=0,dialogs=[],errors=[],page;
+const pending=new Map();
+try{
+ const port=await until(async()=>Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]),'Chrome debugging port');
+ const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
+ page=targets.find(t=>t.type==='page');assert.ok(page);
+ socket=new WebSocket(page.webSocketDebuggerUrl);
+ await new Promise((res,rej)=>{socket.addEventListener('open',res,{once:true});socket.addEventListener('error',rej,{once:true});});
+ function send(method,params={}){
+  return new Promise((resolve,reject)=>{
+   const id=++serial,timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method));},15000);
+   pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,method,params}));
+  });
+ }
+ socket.addEventListener('message',event=>{
+  const msg=JSON.parse(event.data);
+  if(msg.id){const p=pending.get(msg.id);if(p){clearTimeout(p.timer);pending.delete(msg.id);msg.error?p.reject(Error(msg.error.message)):p.resolve(msg.result);}return;}
+  if(msg.method==='Runtime.exceptionThrown')errors.push(msg.params.exceptionDetails.exception?.description??msg.params.exceptionDetails.text);
+  if(msg.method==='Page.javascriptDialogOpening'){
+   const planned=dialogs.shift();if(!planned)errors.push('Unexpected browser dialog: '+msg.params.message);
+   else if(!msg.params.message.includes(planned.contains))errors.push('Unexpected confirmation: '+msg.params.message);
+   send('Page.handleJavaScriptDialog',{accept:planned?.accept??false}).catch(error=>errors.push(error.message));
+  }
+ });
+ await send('Page.enable');await send('Runtime.enable');
+ const evaluate=async(fn,...args)=>{
+  const expression='('+fn.toString()+')('+args.map(v=>JSON.stringify(v)).join(',')+')';
+  const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
+  if(res.exceptionDetails)throw Error(res.exceptionDetails.exception?.description??res.exceptionDetails.text);
+  return res.result.value;
+ };
+ const q=selector=>evaluate(sel=>Boolean(document.querySelector(sel)),selector);
+ const click=async(selector)=>{
+  await evaluate(sel=>{const el=document.querySelector(sel);if(!el)throw Error('Missing control: '+sel);if(el.disabled)throw Error('Disabled control: '+sel);el.focus();el.click();},selector);
+ };
+ const action=(name,id,within='')=>click(within+'[data-action="'+name+'"]'+(id===undefined?'':'[data-id='+JSON.stringify(id)+']'));
+ const fill=async(selector,value)=>evaluate((sel,val)=>{const el=document.querySelector(sel);if(!el)throw Error('Missing input: '+sel);el.focus();if(el.type==='checkbox')el.checked=Boolean(val);else el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));},selector,value);
+ const text=sel=>evaluate(s=>document.querySelector(s)?.textContent??'',sel);
+ const heading=()=>text('#workspace h1');
+ const detail=()=>text('#detail-title');
+ const close=()=>action('close-detail',undefined,'#detail-dialog ');
+ const open=async(path='')=>{await send('Page.navigate',{url:origin+'/'+path});await until(()=>q('#workspace h1'),'workspace ready');};
+ const viewport=async(width,height)=>{
+  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+  await delay(80);
+  const dimensions=await evaluate(()=>({body:document.documentElement.scrollWidth,viewport:innerWidth,main:document.querySelector('#workspace').getBoundingClientRect().width}));
+  assert.ok(dimensions.body<=dimensions.viewport+1,'Page overflows viewport: '+JSON.stringify(dimensions));
+  assert.ok(dimensions.main>0);
+ };
+ await viewport(1440,900).catch(()=>{}); // Before navigation only the blank page exists.
+ await open();
+ assert.match(await heading(),/Welcome, Sam/);
+ for(const page of ['notices','classes','students','intervention','home']){
+  await action('navigate',page);assert.ok(await heading());assert.equal(await evaluate(()=>location.hash),'#'+page);
+ }
+ // Notice acknowledgement is visible immediately and stays committed across navigation.
+ await action('open-notice','NO1','#workspace ');
+ assert.match(await detail(),/Demo staff notice/);
+ if(await q('#detail-dialog [data-action="ack-notice"]'))await action('ack-notice','NO1','#detail-dialog ');
+ assert.ok(!(await q('#detail-dialog [data-action="ack-notice"]')));
+ await close();
+ // Quick role guide opens exact course and active tab.
+ await action('demo-guide');await action('demo-scenario','faculty','#detail-dialog ');
+ assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/markbook');
+ assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
+ const markbookId=JSON.stringify(['11-maths-1','11-maths-A3','']);
+ // data-id contains quotes, so use matching via dataset rather than CSS escaping.
+ await evaluate(id=>{const el=[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id);if(!el)throw Error('Missing assessment');el.click();},markbookId);
+ assert.ok(await q('#mark-grid-form'));
+ const mark='[data-mark-row="P121@11-maths"] [data-item="q1"]';
+ const original=await evaluate(sel=>document.querySelector(sel).value,mark);
+ await fill(mark,original==='6'?'5':'6');
+ dialogs.push({contains:'Discard unsaved marks',accept:false});await close();
+ assert.ok(await q('#detail-dialog[open]'));
+ await fill(mark,'6');await fill('[data-mark-row="P121@11-maths"] [data-item="q2"]','10');await fill('[data-mark-row="P121@11-maths"] [data-item="q3"]','14');
+ await click('#mark-grid-form button[type=submit]');
+ assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');
+ assert.match(await text('#mark-dirty'),/No unsaved changes/);
+ await close();
+ await action('class-tab','class-analysis');
+ assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/class-analysis');
+ await fill('#analysis-assessment','11-maths-A3');
+ assert.ok(await q('.frequency-bin'));
+ await evaluate(()=>{const bins=[...document.querySelectorAll('.frequency-bin')];bins.at(-1).click();});
+ assert.match(await text('#detail-dialog'),/Demo Student 121/);await close();
+ await evaluate(()=>history.back());await until(()=>q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'),'Back returns to markbook');
+ await action('class-tab','information');
+ await action('edit-prediction','P121@11-maths');
+ await fill('#prediction','8');
+ dialogs.push({contains:'Discard unsaved form',accept:false});await close();
+ assert.ok(await q('#prediction-form'));
+ await click('#prediction-form button[type=submit]');
+ assert.ok(!(await q('#detail-dialog[open]')));
+ await action('open-student','P121');
+ await action('profile-tab','assessments','#detail-dialog ');
+ assert.match(await text('#detail-dialog'),/Published assessment history/);
+ await action('profile-tab','support','#detail-dialog ');
+ assert.match(await text('#detail-dialog'),/Active interventions/);
+ await close();
+ // A direct queue action is editable; cancellation protects unsaved case input.
+ await action('navigate','intervention');
+ await action('open-case','I001');
+ await evaluate(()=>{const el=[...document.querySelectorAll('#detail-dialog [data-action="case-action"]')].find(b=>JSON.parse(b.dataset.id)[1]==='update');if(!el)throw Error('Missing progress update');el.click();});
+ await fill('#case-text','Demo browser smoke academic observation');
+ dialogs.push({contains:'Discard unsaved form',accept:false});await action('detail-back',undefined,'#detail-dialog ');
+ assert.ok(await q('#intervention-form'));
+ await click('#intervention-form button[type=submit]');
+ assert.match(await text('#detail-dialog'),/Demo browser smoke academic observation/);
+ await close();
+ // Reload validates local persistence and both entrypoints.
+ await open('#classes/11-maths-1/markbook');
+ assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
+ await evaluate(id=>[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id).click(),markbookId);
+ assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');await close();
+ await action('demo-guide');await action('demo-scenario','tutor','#detail-dialog ');
+ assert.equal(await evaluate(()=>document.querySelector('#scope').value),'tutor');
+ assert.match(await heading(),/Students/);
+ await action('demo-guide');await action('demo-scenario','house','#detail-dialog ');
+ assert.equal(await evaluate(()=>document.querySelector('#scope').value),'house');
+ assert.match(await heading(),/Intervention/);
+ await action('demo-guide');await action('demo-scenario','leadership','#detail-dialog ');
+ assert.equal(await evaluate(()=>document.querySelector('#scope').value),'school');
+ assert.match(await heading(),/Welcome, Avery/);
+ for(const [width,height] of [[1280,720],[768,1024],[390,844],[360,800]]){
+  await viewport(width,height);
+  if(width<=760)await action('mobile-menu');
+  await action('navigate','classes');await viewport(width,height);
+  if(width<=760)await action('mobile-menu');
+  await action('navigate','students');await viewport(width,height);
+  if(width<=760)await action('mobile-menu');
+  await action('navigate','home');await viewport(width,height);
+ }
+ await open('v2/#classes/11-maths-1/class-analysis');
+ assert.ok(await q('[data-action="class-tab"][data-id="class-analysis"][aria-pressed="true"]'));
+ assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
+ assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
+ console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
+}finally{
+ socket?.close();child.kill();await new Promise(r=>server.close(r));
+ await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100}).catch(()=>{});
+}
