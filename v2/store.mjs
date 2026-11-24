@@ -62,7 +62,8 @@ export function createReadModel(data,staffId){
  * No stored data may be real student data. No security claim is made.
  */
 export function createStore({initialData=createDemoData(),storage=null,storageKey=STORAGE_KEY,clock=()=>new Date().toISOString()}={}){
-  let current=assertData(clone(initialData)),revision=0;
+  const baseline=assertData(clone(initialData));
+  let current=clone(baseline),revision=0;
   const persisted=storage?.getItem(storageKey);
   if(persisted!==null&&persisted!==undefined){
     const parsed=JSON.parse(persisted);
@@ -74,11 +75,11 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   const must=(condition,message)=>{if(!condition)throw new Error(message);};
   function transaction(staffId,action,recordId,mutate){
     const draft=snapshot(),access=createAccess(draft,staffId);
-    const {before,after}=mutate(draft,access);
+    const {before,after,reason}=mutate(draft,access);
     if(JSON.stringify(before)===JSON.stringify(after))return {changed:false,revision};
     let id='AUD-'+(draft.audit.length+1),n=draft.audit.length+1;
     while(draft.audit.some(a=>a.id===id))id='AUD-'+(++n);
-    draft.audit.push({id,actorStaffId:staffId,action,recordId,timestamp:clock(),before:clone(before),after:clone(after)});
+    draft.audit.push({id,actorStaffId:staffId,action,recordId,timestamp:clock(),before:clone(before),after:clone(after),reason:reason??null});
     assertData(draft);
     // Storage failure must not silently commit a partial edit.
     if(storage)storage.setItem(storageKey,JSON.stringify(draft));
@@ -102,6 +103,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       must(marks&&typeof marks==='object'&&!Array.isArray(marks),'Marks must be an object');
       if(status!=='present'&&old&&Object.keys(old.marks).length)must(confirmClear===true,'Confirm before clearing entered marks');
       const r=ensureResult(d,assessmentId,enrolmentId);
+      must(Object.values(marks).every(v=>typeof v==='number'&&Number.isFinite(v)),'Marks must be finite numbers');
       r.status=status;r.marks=clone(marks); // Exclusion setting is preserved; separate guarded operation.
       return {before,after:r};
     });
@@ -113,7 +115,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       const old=resultRecord(d,assessmentId,enrolmentId),before=old?clone(old):null;
       const r=ensureResult(d,assessmentId,enrolmentId);
       r.exclusionReason=excluded?reason.trim():null;
-      return {before,after:r};
+      return {before,after:r,reason:reason.trim()};
     });
   }
   function setAssessmentInclusion(staffId,assessmentId,{included,reason,confirmed,phrase}){
@@ -123,7 +125,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       if(!included)must(phrase==='EXCLUDE','Type EXCLUDE to confirm the whole-assessment exclusion');
       const r=lookup(d,'assessments',assessmentId),before=clone(r);
       r.includeInSummary=included;r.exclusionReason=included?null:reason.trim();
-      return {before,after:r};
+      return {before,after:r,reason:reason.trim()};
     });
   }
   function setPrediction(staffId,enrolmentId,predictedGrade){
@@ -152,7 +154,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   function reset({confirmed=false}={}){
     must(confirmed===true,'Confirm reset of fictional demo data');
-    const next=assertData(clone(initialData));
+    const next=clone(baseline);
     if(storage)storage.setItem(storageKey,JSON.stringify(next));
     current=next;revision++;
     for(const listener of listeners)try{listener(snapshot(),revision);}catch(error){console.error('Demo store subscriber error',error);}
