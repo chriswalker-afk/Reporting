@@ -54,11 +54,11 @@ function clearRegisterFilters(){state.query='';state.flag='all';state.below=fals
 function clearAnalysis(){state.analysisStudent='';state.analysisAssessment='';state.analysisCommon='';state.analysisUnit='';state.analysisFrom='';state.analysisTo='';}
 function clearStudentFilters(){clearRegisterFilters();state.studentYear='all';state.studentAttainment='all';state.studentSupport='all';}
 function clearFilters(){clearStudentFilters();clearAnalysis();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
-function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information',analysisStudent='',studentFilters=null}={}){
+function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information',analysisStudent='',analysisAssessment='',studentFilters=null}={}){
  if(!closeDetail(false))return;closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
  if(page==='students'&&studentFilters)for(const key of ['studentYear','tutorFilter','houseFilter','studentAttainment'])if(Object.hasOwn(studentFilters,key))state[key]=studentFilters[key];
- state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';state.analysisStudent=analysisStudent;
+ state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';state.analysisStudent=analysisStudent;state.analysisAssessment=analysisAssessment;
  const hash=routeHash(page,classId,state.classTab);if(location.hash!==hash)history.pushState(null,'',hash);
  render({top:true});main.focus({preventScroll:true});
 }
@@ -88,7 +88,7 @@ function openDetail(kind,id,options={}){
   detailDialog.classList.toggle('wide-profile',kind==='student');
   if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
-  grid.init();detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
+  grid.init();detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});grid.focusRequested();
  }catch(error){notify(String(error.message||error));}
 }
 function addBack(){
@@ -227,6 +227,13 @@ document.addEventListener('click',event=>{
     openDetail('assessment-copy',bookId(unpackBookId(id)[0],selected));break;
   }
   case 'open-markbook':openDetail('mark-grid',id);break;
+  case 'next-unfinished-mark':grid.nextUnfinished();break;
+  case 'markbook-analysis':{
+    try{const [classId,assessmentId]=unpackBookId(id),a=w.markbook(classId).assessments.find(x=>x.id===assessmentId);
+     if(!a||a.status!=='published'||a.date>w.asOf)throw Error('Only published assessments through the reference date can be analysed');
+     navigate('classes',{classId,classTab:'class-analysis',analysisAssessment:assessmentId});
+    }catch(error){notify(error.message);}break;
+  }
   case 'edit-assessment':openDetail('assessment-edit',id);break;
   case 'publish-assessment':openDetail('publish-assessment',id);break;
   case 'student-exclusion':openDetail('student-exclusion',id);break;
@@ -344,6 +351,7 @@ document.addEventListener('click',event=>{
  }
 });
 document.addEventListener('paste',event=>grid.paste(event));
+document.addEventListener('focusin',event=>grid.onFocus(event.target));
 window.addEventListener('beforeunload',event=>{if(grid.isDirty()||formDirty){event.preventDefault();event.returnValue='';}});
 document.addEventListener('input',event=>{
  if(grid.onInput(event.target))return;

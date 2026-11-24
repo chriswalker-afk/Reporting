@@ -1,6 +1,7 @@
 import {cellMark,previewRow,parseDelimited,importPreview} from './markbook.mjs';
 import {unpackBookId} from './markbook-views.mjs';
 import {pct} from './workspace.mjs';
+import {markBufferSummary,nextMarkCell} from './assessment-refinement.mjs';
 
 const byId=id=>document.getElementById(id);
 export function parseItemLines(text){
@@ -18,7 +19,7 @@ export function definitionInput(form,book,old){
 }
 /** The mark grid is an unsaved buffer. No mark changes are persisted until its single explicit save. */
 export function createGridController({dialog,getDetail,getWorkspace,getStore,getStaff,notify}){
- let dirty=false,revision=null,stagedImport=null;
+ let dirty=false,revision=null,stagedImport=null,activeDetail=null,buffer=new Map(),summary=null;
  const detail=()=>{
   const record=getDetail();
   if(record?.kind!=='mark-grid')throw Error('No active mark-entry grid');
@@ -43,28 +44,64 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   if(invalid)return null;
   return {...original,entryStatus:status,marks};
  }
- function updateRow(row,d=detail()){
+ function updateRow(row,d=activeDetail??detail()){
   if(!row.querySelector('.entry-status'))return;
   const r=readRow(row,d,false);
+  buffer.set(row.dataset.markRow,r??{enrolmentId:row.dataset.markRow,invalid:true});
   row.classList.toggle('inactive-mark-row',row.querySelector('.entry-status').value!=='present');
-  if(!r){setText(row,'total','—');setText(row,'percent','—');setText(row,'grade','—');setText(row,'status','Invalid mark');return;}
+  if(!r){row.dataset.entryState='invalid';setText(row,'total','—');setText(row,'percent','—');setText(row,'grade','—');setText(row,'status','Invalid mark');return;}
   const p=previewRow(d.assessment,d.bands,r.entryStatus,r.marks,Boolean(r.exclusionReason));
   setText(row,'total',p.total===null?'—':p.total+'/'+d.maxMarks);setText(row,'percent',pct(p.percent));setText(row,'grade',p.grade??'—');
-  setText(row,'status',p.state[0].toUpperCase()+p.state.slice(1));
+  row.dataset.entryState=p.state;setText(row,'status',p.state[0].toUpperCase()+p.state.slice(1));
  }
  function resetImport(){
   stagedImport=null;const node=byId('mark-import-preview');if(node)node.replaceChildren();
  }
- function setDirty(){
-  dirty=true;resetImport();const node=byId('mark-dirty');if(node)node.textContent='Unsaved changes';
+ function refreshSummary(){
+  if(!activeDetail)return;
+  summary=markBufferSummary(activeDetail,buffer);dirty=summary.changedIds.length>0;
+  const changed=new Set(summary.changedIds);
+  for(const row of rows())row.classList.toggle('changed-mark-row',changed.has(row.dataset.markRow));
+  const values={scored:summary.counts.scored+'/'+summary.eligible,pending:summary.needsEntry,absent:summary.counts.absent,excluded:summary.counts.excluded,invalid:summary.counts.invalid};
+  for(const [key,value] of Object.entries(values)){const node=byId('entry-stat-'+key);if(node)node.textContent=value;}
+  const node=byId('mark-dirty');if(node)node.textContent=dirty?'Unsaved changes · '+summary.changedIds.length+' pupil'+(summary.changedIds.length===1?'':'s'):'No unsaved changes';
+  const clear=byId('mark-clear-count');if(clear)clear.textContent=summary.clearingIds.length?summary.clearingIds.length+' pupil result(s) will lose previously entered marks. Confirm to save.':'';
+  const next=dialog.querySelector('[data-action="next-unfinished-mark"]');if(next){next.disabled=!summary.pendingIds.length;next.textContent='Next unfinished ('+summary.pendingIds.length+')';}
  }
+ function setDirty(){resetImport();refreshSummary();}
  function init(){
-  dirty=false;revision=getStore().revision();stagedImport=null;
-  if(getDetail()?.kind==='mark-grid'){const d=detail();for(const row of rows())updateRow(row,d);}
+  dirty=false;revision=getStore().revision();stagedImport=null;activeDetail=null;buffer=new Map();summary=null;
+  if(getDetail()?.kind==='mark-grid'){activeDetail=detail();for(const row of rows())updateRow(row,activeDetail);refreshSummary();}
+ }
+ function focusCell(input){if(!input)return false;input.focus();input.select();return true;}
+ function focusRequested(){
+  if(getDetail()?.kind!=='mark-grid')return;
+  const [,,id]=unpackBookId(getDetail().id);if(!id)return;
+  const row=findRow(id);if(!row)return;
+  const cells=[...row.querySelectorAll('.mark-cell')];
+  if(!focusCell(cells.find(n=>n.getAttribute('aria-invalid')==='true')??cells.find(n=>!n.value.trim())??cells[0]))row.focus();
+  row.scrollIntoView({block:'nearest',inline:'nearest'});
+ }
+ function onFocus(target){
+  if(getDetail()?.kind!=='mark-grid'||!activeDetail||!target.matches?.('.mark-cell'))return;
+  const row=target.closest('tr'),col=target.dataset.col;
+  dialog.querySelectorAll('.mark-row-focus,.mark-column-focus').forEach(n=>n.classList.remove('mark-row-focus','mark-column-focus'));
+  row.classList.add('mark-row-focus');
+  dialog.querySelector('[data-mark-header="'+col+'"]')?.classList.add('mark-column-focus');
+  for(const td of dialog.querySelectorAll('[data-mark-column="'+col+'"]'))td.classList.add('mark-column-focus');
+  const node=byId('mark-focus');if(node)node.textContent=target.getAttribute('aria-label')+' · Row '+(Number(target.dataset.row)+1)+' of '+activeDetail.rows.length;
+ }
+ function nextUnfinished(){
+  if(!summary?.pendingIds.length)return;
+  const all=rows(),current=all.findIndex(r=>r.classList.contains('mark-row-focus'));
+  const ids=new Set(summary.pendingIds),ordered=[...all.slice(current+1),...all.slice(0,current+1)];
+  const row=ordered.find(r=>ids.has(r.dataset.markRow));if(!row)return;
+  const cells=[...row.querySelectorAll('.mark-cell')];
+  focusCell(cells.find(n=>n.getAttribute('aria-invalid')==='true')??cells.find(n=>!n.value.trim())??cells[0]);
  }
  function canLeave(){
   if(getDetail()?.kind==='mark-grid'&&dirty&&!window.confirm('Discard unsaved marks? Your saved results will not change.'))return false;
-  dirty=false;stagedImport=null;return true;
+  dirty=false;stagedImport=null;activeDetail=null;return true;
  }
  function onInput(target){
   if(getDetail()?.kind!=='mark-grid')return false;
@@ -94,7 +131,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   if(!/[\t\r\n]/.test(text))return;
   event.preventDefault();
   try{
-   const d=detail(),matrix=parseDelimited(text,'\t'),startRow=Number(event.target.dataset.row),startCol=Number(event.target.dataset.col),all=rows(),changes=[];
+   const d=activeDetail??detail(),matrix=parseDelimited(text,'\t'),startRow=Number(event.target.dataset.row),startCol=Number(event.target.dataset.col),all=rows(),changes=[];
    if(startRow+matrix.length>all.length)throw Error('Pasted block extends beyond the class register');
    for(const [i,line] of matrix.entries()){
     if(startCol+line.length>d.assessment.items.length)throw Error('Pasted block extends beyond the assessment columns');
@@ -112,12 +149,20 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   }catch(e){error(e.message);}
  }
  function keyboard(event){
-  if(getDetail()?.kind!=='mark-grid'||!event.target.matches('.mark-cell')||event.key!=='Enter')return false;
-  event.preventDefault();const row=Number(event.target.dataset.row)+(event.shiftKey?-1:1),col=event.target.dataset.col;
-  dialog.querySelector('.mark-cell[data-row="'+row+'"][data-col="'+col+'"]')?.focus();return true;
+  if(getDetail()?.kind!=='mark-grid')return false;
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'&&activeDetail?.editable){event.preventDefault();byId('mark-grid-form')?.requestSubmit();return true;}
+  if(!event.target.matches?.('.mark-cell')||event.ctrlKey||event.metaKey||event.altKey||event.isComposing)return false;
+  const target=event.target,key=event.key;
+  if(event.shiftKey&&key.startsWith('Arrow'))return false;
+  if(key==='ArrowLeft'&&(target.selectionStart!==target.selectionEnd||target.selectionStart!==0))return false;
+  if(key==='ArrowRight'&&(target.selectionStart!==target.selectionEnd||target.selectionEnd!==target.value.length))return false;
+  const cells=[...dialog.querySelectorAll('.mark-cell')].map(input=>({row:Number(input.dataset.row),col:Number(input.dataset.col),input}));
+  const next=nextMarkCell(cells,{row:Number(target.dataset.row),col:Number(target.dataset.col)},key,event.shiftKey);
+  if(!next&&key!=='Enter')return false;
+  event.preventDefault();if(next)focusCell(next.input);return true;
  }
  function save(form){
-  const d=detail(),entries=[];
+  const d=activeDetail??detail(),entries=[];
   for(const row of rows()){
    const r=readRow(row,d),old=d.rows.find(x=>x.enrolmentId===r.enrolmentId);
    if(!old.editable)continue;
@@ -130,7 +175,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   dirty=false;revision=getStore().revision();notify('Saved '+entries.length+' pupil result'+(entries.length===1?'':'s')+'. All relevant summaries updated.');return true;
  }
  function previewImport(){
-  const d=detail(),current=rows().map(row=>readRow(row,d));
+  const d=activeDetail??detail(),current=rows().map(row=>readRow(row,d));
   resetImport();stagedImport=importPreview(byId('mark-import-text').value,d.assessment,current);
   const node=byId('mark-import-preview');node.replaceChildren();
   const intro=document.createElement('p');intro.textContent=stagedImport.length+' pupil results will change in the unsaved grid. Review before applying.';node.append(intro);
@@ -145,7 +190,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
  }
  function applyImport(){
   if(!stagedImport)throw Error('Preview the import first');
-  const d=detail();
+  const d=activeDetail??detail();
   for(const r of stagedImport){
    const row=findRow(r.enrolmentId);if(!row)throw Error('Pupil is no longer in the grid');
    row.querySelector('.entry-status').value=r.status;
@@ -163,5 +208,5 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   const url=URL.createObjectURL(new Blob([byId('csv-template').value],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');
   a.href=url;a.download=detail().assessment.id+'-fictional-results.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
- return {init,canLeave,onInput,onChange,paste,keyboard,save,previewImport,applyImport,copyTemplate,downloadTemplate,error,isDirty:()=>dirty};
+ return {init,canLeave,onInput,onChange,paste,keyboard,save,previewImport,applyImport,copyTemplate,downloadTemplate,error,onFocus,focusRequested,nextUnfinished,isDirty:()=>dirty};
 }
