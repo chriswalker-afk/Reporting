@@ -1,5 +1,5 @@
 import {parseDelimited,cellMark} from './markbook.mjs';
-import {entryKey,canEditStructured,canEnter,draftFromResult,editDraftItem,editDraftStatus,decodeDraft,isChanged,selectionBounds} from './gradebook-entry.mjs';
+import {entryKey,canEditStructured,canEnter,draftFromResult,editDraftItem,editDraftStatus,decodeDraft,selectionBounds} from './gradebook-entry.mjs';
 
 // Drafts are immutable values; snapshot maps retain stable result keys even when columns collapse.
 export function createEditHistory(limit=100){
@@ -34,7 +34,7 @@ export function selectedRectangle(overview,columns,anchor,end){
 }
 const quoteTSV=v=>/["\t\r\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':String(v);
 export function copyRectangle(rows,valueFor){
- return rows.map(row=>row.map(c=>quoteTSV(valueFor(c))).join('\t')).join('\r\n');
+ return rows.map(row=>row.map(c=>{const raw=String(valueFor(c));if(!(c.a.mode==='total'&&/^a(?:bsent)?$/i.test(raw.trim())))cellMark(raw,c.item);return quoteTSV(raw);}).join('\t')).join('\r\n');
 }
 export function planRangeEdit(rows,operation,valueFor){
  if(operation==='fill'&&rows.length<2)throw Error('Select at least two rows to fill down');
