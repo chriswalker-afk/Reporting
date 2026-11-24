@@ -127,7 +127,8 @@ try{
  await press('Tab',{shiftKey:true});assert.equal(await evaluate(()=>document.activeElement.dataset.item),'q1');
  await press('ArrowDown');assert.equal(await evaluate(()=>document.activeElement.dataset.row),'1');
  await press('Enter',{shiftKey:true});assert.equal(await evaluate(()=>document.activeElement.dataset.row),'0');
- assert.ok(await q('.mark-row-focus .mark-cell:focus'));
+ assert.ok(await evaluate(()=>document.activeElement.matches('.mark-cell')&&document.activeElement.closest('tr').classList.contains('mark-row-focus')));
+ assert.match(await text('#mark-focus'),/Demo Student 121/);
  await close();
  // data-id contains quotes, so use matching via dataset rather than CSS escaping.
  await evaluate(id=>{const el=[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id);if(!el)throw Error('Missing assessment');el.click();},markbookId);
