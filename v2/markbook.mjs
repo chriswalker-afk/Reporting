@@ -74,7 +74,18 @@ export function previewRow(assessment,bands,status,marks,excluded=false){
 export function parseDelimited(text,delimiter){
  require(typeof text==='string'&&text.length<=500000,'Import must be text under 500 KB');
  text=text.replace(/^\uFEFF/,'');
- if(!delimiter){const first=text.split(/\r?\n/,1)[0];delimiter=first.includes('\t')?'\t':',';}
+ if(!delimiter){
+  // Inspect the first logical record, ignoring delimiters and newlines inside quotes.
+  let inQuotes=false,tabs=0,commas=0;
+  for(let i=0;i<text.length;i++){
+   const ch=text[i];
+   if(ch==='"'){if(inQuotes&&text[i+1]==='"'){i++;continue;}inQuotes=!inQuotes;continue;}
+   if(inQuotes)continue;
+   if(ch==='\r'||ch==='\n')break;
+   if(ch==='\t')tabs++;else if(ch===',')commas++;
+  }
+  delimiter=tabs?'\t':',';
+ }
  const rows=[];let row=[],cell='',quoted=false,closed=false;
  function push(){row.push(cell);cell='';closed=false;}
  function finish(){push();rows.push(row);row=[];}
@@ -159,11 +170,14 @@ export function createMarkbook(data,access,classId,scope){
   require(templates.some(t=>t.id===id),'Template outside your accessible course');
   const a=ix.assessments.get(id);return {...clone(a),bands:clone(ix.gradeSchemes.get(a.gradeSchemeId).bands)};
  }
+ const overviewCache=new Map();
  function overview(unitId){
+  const key=unitId||'';if(overviewCache.has(key))return overviewCache.get(key);
   const selected=assessments.filter(a=>!unitId||a.unitId===unitId);
-  return {assessments:selected.map(a=>({ ...a,maxMarks:maxMarks(a),bands:ix.gradeSchemes.get(a.gradeSchemeId).bands,manageable:access.canManageAssessment(a.id)})),
+  const value={assessments:selected.map(a=>({ ...a,maxMarks:maxMarks(a),bands:ix.gradeSchemes.get(a.gradeSchemeId).bands,manageable:access.canManageAssessment(a.id)})),
     rows:ordered.map(e=>({...rowBase(e),summary:unitId?engine.unitSummary(e.id,unitId):engine.studentSummary(e.id),
       results:Object.fromEntries(selected.map(a=>[a.id,{...engine.resultFor(a.id,e.id),entryStatus:ix.resultsByPair.get(resultKey(a.id,e.id))?.status??'missing',editable:access.canEditResult(a.id,e.id)}]))}))};
+  overviewCache.set(key,value);return value;
  }
  return {classId,classCode:c.code,course,units,assessments,templates,assignmentOptions,canCreate:assignmentOptions.length>0,
    canCreateUnit:access.leads(classId),defaultBands:scheme.bands,detail,template,overview};

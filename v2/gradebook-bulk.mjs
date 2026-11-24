@@ -62,13 +62,13 @@ export function exchangeColumns(overview){
 }
 const csv=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 // Neutralise spreadsheet formula-like text metadata, not numeric marks.
-const safeText=v=>/^[=+@\-\t\r]/.test(String(v??''))?"'"+v:String(v??'');
+const safeText=v=>/^\s*[=+@\-]|^[\t\r\n]/.test(String(v??''))?"'"+v:String(v??'');
 export function exportGradebook(overview){
  const cols=exchangeColumns(overview);
  const rows=[metadata.concat(cols.map(c=>c.header))];
  for(const p of overview.rows){
   rows.push([p.enrolmentId,p.studentId,safeText(p.name),p.summary.minimumGrade??'',p.summary.predictedGrade??'',p.summary.grade??'',
-   ...cols.map(({a,item})=>{const r=p.results[a.id];return item?r.marks[item.id]??'':r.exclusionReason?'excluded':r.entryStatus;})]);
+   ...cols.map(({a,item})=>{const r=p.results[a.id];return item?r.marks[item.id]??'':r.exclusionReason?'excluded':r.entryStatus==='missing'?'':r.entryStatus;})]);
  }
  return rows.map(row=>row.map(csv).join(',')).join('\r\n');
 }

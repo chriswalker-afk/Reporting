@@ -251,3 +251,17 @@ The Reporting grades class tab shows applicable Reports or SIMS grades deadlines
 Assigned teachers can save a report-grade draft or confirm submission. A differing grade (or a grade without calculated evidence) needs a reason at submission. Submission freezes the calculated percentage/grade, target, prediction, method, source, evidence cutoff and eligible/scored assessment references at that moment. Later marks, policy changes and predictions do not overwrite the submitted record. Relevant faculty/school leadership can reopen it to a draft with an audited reason. Archived deadlines remain readable but cannot accept changes; the event and audience of a deadline with report records cannot be changed. The workflow records fictional internal submissions only and is not a SIMS integration or parent-facing publication.
 
 Existing synthetic schema-2 snapshots without report grades are accepted; the optional collection is initialized when needed. All report grades and calculation-policy edits use the existing transaction, revision, persistence, validation and audit mechanisms.
+
+
+## Full-year gradebook audit (PR27)
+
+The regression suite includes a deterministic, synthetic class with 30 pupils, 50 assessments (overall marks, topics and QLA), common assessments across parallel classes, and draft, diagnostic and future evidence. It is a test fixture only, not a change to the live demo dataset.
+
+- CSV exports leave the status of unentered results blank, so teachers can fill marks in Excel without first changing each status. Explicit absence remains an intentional status; change it to Present before entering marks. CSV/TSV detection ignores tabs, commas and newlines inside quoted headers.
+- Large gradebook saves use indexed result lookups inside the existing atomic, validated, audited transaction. A failed entry, permission check, stale revision, cross-tab storage conflict or storage error cannot commit a partial batch. Clearing marks in the single-result API now requires the same explicit confirmation as batch editing.
+- Render and controller use the same cached overview for each unit within an immutable workspace snapshot. A new store revision creates a new workspace and fresh overview.
+- The year audit checks a reordered 1,350-result import, rollback of a bad final entry, round-trip export, scoped permissions, exclusions, all four calculation methods, group and trend consistency, frozen report evidence, and persistence. Browser smoke covers the same larger register, keyboard range selection/fill/undo, invalid paste, unsaved navigation guards, QLA expansion and save, reload and responsive widths.
+
+Manual acceptance checklist (fictional data only): create a total test, topic test and QLA; enter zero and blank marks; enter an absent result; expand/collapse assessments; paste a range; undo and redo; export/reimport by ID; switch to percentage/grade views; change a faculty or course policy as an authorised lead; submit a report grade; amend later assessment evidence and check the submitted grade is unchanged. Verify a parallel class and read-only user cannot modify results outside their scope.
+
+Run the automated suite with `node --test tests/*.test.cjs tests/v2-*.test.mjs` and the browser checks with `node tests/browser-smoke.mjs` (Node 22 and Chromium). These checks validate the fictional prototype, not production security, SIMS integration or real pupil-data processing. Those require an authenticated backend, institutional approval, and deployment-specific acceptance testing.

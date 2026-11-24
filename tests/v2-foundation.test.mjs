@@ -95,7 +95,8 @@ test('missing, absent, incomplete, excluded and zero are distinct; marks retaine
   store.saveResult(owner,a1,eId,{status:'present',marks:{total:0}});
   assert.equal(store.analytics().resultFor(a1,eId).percent,0);
   assert.equal(store.analytics().studentSummary(eId).coverage.scored,3);
-  store.saveResult(owner,a3,eId,{status:'present',marks:{q1:0}});
+  assert.throws(()=>store.saveResult(owner,a3,eId,{status:'present',marks:{q1:0}}),/Confirm before clearing/);
+  store.saveResult(owner,a3,eId,{status:'present',marks:{q1:0},confirmClear:true});
   assert.equal(store.analytics().resultFor(a3,eId).status,'incomplete');
   store.saveResult(owner,a2,eId,{status:'absent',marks:{},confirmClear:true});
   assert.equal(store.analytics().resultFor(a2,eId).status,'absent');
