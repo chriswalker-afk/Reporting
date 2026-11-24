@@ -60,7 +60,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
  }
  function init(){
   dirty=false;revision=getStore().revision();stagedImport=null;
-  if(getDetail()?.kind==='mark-grid')for(const row of rows())updateRow(row);
+  if(getDetail()?.kind==='mark-grid'){const d=detail();for(const row of rows())updateRow(row,d);}
  }
  function canLeave(){
   if(getDetail()?.kind==='mark-grid'&&dirty&&!window.confirm('Discard unsaved marks? Your saved results will not change.'))return false;
@@ -131,7 +131,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
  }
  function previewImport(){
   const d=detail(),current=rows().map(row=>readRow(row,d));
-  stagedImport=importPreview(byId('mark-import-text').value,d.assessment,current);
+  resetImport();stagedImport=importPreview(byId('mark-import-text').value,d.assessment,current);
   const node=byId('mark-import-preview');node.replaceChildren();
   const intro=document.createElement('p');intro.textContent=stagedImport.length+' pupil results will change in the unsaved grid. Review before applying.';node.append(intro);
   const list=document.createElement('div');list.className='import-preview-list';
