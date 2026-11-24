@@ -1,4 +1,5 @@
 import {createStore} from './store.mjs';
+import {GROUPS,DEFAULT_GROUPS} from './class-overview.mjs';
 import {createWorkspace,parseRoute,routeHash,HELP} from './workspace.mjs';
 import {sidebar,topbar,renderPage,renderDetail,renderSearchResults,esc,icon} from './views.mjs';
 
@@ -7,11 +8,15 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',sorts:{}};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{}};
+const columnKey=id=>'jis-hub-v2-register-columns-'+id;
+function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
+function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
 let storageIssue='';
 function boot(){
  try{store=createStore({storage:window.localStorage});}
  catch(error){storageIssue='Saved demo data could not be loaded. This session uses fresh fictional data; existing storage was not overwritten. '+String(error.message||error);store=createStore();}
+ state.columnGroups=loadColumns(state.staffId);
  render({top:true});
  if(storageIssue)notify('Local storage unavailable or invalid. See workspace notice.');
  store.subscribe(()=>render());
@@ -34,7 +39,8 @@ function render({top=false,keepFocus=false}={}){
  if(oldId){const next=byId(oldId);next?.focus({preventScroll:true});if(caret!==null&&next?.type==='search')try{next.setSelectionRange(caret,caret);}catch{}}
  if(detail&&detailDialog.open)try{refreshDetail();}catch{closeDetail();}
 }
-function clearFilters(){state.query='';state.flag='all';state.below=false;state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
+function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
+function clearFilters(){clearRegisterFilters();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
 function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false}={}){
  closeDetail(false);closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
@@ -169,6 +175,16 @@ document.addEventListener('click',event=>{
     try{const completed=!w.deadlineDetail(id).completed;store.setDeadlineCompletion(state.staffId,id,completed);detailDialog.querySelector('.dialog-head button')?.focus();notify(completed?'Personal reminder completed.':'Personal reminder reopened.');}
     catch(error){notify(String(error.message||error));}break;
   case 'edit-prediction':openDetail('prediction',id);break;
+  case 'edit-target':openDetail('target',id);break;
+  case 'subject-summary':openDetail('subject-summary',id);break;
+  case 'subject-comments':openDetail('subject-comments',id);break;
+  case 'edit-comment':openDetail('comment-edit',id);break;
+  case 'clear-register-filters':clearRegisterFilters();render();main.querySelector('[data-action="clear-register-filters"]')?.focus({preventScroll:true});break;
+  case 'toggle-columns':
+    if(!GROUPS.some(g=>g.id===id))break;
+    state.columnGroups=state.columnGroups.includes(id)?state.columnGroups.filter(g=>g!==id):[...state.columnGroups,id];
+    saveColumns();render();main.querySelector('[data-action="toggle-columns"][data-id="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});break;
+  case 'reset-columns':state.columnGroups=[...DEFAULT_GROUPS];saveColumns();render();main.querySelector('[data-action="reset-columns"]')?.focus({preventScroll:true});break;
   case 'close-detail':closeDetail();break;
   case 'detail-back':detailBack();break;
   case 'toggle-below':state.below=!state.below;render({keepFocus:true});break;
@@ -188,16 +204,37 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('change',event=>{
  const el=event.target;
- if(el.id==='staff'){closeDetail(false);clearFilters();state.staffId=el.value;state.scope=null;state.classId=null;state.page='home';history.replaceState(null,'',routeHash('home'));render({top:true});byId('staff')?.focus({preventScroll:true});}
+ if(el.id==='staff'){closeDetail(false);clearFilters();state.staffId=el.value;state.columnGroups=loadColumns(state.staffId);state.scope=null;state.classId=null;state.page='home';history.replaceState(null,'',routeHash('home'));render({top:true});byId('staff')?.focus({preventScroll:true});}
  if(el.id==='scope'){state.scope=el.value;clearFilters();render({top:true});byId('scope')?.focus({preventScroll:true});}
  if(el.id==='quick-class'){if(el.value)openClass(el.value);else navigate('classes');}
  if(el.id==='flag-filter'){state.flag=el.value;render({keepFocus:true});}
+ const registerFilters={'tutor-filter':'tutorFilter','house-filter':'houseFilter','track-filter':'trackFilter','support-filter':'supportFilter','class-year':'classYear','class-faculty':'classFaculty'};
+ if(registerFilters[el.id]){state[registerFilters[el.id]]=el.value;render({keepFocus:true});}
  if(el.id==='below-filter'){state.below=el.checked;render({keepFocus:true});}
  if(el.id==='case-filter'){state.caseFilter=el.value;render({keepFocus:true});}
  if(el.id==='notice-filter'){state.noticeFilter=el.value;render({keepFocus:true});}
  if(el.id==='deadline-filter'){state.deadlineFilter=el.value;render({keepFocus:true});}
 });
 document.addEventListener('submit',event=>{
+ if(['comment-form','target-form'].includes(event.target.id)){
+  event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
+  try{
+   if(!record)throw Error('No selected subject record');
+   if(record.kind==='target'){
+    if(!form.has('confirmed'))throw Error('Confirm the revised target');
+    store.setMinimumTarget(state.staffId,record.id,byId('minimum-target').value);
+    if(detailStack.length)detailBack();else closeDetail();notify('Minimum target saved; target comparisons updated.');
+   }else if(record.kind==='subject-comments'||record.kind==='comment-edit'){
+    const existing=record.kind==='comment-edit'?w.noteDetail(record.id):null;
+    const enrolmentId=existing?existing.enrolmentId:record.id;
+    store.saveSubjectNote(state.staffId,enrolmentId,existing?.id??null,String(form.get('text')??''));
+    if(existing&&detailStack.length)detailBack();else if(existing){closeDetail();}
+    else{byId('comment-text').value='';byId('comment-text')?.focus({preventScroll:true});}
+    notify('Subject comment saved.');
+   }else throw Error('Unknown subject form');
+  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=String(error.message||error);}else notify(String(error.message||error));}
+  return;
+ }
  if(['communication-form','archive-form'].includes(event.target.id)){
   event.preventDefault();
   const form=new FormData(event.target),record=detail&&{...detail};
