@@ -22,7 +22,7 @@ test('preferences are validated, saved per fictional staff member and fail safel
  const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
  assert.deepEqual(normalizeWorkspacePrefs({density:'invalid',navigation:'invalid',extra:true}),DEFAULT_WORKSPACE_PREFS);
  assert.equal(saveWorkspacePrefs(storage,'sam',{density:'compact',navigation:'full'}),true);
- assert.deepEqual(loadWorkspacePrefs(storage,'sam'),{density:'compact',navigation:'full'});
+ assert.deepEqual(loadWorkspacePrefs(storage,'sam'),{density:'compact',navigation:'full',topbarCollapsed:false});
  assert.deepEqual(loadWorkspacePrefs(storage,'avery'),DEFAULT_WORKSPACE_PREFS);
  values.set(workspacePrefsKey('sam'),'bad JSON');
  assert.deepEqual(loadWorkspacePrefs(storage,'sam'),DEFAULT_WORKSPACE_PREFS);
@@ -56,5 +56,26 @@ test('navigation prioritises working pages with a collapsed planned modules disc
  assert.equal((html.match(/class="future-link" aria-disabled="true"/g)||[]).length,7);
  assert.ok(html.indexOf('class="brand"')<html.indexOf('class="sidebar-scroll"'));
  assert.ok(html.indexOf('aria-current="page"')<html.indexOf('class="sidebar-future"'));
+ assert.equal(store.revision(),0);
+});
+
+test('collapsed top bar preferences are backward compatible, independent and staff-specific',()=>{
+ const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
+ values.set(workspacePrefsKey('sam'),JSON.stringify({density:'compact',navigation:'full'}));
+ assert.deepEqual(loadWorkspacePrefs(storage,'sam'),{density:'compact',navigation:'full',topbarCollapsed:false});
+ saveWorkspacePrefs(storage,'sam',{density:'compact',navigation:'full',topbarCollapsed:true});
+ assert.deepEqual(loadWorkspacePrefs(storage,'sam'),{density:'compact',navigation:'full',topbarCollapsed:true});
+ assert.equal(loadWorkspacePrefs(storage,'avery').topbarCollapsed,false);
+ assert.equal(normalizeWorkspacePrefs({topbarCollapsed:'false'}).topbarCollapsed,false);
+ assert.equal(normalizeWorkspacePrefs({topbarCollapsed:1}).topbarCollapsed,false);
+ assert.deepEqual(workspaceLayout(loadWorkspacePrefs(storage,'sam'),1366,768),{density:'compact',navigation:'full'});
+ saveWorkspacePrefs(storage,'sam',DEFAULT_WORKSPACE_PREFS);
+ assert.equal(loadWorkspacePrefs(storage,'sam').topbarCollapsed,false);
+ const store=createStore(),w=createWorkspace(store,'sam','faculty'),html=topbar(w);
+ assert.match(html,/data-action="toggle-workspace-topbar" aria-expanded="true"/);
+ assert.match(html,/aria-controls="topbar-scope-controls topbar-staff-controls topbar-display-controls"/);
+ for(const id of ['topbar-scope-controls','topbar-staff-controls','topbar-display-controls'])assert.equal(html.split('id="'+id+'"').length-1,1);
+ assert.match(html,/class="topbar-compact-context"/);
+ assert.match(html,/Preview: Sam Taylor/);
  assert.equal(store.revision(),0);
 });

@@ -380,3 +380,12 @@ The sidebar prioritises the five working destinations. Planned modules are group
 The school crest and brand stay fixed above an independent navigation scroll region. The ordinary collapsed rail fits common laptop and landscape viewport heights without a scrollbar. If a short viewport or expanded planned list genuinely requires scrolling, a thin burgundy-compatible thumb with a transparent track appears inside the navigation area. Standard, compact and mobile overlay navigation use the same markup; keyboard focus, wheel/touch scrolling, mobile focus containment, visible focus indicators and forced-colours support remain available. Decorative footer information is omitted on very short screens.
 
 Browser regressions verify no ordinary rail overflow, persistent disclosure state, scrolling with the crest stationary, and keyboard operation of the disclosure and mobile menu.
+
+
+## Collapsible top bar (PR36)
+
+The global toolbar has a Collapse / Expand control, independent of the sidebar, workspace density and gradebook focus mode. Collapsing hides the full search field, scope and preview-staff selectors, display settings and reset button. A slim strip retains the navigation toggle, search icon, current preview identity and scope, and Expand control. On narrow screens the control uses a chevron and an accessible name. Expand restores the same controls and current selections.
+
+The preference is stored locally per preview staff member with existing display preferences (older settings default to expanded). Reset workspace display restores the expanded bar. The app-level focus mode still hides the entire global header and restores the previous header setting when exiting. Switching the bar does not rerender the active page, change permissions, modify records or discard unsaved marks or history. Keyboard and mobile navigation remain accessible.
+
+Tests cover preference compatibility, staff isolation, header height reduction, viewport bounds, keyboard expansion, mobile navigation, persistence after reload, and preservation of the same gradebook inputs, selection, drafts and undo history.

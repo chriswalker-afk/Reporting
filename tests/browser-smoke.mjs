@@ -37,11 +37,12 @@ async function until(fn,label,timeout=10000){
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const origin='http://127.0.0.1:'+server.address().port;
 const profile=await mkdtemp(join(tmpdir(),'jis-hub-browser-'));
-const child=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','ignore']});
+const child=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+let chromeLog='';child.stderr.on('data',chunk=>{chromeLog=(chromeLog+chunk.toString()).slice(-6000);});
 let socket,serial=0,dialogs=[],errors=[],page;
 const pending=new Map();
 try{
- const port=await until(async()=>Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]),'Chrome debugging port');
+ const port=await until(async()=>Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]),'Chrome debugging port',30000).catch(error=>{throw Error(error.message+'\n'+chromeLog);});
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  page=targets.find(t=>t.type==='page');assert.ok(page);
  socket=new WebSocket(page.webSocketDebuggerUrl);
@@ -1036,6 +1037,65 @@ try{
  await click('.sidebar-future summary');await action('close-menu');
  await viewport(1440,900);
  assert.ok((await sidebarMetrics()).scroll<=1,'Full-width navigation also fits without overflow');
+ // PR36: collapse the top bar without disturbing the current gradebook.
+ await viewport(1366,768);
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded before header test');
+ await open('v2/#classes/11-maths-1/markbook');
+ await action('reset-workspace-display');
+ const headerHeight=()=>evaluate(()=>document.querySelector('#topbar').getBoundingClientRect().height);
+ const expandedHeaderHeight=await headerHeight(),expandedWorkspaceHeight=await evaluate(()=>document.querySelector('#workspace').clientHeight);
+ const previousMark=await evaluate(sel=>document.querySelector(sel).value,firstYear),changedMark=previousMark==='7'?'8':'7';
+ await fill(firstYear,changedMark);
+ await evaluate(sel=>document.querySelector(sel).dataset.testHeaderIdentity='original',firstYear);
+ const headerPending=await text('#gradebook-save-status'),headerSelection=await text('#gradebook-selection');
+ await action('toggle-workspace-topbar');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'collapsed');
+ assert.ok(await headerHeight()<expandedHeaderHeight);
+ assert.ok(await evaluate(()=>document.querySelector('#workspace').clientHeight)>expandedWorkspaceHeight);
+ assert.equal(await visible('#scope'),false);
+ assert.equal(await visible('#staff'),false);
+ assert.equal(await visible('#workspace-density'),false);
+ assert.ok(await visible('.topbar-compact-context'));
+ assert.ok(await visible('#topbar [data-action="search"]'));
+ assert.ok(await visible('#topbar [data-action="toggle-workspace-navigation"]'));
+ assert.equal(await evaluate(()=>document.querySelector('[data-action="toggle-workspace-topbar"]').getAttribute('aria-expanded')),'false');
+ for(const [width,height] of [[320,568],[390,844],[844,390],[768,1024],[1366,768],[2560,1440]]){
+  await viewport(width,height);
+  assert.ok(await visible('[data-action="toggle-workspace-topbar"]'));
+  assert.ok(await evaluate(()=>[...document.querySelectorAll('#topbar button')].filter(el=>el.getClientRects().length).every(el=>{const b=el.getBoundingClientRect();return b.left>=0&&b.right<=innerWidth+1;})));
+  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),changedMark);
+  assert.equal(await text('#gradebook-save-status'),headerPending);
+  assert.equal(await text('#gradebook-selection'),headerSelection);
+ }
+ await viewport(390,844);await action('mobile-menu');await action('close-menu');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'collapsed');
+ await viewport(1366,768);await action('gradebook-focus-toggle');
+ assert.equal(await visible('#topbar'),false);await action('gradebook-focus-toggle');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'collapsed');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testHeaderIdentity,firstYear),'original');
+ await action('gradebook-undo');assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),previousMark);
+ assert.match(await text('#gradebook-save-status'),/All changes saved/);
+ await action('navigate','home');assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'collapsed');
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded collapsed header');
+ await open('v2/#home');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'collapsed');
+ await action('search');assert.ok(await q('#search-dialog[open]'));await action('close-search');
+ await until(()=>evaluate(()=>!document.querySelector('#search-dialog').open),'search closed before keyboard activation');
+ await evaluate(()=>document.querySelector('[data-action="toggle-workspace-topbar"]').focus());
+ assert.equal(await evaluate(()=>document.activeElement.dataset.action),'toggle-workspace-topbar');
+ // Space uses native button activation on keyup. CDP Enter requires the
+ // corresponding text to model a physical Enter press rather than a raw key.
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+ await until(()=>evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar==='expanded'),'Space expands the header');
+ await action('toggle-workspace-topbar');
+ assert.equal(await evaluate(()=>document.activeElement.dataset.action),'toggle-workspace-topbar');
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,nativeVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,nativeVirtualKeyCode:13});
+ await until(()=>evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar==='expanded'),'Enter expands the header');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'expanded');
+ assert.ok(await visible('#scope'));assert.ok(await visible('#staff'));assert.ok(await visible('#workspace-density'));
+ await action('reset-workspace-display');
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
