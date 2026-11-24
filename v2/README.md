@@ -42,7 +42,7 @@ Example:
     });
     // On render, obtain a fresh store.read('sam') snapshot.
 
-The store validates a transaction before committing it and before notifying subscribers. A failed local-storage write leaves the in-memory state unchanged. A reload validates the saved schema; corrupt/incompatible data is rejected, not silently overwritten. An old read model intentionally represents an old snapshot; recreate it on every subscribed state revision. The demo reference date is 2026-11-24 and may be advanced by demo leadership. Data and all role checks remain client-side; these APIs are **not security boundaries**.
+The store validates a transaction before committing it and before notifying subscribers. A failed local-storage write leaves the in-memory state unchanged. A reload validates the saved schema; corrupt/incompatible data is rejected, not silently overwritten. Schema 2 loads a schema 1 synthetic demo snapshot only when no schema 2 save exists. Marks, interventions, notices, notes and existing audit entries are retained; for changed fictional grade scales, legacy target labels are mapped via their old illustrative threshold to the new illustrative scale and affected assessment boundaries use the new defaults. Unchanged-scale custom boundaries are retained. The schema 1 local-storage key remains untouched as a backup. This is not a real qualification-grade conversion. An old read model intentionally represents an old snapshot; recreate it on every subscribed state revision. The demo reference date is 2026-11-24 and may be advanced by demo leadership. Data and all role checks remain client-side; these APIs are **not security boundaries**.
 
 ## Relational data contract
 
@@ -76,7 +76,7 @@ Raw values are retained at full precision; UI rounds only at display time. No ch
 | Faculty/House/school | Group course-level means and grade distributions separately; count unique pupils separately from subject enrolments; no meaningless mixed-course overall mean |
 | Intervention overview | Count active cases, distinct pupils, wave counts, referrals, due/overdue reviews using demo reference date; closed cases kept |
 
-The default date window includes assessments dated up to the demo reference date (inclusive); date filters may narrow it. Course grade schemes are illustrative, including KS3 attainment descriptors, IGCSE 9–1/U, A level A*–E/U and IB 7–1. Custom assessment schemes must preserve the ordered grade labels of their course. Real exam grade boundaries differ by paper/session and must be configured through authorised workflows, never treated as predictions.
+The default date window includes assessments dated up to the demo reference date (inclusive); date filters may narrow it. Course grade schemes are illustrative: KS3 internal and numerical IGCSE 9–1/U, letter-graded IGCSE A*–G/U, and A level A*–E/U. U is an explicit ungraded result, not missing evidence. Each course chooses its own scheme; targets, predictions, calculated grades and assessment boundary labels all follow it. The sample senior Science course is now A level rather than IB so the two-family demo does not misrepresent IB qualification grades. The allocation is fictional and is not a statement of JIS qualification policy. Custom assessment schemes must preserve the ordered grade labels of their course. Real exam grade boundaries differ by paper/session and must be configured through authorised workflows, never treated as predictions.
 
 ### Inclusion rules
 
