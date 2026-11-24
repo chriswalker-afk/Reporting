@@ -13,11 +13,11 @@ export function groupPupils(pupils,key){
   groups.get(value).push(p);
  }
  return unique([...groups.keys()]).map(value=>{
-  const rows=groups.get(value),known=rows.filter(p=>p.onTrack+p.below>0).length;
+  const rows=groups.get(value);
   return {key,value,label:key==='year'?'Year '+value:value,pupils:rows.length,
    below:rows.filter(p=>p.below>0).length,unknown:rows.filter(p=>p.unknown>0).length,
    cases:rows.filter(p=>p.cases>0).length,due:rows.filter(p=>p.due>0).length,
-   known,houseId:key==='house'?rows[0].houseId:null};
+   houseId:key==='house'?rows[0].houseId:null};
  });
 }
 export function homeDashboard(w){

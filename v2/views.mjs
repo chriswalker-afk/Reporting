@@ -90,7 +90,7 @@ function homeCohort(w,d){
  if(d.kind==='pupils'){
   const rows=d.priorityPupils.slice(0,HOME_PREVIEW);
   return panel(d.context.panel,
-   '<div class="home-panel-meta">Overdue reviews, attainment and evidence gaps first</div>'+
+   '<div class="home-panel-meta">Overdue reviews, attainment and evidence gaps first · '+d.counts.unknown+' pupils with unknown status</div>'+
    homeTable(['Student','Below MTG','Unknown','Cases'],rows.map(p=>[
     pupilIdentity(link(p.name,'open-student',p.id)+'<span class="cell-sub">TG '+esc(p.tutorGroupId)+'</span>',p),
     homeCount(p.below,p.below?'home-count-warning':''),homeCount(p.unknown),p.cases?link(String(p.cases),'open-student-support',p.id)+(p.due?' '+tag('Due','tag-warning'):''):homeCount(0)
@@ -99,13 +99,13 @@ function homeCohort(w,d){
  }
  const groups=d.groups.slice(0,7);
  return panel(d.context.panel,
-  '<div class="home-panel-meta">Unique pupils by '+(d.groupKey==='house'?'House':'year group')+' · select a group to filter Students</div>'+
+  '<div class="home-panel-meta">Unique pupils by '+(d.groupKey==='house'?'House':'year group')+' · '+d.counts.unknown+' pupils with unknown status</div>'+
   homeTable([d.groupKey==='house'?'House':'Year','Pupils','Below MTG','Unknown','SOC'],groups.map(g=>[
    g.houseId?pupilIdentity(link(g.label,'home-group',homeGroupId(g)),g.houseId):link(g.label,'home-group',homeGroupId(g)),
    esc(g.pupils),g.below?'<button type="button" class="home-group-progress" data-action="home-group" data-id="'+esc(homeGroupId(g,true))+'" aria-label="'+esc(g.label+': '+g.below+' pupils below minimum target')+'"><span class="home-mini-track" aria-hidden="true"><span style="width:'+100*g.below/g.pupils+'%"></span></span><strong>'+g.below+'</strong></button>':homeCount(0),
    homeCount(g.unknown),homeCount(g.cases)
   ]),'Scoped pupil groups')+
-  '<div class="home-panel-footer"><span>Showing '+groups.length+' of '+d.groups.length+' groups</span>'+btn('All students','go-students','','btn-quiet','arrow')+'</div>','', 'homeGroupCounts');
+  '<div class="home-panel-footer"><span>Select a group or its below-MTG count</span>'+btn('All students','go-students','','btn-quiet','arrow')+'</div>','', 'homeGroupCounts');
 }
 function homeMetric(label,value,foot,hint,action,ic,tone=''){
  return '<div class="metric home-metric '+esc(tone)+'"><div class="home-metric-top"><span class="home-metric-icon">'+icon(ic)+'</span><div class="metric-head">'+esc(label)+help(hint,label)+'</div></div><div class="metric-value">'+esc(value)+'</div><button type="button" class="metric-action" data-action="'+esc(action)+'">'+esc(foot)+' '+icon('arrow')+'</button></div>';
@@ -123,7 +123,7 @@ export function renderHome(w,s){
  return '<div class="home-dashboard" data-home-scope="'+esc(w.scope)+'"><section class="jis-welcome home-welcome"><div class="jis-welcome-copy"><p class="eyebrow">Jerudong International School</p><h1>Welcome, '+esc(w.staff.name.split(' ')[0])+'</h1><div class="home-role-context"><span class="home-role-label">'+esc(d.context.label)+'</span><span class="home-context-name">'+esc(d.context.context)+'</span></div><div class="home-date">'+icon('calendar')+esc(displayDate(w.asOf))+' · Demo reference date '+help('date','reference date')+'</div></div><div class="jis-welcome-photo"><img src="'+esc(assetUrl('jis-campus.webp'))+'" alt="Aerial view of the JIS campus and coastline" width="240" height="120"><span class="home-values">Respect · Inspire · Challenge</span></div></section>'+
  '<div class="home-section-heading"><h2>At a glance</h2><span>'+esc(SCOPE_LABELS[w.scope])+' '+help('scope','workspace scope')+'</span></div>'+
  '<div class="metrics home-metrics">'+homeMetric('Pupils in scope',c.pupils,c.enrolments+' subject enrolments','scope','go-students','students')+
- homeMetric(isClass?'Subjects below MTG':'Pupils below MTG',isClass?c.belowSubjects:c.below,isClass?'Affected classes':c.unknown+' with unknown subject status',isClass?'belowSubjects':'homeGroupCounts',isClass?'go-below':'go-students-below','chart', (isClass?c.belowSubjects:c.below)>0?'home-metric-caution':'')+
+ homeMetric(isClass?'Subjects below MTG':'Pupils below MTG',isClass?c.belowSubjects:c.below,isClass?'View affected classes':'View affected pupils',isClass?'belowSubjects':'homeGroupCounts',isClass?'go-below':'go-students-below','chart', (isClass?c.belowSubjects:c.below)>0?'home-metric-caution':'')+
  homeMetric('Active interventions',c.activeCases,c.casePupils+' individual pupils','intervention','go-cases','support')+
  homeMetric('My outstanding actions',d.queue.length,d.overdue?d.overdue+' overdue · Review queue':'Review personal queue','personalActions','focus-attention','clock',d.overdue?'home-metric-alert':'')+'</div>'+
  '<div class="home-grid home-primary-grid">'+attentionPanel+'<div class="home-cohort">'+homeCohort(w,d)+'</div></div>'+

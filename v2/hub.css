@@ -370,6 +370,10 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 .home-mini-track>span{display:block;height:100%;background:#b98935;border-radius:4px}
 .home-dashboard .home-lower{margin-top:0;gap:12px}
 .home-dashboard .stage-note{margin-top:0}
-@media(min-width:761px) and (max-width:1080px){.home-primary-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}.home-metric{padding:9px}.home-metric-top{gap:4px}.home-metric-icon{width:21px;height:21px}.home-metric .metric-value{font-size:24px}.home-attention .list-row{padding:7px}.home-attention .list-row .house-badge{display:none}.home-preview-table .data-table th,.home-preview-table .data-table td{padding:6px 7px}}
+@media(min-width:761px) and (max-width:1080px){.home-primary-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}.home-metric{padding:9px}.home-metric-top{gap:4px}.home-metric-icon{width:21px;height:21px}.home-metric .metric-value{font-size:24px}.home-attention .list-row{padding:7px}.home-attention .list-row:has(.house-badge) .list-icon{display:none}.home-preview-table .data-table th,.home-preview-table .data-table td{padding:6px 7px}}
 @media(max-width:760px){.home-dashboard{gap:10px}.home-welcome .jis-welcome-copy{padding:10px 12px}.home-welcome .jis-welcome-photo{width:24%}.home-values{font-size:8px;right:5px;text-align:right}.home-primary-grid{grid-template-columns:minmax(0,1fr)}.home-metric .metric-value{font-size:25px}.home-metric{padding:10px}.home-metric-top{gap:5px}.home-preview-table .data-table th,.home-preview-table .data-table td{padding:7px 8px}.home-preview-table{max-height:none}.home-dashboard .home-lower{gap:10px}}
 @media(max-width:390px){.home-welcome .jis-welcome-photo{display:none}.home-role-context{gap:4px}.home-context-name:before{margin-right:4px}.home-metric .metric-value{font-size:23px}.home-metric-icon{width:21px;height:21px}.home-metric .metric-head{font-size:10px}.home-metric .metric-action{font-size:10px}}
+
+.home-attention .list-row:has(.house-badge) .list-icon{display:none}
+.home-attention .list-row>.house-badge{flex:none}
+.home-metric .metric-action:hover,.home-group-progress:hover{color:var(--accent-dark);text-decoration:underline;text-underline-offset:2px}

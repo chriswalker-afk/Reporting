@@ -89,6 +89,12 @@ try{
  await open();
  assert.match(await heading(),/Welcome, Sam/);
  assert.ok(await q('.jis-crest'));assert.ok(await q('.jis-welcome-photo img'));
+ assert.ok(await q('.home-dashboard[data-home-scope="faculty"]'));
+ assert.match(await text('.home-role-context'),/Faculty dashboard.*Mathematics/);
+ assert.ok(await q('.home-cohort [data-action="home-markbook"]'));
+ await action('home-markbook',undefined,'.home-cohort ');
+ assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
+ await action('navigate','home');
  await until(()=>evaluate(()=>[...document.querySelectorAll('.jis-crest,.jis-welcome-photo img')].every(img=>img.complete&&img.naturalWidth>0)),'JIS crest and campus photo loaded');
  for(const page of ['notices','classes','students','intervention','home']){
   await action('navigate',page);assert.ok(await heading());assert.equal(await evaluate(()=>location.hash),'#'+page);
@@ -162,12 +168,30 @@ try{
  await action('demo-guide');await action('demo-scenario','tutor','#detail-dialog ');
  assert.equal(await evaluate(()=>document.querySelector('#scope').value),'tutor');
  assert.match(await heading(),/Students/);
+ await action('navigate','home');
+ assert.ok(await q('.home-dashboard[data-home-scope="tutor"]'));
+ assert.match(await text('.home-cohort'),/Tutees to review/);
+ assert.ok(await q('.home-cohort .house-logo'));
+ await action('go-students-below');
+ assert.equal(await evaluate(()=>document.querySelector('#student-attainment').value),'below');
  await action('demo-guide');await action('demo-scenario','house','#detail-dialog ');
  assert.equal(await evaluate(()=>document.querySelector('#scope').value),'house');
  assert.match(await heading(),/Intervention/);
+ await action('navigate','home');
+ assert.ok(await q('.home-dashboard[data-home-scope="house"]'));
+ assert.match(await text('.home-cohort'),/House academic overview/);
+ const group=await evaluate(()=>JSON.parse(document.querySelector('.home-cohort [data-action="home-group"]').dataset.id));
+ await action('home-group',undefined,'.home-cohort ');
+ assert.equal(await evaluate(()=>document.querySelector('#house-filter').value),group[1]);
  await action('demo-guide');await action('demo-scenario','leadership','#detail-dialog ');
  assert.equal(await evaluate(()=>document.querySelector('#scope').value),'school');
  assert.match(await heading(),/Welcome, Avery/);
+ assert.ok(await q('.home-dashboard[data-home-scope="school"]'));
+ assert.match(await text('.home-cohort'),/Year-group overview/);
+ assert.equal(await evaluate(()=>document.querySelectorAll('.home-cohort tbody tr').length),7);
+ await action('home-group',undefined,'.home-cohort ');
+ assert.equal(await evaluate(()=>document.querySelector('#student-year').value),'7');
+ await action('navigate','home');
  for(const [width,height] of [[1280,720],[768,1024],[390,844],[360,800]]){
   await viewport(width,height);
   if(width<=760)await action('mobile-menu');
