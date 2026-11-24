@@ -1,3 +1,4 @@
+import {pupilIdentity} from './branding.mjs';
 import {maxMarks,previewRow,csvTemplate} from './markbook.mjs';
 import {pct,displayDate} from './workspace.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -33,7 +34,7 @@ export function renderMarkbook(w,s,r){
  '<span class="count">'+list.length+' assessments · '+rows.length+' pupils</span></div>'+
  (r.partial?'<div class="info-box scope-inline">Only pupils in the current scope appear here.</div>':'')+
  (list.length?'<div class="table-scroll markbook-summary" role="region" tabindex="0" aria-label="Assessment tracker"><table class="data-table"><thead><tr><th class="sticky-first" scope="col">Student</th><th scope="col">'+(unitId?'Unit':'Overall')+' % / grade</th>'+list.map(a=>'<th scope="col" class="assessment-heading">'+detailActions(a)+'</th>').join('')+'</tr></thead><tbody>'+
- rows.map(p=>'<tr><td class="sticky-first">'+link(p.name,'open-student',p.studentId)+'<span class="cell-sub">TG '+e(p.tutorGroupId)+'</span></td><td><strong>'+e(pct(p.summary.average))+'</strong><span class="cell-sub">'+e(p.summary.grade??'—')+' · '+p.summary.coverage.scored+'/'+p.summary.coverage.eligible+'</span></td>'+list.map(a=>'<td>'+cell(a,p)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No assessments in this unit',b.canCreate?'Add an assessment or reuse an existing definition.':'No visible assessments have been assigned.'))+
+ rows.map(p=>'<tr><td class="sticky-first">'+pupilIdentity(link(p.name,'open-student',p.studentId)+'<span class="cell-sub">TG '+e(p.tutorGroupId)+'</span>',p)+'</td><td><strong>'+e(pct(p.summary.average))+'</strong><span class="cell-sub">'+e(p.summary.grade??'—')+' · '+p.summary.coverage.scored+'/'+p.summary.coverage.eligible+'</span></td>'+list.map(a=>'<td>'+cell(a,p)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No assessments in this unit',b.canCreate?'Add an assessment or reuse an existing definition.':'No visible assessments have been assigned.'))+
  '<div class="panel-body small muted">Select an assessment heading to view or enter marks. Overall/unit summaries use complete, included published results up to the demo reference date. Drafts and diagnostics remain visible here but do not contribute to summaries. A common assessment has one shared definition, with marks recorded separately for each class.</div></section>';
 }
 const facts=items=>'<dl class="drawer-summary">'+items.map(([k,v])=>'<div class="fact"><dt>'+e(k)+'</dt><dd>'+e(v??'—')+'</dd></div>').join('')+'</dl>';
@@ -81,7 +82,7 @@ export function renderBookDetail(w,detail){
    a.items.map(i=>'<th>'+e(i.label)+'<span class="cell-sub">'+e('/'+i.maxMarks+(i.topic?' · '+i.topic:'')+(i.ao?' · '+i.ao:''))+'</span></th>').join('')+'<th>Total</th><th>%</th><th>Grade</th><th>Result status</th><th>Inclusion</th></tr></thead><tbody>'+
    d.rows.map((r,n)=>{
     const p=previewRow(a,d.bands,r.entryStatus,r.marks,Boolean(r.exclusionReason));
-    return '<tr data-mark-row="'+e(r.enrolmentId)+'" data-student-id="'+e(r.studentId)+'"><td class="sticky-first">'+e(r.name)+'<span class="cell-sub">'+e(r.studentId)+'</span></td><td>'+
+    return '<tr data-mark-row="'+e(r.enrolmentId)+'" data-student-id="'+e(r.studentId)+'"><td class="sticky-first">'+pupilIdentity(e(r.name)+'<span class="cell-sub">'+e(r.studentId)+'</span>',r)+'</td><td>'+
     (r.editable?'<select class="select entry-status" aria-label="Entry status for '+e(r.name)+'">'+[['missing','Missing'],['present','Present'],['absent','Absent']].map(([v,l])=>option(v,l,r.entryStatus)).join('')+'</select>':e(r.entryStatus))+'</td>'+
     a.items.map((i,j)=>'<td>'+(r.editable?'<input class="input mark-cell" type="text" inputmode="decimal" autocomplete="off" data-item="'+e(i.id)+'" data-row="'+n+'" data-col="'+j+'" value="'+e(r.marks[i.id]??'')+'" aria-label="'+e(r.name+' '+i.label+' out of '+i.maxMarks)+'">':e(r.marks[i.id]??'—'))+'</td>').join('')+
     '<td data-preview="total">'+e(p.total===null?'—':p.total+'/'+d.maxMarks)+'</td><td data-preview="percent">'+e(pct(p.percent))+'</td><td data-preview="grade">'+e(p.grade??'—')+'</td><td data-preview="status">'+statusBadge(p.state)+'</td><td>'+

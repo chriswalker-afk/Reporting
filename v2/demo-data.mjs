@@ -1,3 +1,4 @@
+import {demoHouses,demoHouseFor} from './branding.mjs';
 import {assertData,SCHEMA_VERSION} from './model.mjs';
 
 /** Fixed, generated examples: never imported from school systems. */
@@ -28,8 +29,7 @@ export function createDemoData(){
     add('faculties',{id:s.faculty,name:s.name,headIds:[s.head]});
     add('subjects',{id:s.id,name:s.name,facultyId:s.faculty});
   }
-  for(const [id,name,head] of [['cedar','Cedar','imani'],['willow','Willow','morgan'],['oak','Oak','robin']])
-    add('houses',{id,name,headIds:[head]});
+  for(const h of demoHouses())add('houses',h);
   const scheme=(id,name,labels,mins)=>add('gradeSchemes',{id,name,
     bands:labels.map((grade,i)=>({grade,min:mins[i]})),illustrative:true});
   scheme('ks3','KS3 illustrative attainment',['Emerging','Developing','Secure','Extending'],[0,40,60,80]);
@@ -37,17 +37,16 @@ export function createDemoData(){
   scheme('alevel','A level illustrative A*–E',['U','E','D','C','B','A','A*'],[0,35,45,55,65,75,88]);
   scheme('ib','IB illustrative 7–1',['1','2','3','4','5','6','7'],[0,20,35,50,65,78,90]);
   const schemeById=id=>data.gradeSchemes.find(g=>g.id===id);
-  const houseIds=['cedar','willow','oak'];
   const tutors=['sam','jordan','morgan','alex','robin'];
   for(let year=7;year<=13;year++){
     for(let g=0;g<3;g++){
       const id=String(year)+['A','B','C'][g];
-      add('tutorGroups',{id,name:id,year,houseId:houseIds[g],tutorIds:[tutors[(year+g)%tutors.length]]});
+      add('tutorGroups',{id,name:id,year,houseId:demoHouseFor(year,g),tutorIds:[tutors[(year+g)%tutors.length]]});
     }
     // 30 pupils per year, three different subject classes per pupil.
     for(let i=0;i<30;i++){
       const serial=(year-7)*30+i+1, id='P'+String(serial).padStart(3,'0'),g=i%3;
-      add('students',{id,name:'Demo Student '+String(serial).padStart(3,'0'),year,houseId:houseIds[g],
+      add('students',{id,name:'Demo Student '+String(serial).padStart(3,'0'),year,houseId:demoHouseFor(year,g),
         tutorGroupId:String(year)+['A','B','C'][g],tags:[
           ...(serial%11===0?['EAL']:[]),...(serial%13===0?['SEN']:[]),
           ...(serial%17===0?['HLP']:[]),...(serial%19===0?['Access arrangements']:[])],

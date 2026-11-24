@@ -1,3 +1,4 @@
+import {houseBadge} from './branding.mjs';
 import {pct,displayDate,gradeGap} from './workspace.mjs';
 import {STRATEGIES,WAVE2_TRIGGERS,WAVE3_TRIGGERS,CASE_ACTION_LABELS} from './interventions.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -51,9 +52,9 @@ export function renderCase(w,id){
  (c.houseResponse?'<strong>Latest response</strong>'+text(c.houseResponse.response)+'<p class="small muted">'+e(c.houseResponder+' · '+displayDate(c.houseResponse.date))+'</p>':'<p class="muted">Awaiting House response.</p>'):'';
  const history=c.history.slice().reverse().map(h=>'<article class="case-history-event"><div class="case-history-meta"><strong>'+e(h.action?CASE_ACTION_LABELS[h.action]??h.action:'Recorded event')+'</strong><span>'+e(displayDate(h.date)+' · '+h.actor)+'</span></div><p>'+e(h.text)+'</p>'+(h.plan?'<p class="small muted">Plan: '+e(h.plan)+'</p>':'')+(h.studyPlan?'<p class="small muted">Study target: '+e(h.studyPlan.target)+'</p><ul class="study-actions">'+h.studyPlan.actions.map(a=>'<li>'+e(a)+'</li>').join('')+'</ul><p class="small muted">Review: '+e(displayDate(h.studyPlan.reviewDate))+'</p>':'')+(h.reviewDate?'<p class="small muted">Next review: '+e(displayDate(h.reviewDate))+'</p>':'')+'</article>').join('');
  return {title:c.studentName,sub:c.classInfo.name+' · '+c.id,body:
- '<div class="case-context">'+tag(stageStatus(c),active?'tag-warning':'tag-success')+(c.overdue?tag('Overdue','tag-danger'):c.due?tag('Due today','tag-warning'):'')+
+ '<div class="case-context">'+houseBadge(c.student,{label:true})+tag(stageStatus(c),active?'tag-warning':'tag-success')+(c.overdue?tag('Overdue','tag-danger'):c.due?tag('Due today','tag-warning'):'')+
  link('Student profile','open-student-support',c.student.id)+'</div><div class="case-steps">'+step(1,'Classroom',c)+step(2,'Faculty & House',c)+step(3,'Leadership',c)+'</div>'+
- facts([['Tutor group',e(c.student.tutorGroupId)],['House',e(c.house)],['Case owner',e(c.owner)],['Review date',e(displayDate(c.reviewDate))],['Opened',e(displayDate(c.openedDate))],['Updated',e(displayDate(c.updatedDate))]])+
+ facts([['Tutor group',e(c.student.tutorGroupId)],['House',houseBadge(c.student,{label:true})],['Case owner',e(c.owner)],['Review date',e(displayDate(c.reviewDate))],['Opened',e(displayDate(c.openedDate))],['Updated',e(displayDate(c.updatedDate))]])+
  actions+section('Academic context',evidence(c.summary),'studentAverage')+
  section('Wave 1 · Classroom intervention','<strong>Initial concern</strong>'+text(c.reason)+'<div class="tags">'+(c.strategies??[]).map(s=>tag(s)).join('')+'</div><strong>Classroom plan</strong>'+text(c.wave1Plan??'No separate classroom plan recorded in this earlier demo case.'),'caseWorkflow')+
  (c.wave>=2?section('Wave 2 · Faculty and House','<strong>Referral evidence</strong>'+referral(c.wave2Referral,c.wave2Referrer,'Earlier demo referral; no separate reason recorded.')+'<strong>Faculty plan</strong>'+text(c.facultyPlan??'Awaiting faculty activation.')+house):'')+

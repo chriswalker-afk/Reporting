@@ -1,3 +1,4 @@
+import {houseName} from './branding.mjs';
 import {createAccess} from './access.mjs';
 import {isDate,isText} from './model.mjs';
 
@@ -16,7 +17,7 @@ export function communicationPolicy(data,staffId){
   const access=createAccess(data,staffId);
   const audiences=[{type:'all',id:null,label:'All staff'},
     ...data.faculties.map(f=>({type:'faculty',id:f.id,label:'Faculty · '+f.name})),
-    ...data.houses.map(h=>({type:'house',id:h.id,label:'House · '+h.name})),
+    ...data.houses.map(h=>({type:'house',id:h.id,label:'House · '+houseName(h)})),
     ...data.tutorGroups.map(g=>({type:'tutorGroup',id:g.id,label:'Tutor group · '+g.name})),
     ...Array.from({length:7},(_,i)=>({type:'year',id:i+7,label:'Year '+(i+7)}))];
   const same=(a,b)=>a?.type===b?.type&&a?.id===b?.id;

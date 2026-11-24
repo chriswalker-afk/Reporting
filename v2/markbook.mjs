@@ -133,7 +133,7 @@ export function createMarkbook(data,access,classId,scope){
  const assignmentOptions=permittedAssignments(data,access,classId);
  const templates=data.assessments.filter(a=>a.courseId===course.id&&a.classIds.some(id=>access.canViewClass(id))&&visible(a))
   .map(a=>({id:a.id,title:a.title,date:a.date,mode:a.mode,unitId:a.unitId}));
- const rowBase=e=>({enrolmentId:e.id,studentId:e.studentId,name:ix.students.get(e.studentId).name,tutorGroupId:ix.students.get(e.studentId).tutorGroupId});
+ const rowBase=e=>({enrolmentId:e.id,studentId:e.studentId,name:ix.students.get(e.studentId).name,tutorGroupId:ix.students.get(e.studentId).tutorGroupId,houseId:ix.students.get(e.studentId).houseId});
  const ordered=[...enrolments].sort((a,b)=>ix.students.get(a.studentId).name.localeCompare(ix.students.get(b.studentId).name,'en',{numeric:true}));
  function detail(id){
   const a=assessments.find(a=>a.id===id);require(a,'Assessment outside current class/scope');

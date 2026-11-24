@@ -262,3 +262,33 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
 
 .footer-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .footer-actions .inline-link{font-size:inherit;white-space:nowrap}
+
+/* JIS identity: branded shell, neutral data-dense surfaces and independent semantic colours. */
+:root{--jis-burgundy:#82052f;--jis-burgundy-deep:#5b0926;--jis-gold:#fbc324;--nav:var(--jis-burgundy-deep);--ink:#302832;--text:#423d44;--muted:#686169;--canvas:#f6f4f3;--border:#e4dfe1;--line:#eee9eb;--accent:#850c35;--accent-dark:#6a0a2c;--accent-soft:#f8e9ef}
+.sidebar{background:linear-gradient(168deg,var(--jis-burgundy),var(--jis-burgundy-deep) 70%,#47091f);padding-top:16px;border-right:1px solid #6d1532}
+.brand{gap:9px;margin:0 1px 15px;padding-bottom:13px;border-bottom:1px solid #ffffff30}
+.jis-crest{width:44px;height:44px;flex:none;object-fit:contain;border-radius:50%;background:#ffce32;box-shadow:0 0 0 1px #ffe187,0 2px 9px #3b061a60}
+.brand strong{font-size:20px;color:white;letter-spacing:-.045em}.brand small{font-size:9px;color:#f0d8e1;letter-spacing:.045em}
+.nav-heading{color:#edc5d3}.nav-link{color:#fff2f6}.nav-link:hover{background:#ffffff16;color:white}
+.nav-link[aria-current=page]{background:#ffffff20;color:#fff7df;box-shadow:inset 3px 0 var(--jis-gold)}.nav-link[aria-current=page] .icon{color:var(--jis-gold)}
+.future-link{color:#e5bdcc}.sidebar-line{border-color:#ffffff28}.sidebar-bottom{color:#ebcdd8}.sidebar-bottom strong{color:#ffe9a9}
+.topbar{border-top:3px solid var(--jis-gold)}.search-launch{background:#faf8f9}.eyebrow{color:var(--jis-burgundy);letter-spacing:.09em}
+.surface{box-shadow:0 1px 3px #4c12330a;border-color:var(--border)}.panel-head{background:#fff;border-radius:var(--radius) var(--radius) 0 0}
+.metric{background:white;border-color:var(--border)}.data-table th{background:#f7f3f4;color:#56404b}.data-table tbody tr:hover td{background:#fff9fa}
+.inline-link{text-decoration-color:#d8aebc}.list-icon,.avatar{background:#f7e7ee;color:var(--jis-burgundy)}
+.tag-teal{background:#e5f2f0;border-color:#c5e2dc;color:#125c60}.case-step.reached,.case-step.current{background:#e5f2f0;border-color:#b9d8d3;color:#125c60}
+.case-step.reached>span,.case-step.current>span{background:#176f70;color:white}.case-step.current{border-color:#176f70;box-shadow:inset 0 0 0 1px #176f70}.bar-fill{background:#176f70}
+.jis-welcome{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;min-height:102px;margin:0 0 13px;background:linear-gradient(104deg,#fff 0%,#fff 57%,#f7edf1 100%);border:1px solid var(--border);border-left:4px solid var(--jis-burgundy);border-radius:var(--radius)}
+.jis-welcome-copy{flex:1;min-width:0;position:relative;z-index:2;padding:13px 17px}.jis-welcome-copy .page-heading{margin:0;align-items:flex-start;gap:6px}.jis-welcome-copy .page-heading .page-actions{flex-shrink:0}
+.jis-welcome-photo{position:relative;width:min(27%,240px);align-self:stretch;flex:none;overflow:hidden;border-left:1px solid #f1d9e2}
+.jis-welcome-photo img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:center}.jis-welcome-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#fbf5f6 0%,#fbf5f600 24%)}
+.house-badge{display:inline-flex;flex:none;align-items:center;gap:6px;vertical-align:middle;min-width:0;font-weight:650;white-space:nowrap}
+.house-logo{display:block;flex:none;width:26px;height:26px;object-fit:cover;border-radius:50%;border:2px solid var(--house-color);background:white;box-shadow:0 0 0 1px #18161b12}
+.house-badge-large .house-logo{width:54px;height:54px;border-width:3px}.house-badge-labelled{font-size:11px;color:var(--ink)}
+.pupil-identity{display:inline-flex;align-items:center;gap:7px;vertical-align:middle;min-width:0;max-width:100%}.pupil-identity-text{display:block;min-width:0}
+.profile-identity{background:#fcf8f9;border-color:#e7d9df}.profile-identity-main .house-badge-large{align-self:center}
+.house-directory{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.house-directory .house-badge{flex-direction:column;justify-content:center;gap:6px;border:1px solid var(--border);border-radius:7px;padding:10px 4px;background:white}
+@media(max-width:1080px) and (min-width:761px){.jis-crest{width:37px;height:37px}.brand{gap:6px}.brand strong{font-size:18px}.brand small{font-size:8px}.jis-welcome-photo{width:23%}}
+@media(max-width:760px){.jis-welcome{min-height:90px}.jis-welcome-copy{padding:10px 12px}.jis-welcome-copy .page-heading .page-actions{flex-basis:100%}.jis-welcome-photo{width:24%}.jis-welcome-copy h1{font-size:23px}.house-directory{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:390px){.jis-welcome-photo{display:none}.house-directory{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media print{.jis-welcome-photo{display:none}.jis-welcome{border:0;min-height:0}.jis-welcome-copy{padding:0}.house-logo{box-shadow:none;print-color-adjust:exact}}

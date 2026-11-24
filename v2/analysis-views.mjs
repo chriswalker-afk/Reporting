@@ -1,3 +1,4 @@
+import {pupilIdentity} from './branding.mjs';
 import {pct,displayDate,gradeGap} from './workspace.mjs';
 import {bookId} from './markbook-views.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
@@ -138,16 +139,16 @@ export function renderAnalysisEvidence(w,id){
  let header,body;
  if(d.kind==='topic'){
   header=['Student','Assessment','Date','Item','Marks','%'];
-  body=rows.map(r=>[link(r.name,'open-student',r.studentId),link(r.title,'open-markbook',bookId(a.classId,r.assessmentId)),e(displayDate(r.date)),e(r.item),e(r.earned+'/'+r.available),e(pct(100*r.earned/r.available))]);
+  body=rows.map(r=>[pupilIdentity(link(r.name,'open-student',r.studentId),w.pupilHouse(r.studentId)),link(r.title,'open-markbook',bookId(a.classId,r.assessmentId)),e(displayDate(r.date)),e(r.item),e(r.earned+'/'+r.available),e(pct(100*r.earned/r.available))]);
  }else if(['item','assessment-topic','ao'].includes(d.kind)){
   header=['Student','Marks','%'];
-  body=rows.map(r=>[link(r.name,'open-student',r.studentId),e(r.earned+'/'+r.available),e(pct(100*r.earned/r.available))]);
+  body=rows.map(r=>[pupilIdentity(link(r.name,'open-student',r.studentId),w.pupilHouse(r.studentId)),e(r.earned+'/'+r.available),e(pct(100*r.earned/r.available))]);
  }else if(d.kind.startsWith('assessment-')||d.kind==='common-class'){
   header=['Student','Class','Mark','%','Grade','Status'];
-  body=rows.map(r=>[link(r.name,'open-student',r.studentId),e(r.classCode),e(r.rawMark===null?'—':r.rawMark+'/'+r.maxMarks),e(pct(r.percent)),e(r.grade??'—'),e(r.status)]);
+  body=rows.map(r=>[pupilIdentity(link(r.name,'open-student',r.studentId),w.pupilHouse(r.studentId)),e(r.classCode),e(r.rawMark===null?'—':r.rawMark+'/'+r.maxMarks),e(pct(r.percent)),e(r.grade??'—'),e(r.status)]);
  }else{
   header=['Student','Class','Average','Grade','MTG','Δ MTG','Scored'];
-  body=rows.map(r=>[link(r.name,'open-student',r.studentId),e(r.classCode),e(pct(r.average)),e(r.grade??'—'),e(r.minimumGrade??'—'),gap(r.gapToTarget),e(coverage(r))]);
+  body=rows.map(r=>[pupilIdentity(link(r.name,'open-student',r.studentId),w.pupilHouse(r.studentId)),e(r.classCode),e(pct(r.average)),e(r.grade??'—'),e(r.minimumGrade??'—'),gap(r.gapToTarget),e(coverage(r))]);
  }
  return {title:subtitle,sub:rows.length+' contributing '+(d.kind==='topic'?'item records':'pupil records')+' · Selected scope and filters',body:table(header,body,subtitle)+'<p class="stage-note">These are the actual records used in the selected chart or statistic, not a separate example dataset.</p>'};
 }

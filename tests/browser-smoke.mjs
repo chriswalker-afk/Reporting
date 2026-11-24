@@ -12,7 +12,7 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const chrome=[process.env.CHROME_BIN,'/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(x=>x&&existsSync(x));
 assert.ok(chrome,'Chrome not found. Install Chromium or set CHROME_BIN.');
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml'};
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.webp':'image/webp'};
 const server=createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,'http://localhost');
@@ -88,6 +88,8 @@ try{
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
  await open();
  assert.match(await heading(),/Welcome, Sam/);
+ assert.ok(await q('.jis-crest'));assert.ok(await q('.jis-welcome-photo img'));
+ await until(()=>evaluate(()=>[...document.querySelectorAll('.jis-crest,.jis-welcome-photo img')].every(img=>img.complete&&img.naturalWidth>0)),'JIS crest and campus photo loaded');
  for(const page of ['notices','classes','students','intervention','home']){
   await action('navigate',page);assert.ok(await heading());assert.equal(await evaluate(()=>location.hash),'#'+page);
  }
@@ -98,13 +100,18 @@ try{
  assert.ok(!(await q('#detail-dialog [data-action="ack-notice"]')));
  await close();
  // Quick role guide opens exact course and active tab.
- await action('demo-guide');await action('demo-scenario','faculty','#detail-dialog ');
+ await action('demo-guide');
+ assert.equal(await evaluate(()=>document.querySelectorAll('#detail-dialog .house-directory .house-logo').length),16);
+ await evaluate(()=>document.querySelectorAll('#detail-dialog .house-directory img').forEach(img=>img.loading='eager'));
+ await until(()=>evaluate(()=>[...document.querySelectorAll('#detail-dialog .house-directory img')].every(img=>img.complete&&img.naturalWidth>0)),'all sixteen local House logos loaded');
+ await action('demo-scenario','faculty','#detail-dialog ');
  assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
  const markbookId=JSON.stringify(['11-maths-1','11-maths-A3','']);
  // data-id contains quotes, so use matching via dataset rather than CSS escaping.
  await evaluate(id=>{const el=[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id);if(!el)throw Error('Missing assessment');el.click();},markbookId);
  assert.ok(await q('#mark-grid-form'));
+ assert.ok(await q('[data-mark-row="P121@11-maths"] .house-logo[src$="/argus.jpg"]'));
  const mark='[data-mark-row="P121@11-maths"] [data-item="q1"]';
  const original=await evaluate(sel=>document.querySelector(sel).value,mark);
  await fill(mark,original==='6'?'5':'6');
@@ -130,6 +137,7 @@ try{
  await click('#prediction-form button[type=submit]');
  assert.ok(!(await q('#detail-dialog[open]')));
  await action('open-student','P121');
+ assert.ok(await q('#detail-dialog .house-badge-large img[src$="/argus.jpg"]'));
  await action('profile-tab','assessments','#detail-dialog ');
  assert.match(await text('#detail-dialog'),/Published assessment history/);
  await action('profile-tab','support','#detail-dialog ');
@@ -171,6 +179,7 @@ try{
  }
  await open('v2/#classes/11-maths-1/class-analysis');
  assert.ok(await q('[data-action="class-tab"][data-id="class-analysis"][aria-pressed="true"]'));
+ await until(()=>evaluate(()=>{const img=document.querySelector('.jis-crest');return img?.complete&&img.naturalWidth>0;}),'alternate entrypoint crest loaded');
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
