@@ -25,7 +25,10 @@ export const HELP={
   flags:'Fictional administrative tags: EAL = English as an additional language; SEN = special educational needs. HLP and access arrangements are illustrative administrative indicators; no sensitive details are included.',
   partial:'Only pupils within the selected scope contribute. This is not necessarily the entire teaching class.',
   date:'Reference date of the fictional dataset. Assessments after this date, drafts and excluded assessments do not contribute to overall summaries.',
-  notices:'Published, unexpired notices matching your assigned responsibilities. The scope selector changes academic cohorts, not notice audiences.',
+  notices:'Published, unexpired notices matching your assigned responsibilities. The scope selector changes academic cohorts, not notice audiences. Leadership can also see notices for oversight.',
+  acknowledgement:'Acknowledgements belong to the current staff member and notice version. Acknowledging does not acknowledge for anyone else. Editing a notice resets its acknowledgements.',
+  reporting:'One centrally managed reporting schedule. Completing a reminder is personal and does not submit reports or grades to SIMS. Revised deadlines reset completion markers.',
+  personalActions:'Your intervention actions across all assigned responsibilities. Academic scope filters do not hide tasks from this Home queue.',
   edit:'Only assigned teachers can edit predicted grades. The new grade is validated against the course grading scale and recorded in demo audit history.',
   due:'Active cases with a review date on or before the fictional reference date. Overdue means strictly earlier than that date.',
 };
@@ -130,10 +133,16 @@ export function createWorkspace(store,staffId,requestedScope){
     if(!c)throw new Error('Intervention outside current demo scope');
     return enrichCase(c);
   }
+  const communications=()=>read.communications();
   function noticeDetail(id){
-    const n=allHome().notices.find(n=>n.id===id);
+    const n=communications().notices.find(n=>n.id===id);
     if(!n)throw new Error('Notice outside current demo scope');
-    return {...n,author:get('staff',n.authorStaffId)?.name};
+    return n;
+  }
+  function deadlineDetail(id){
+    const d=communications().deadlines.find(d=>d.id===id);
+    if(!d)throw new Error('Deadline outside current demo scope');
+    return d;
   }
   const staffIds=new Set([staffId,...data.classes.filter(c=>accessibleClassIds.has(c.id)).flatMap(c=>c.teacherIds)]);
   for(const p of data.students.filter(s=>access.canViewStudent(s.id))){
@@ -152,6 +161,7 @@ export function createWorkspace(store,staffId,requestedScope){
       ...[...accessibleClassIds].map(id=>{const c=classInfo(id);return {kind:'class',id,title:c.code+' · '+c.name,sub:c.course.name+' · '+c.teachers,terms:[c.faculty.name,c.id]};}),
       ...visibleCases.map(c=>{const r=enrichCase(c);return {kind:'case',id:c.id,title:r.student.name+' · '+r.status,sub:r.classInfo.code+' · '+r.student.tutorGroupId,terms:[c.id,r.faculty,c.reason]};}),
       ...notices.map(n=>({kind:'notice',id:n.id,title:n.title,sub:n.kind==='briefing'?'Briefing':'Staff notice',terms:[n.body]})),
+      ...communications().deadlines.filter(d=>!d.archived).map(d=>({kind:'deadline',id:d.id,title:d.title,sub:'Reporting schedule · '+d.dueDate,terms:[d.event,audienceLabel(d.audience)]})),
       ...[...staffIds].map(id=>get('staff',id)).filter(Boolean).map(p=>({kind:'staff',id:p.id,title:p.name,sub:p.roles.map(r=>ROLE_LABELS[r]).join(' · '),terms:p.roles}))
     ];
   };
@@ -166,5 +176,5 @@ export function createWorkspace(store,staffId,requestedScope){
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
     home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,
-    caseRows,caseDetail,noticeDetail,staffDetail,search,audienceLabel};
+    caseRows,caseDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
 }
