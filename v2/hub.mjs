@@ -210,12 +210,13 @@ document.addEventListener('click',event=>{
  hideHelp();
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
   case 'gradebook-save':gradebook.save();break;
   case 'gradebook-discard':gradebook.discard();break;
+  case 'gradebook-undo':case 'gradebook-redo':case 'gradebook-copy':case 'gradebook-fill':case 'gradebook-clear':case 'gradebook-export':case 'gradebook-import-preview':case 'gradebook-import-apply':gradebook.bulkAction(action);break;
   case 'toggle-assessment-columns':{
     const b=w.markbook(state.classId),a=b.overview(state.unitId).assessments.find(a=>a.id===id&&a.mode!=='total');if(!a)break;
     const open=new Set(state.gradebookExpanded[state.classId]??[]);if(open.has(id))open.delete(id);else open.add(id);
@@ -387,6 +388,7 @@ document.addEventListener('click',event=>{
  }
 });
 document.addEventListener('paste',event=>{if(!gradebook.paste(event))grid.paste(event);});
+document.addEventListener('copy',event=>gradebook.copy(event));
 document.addEventListener('pointerdown',event=>gradebook.pointer(event));
 document.addEventListener('focusin',event=>{gradebook.onFocus(event.target);grid.onFocus(event.target);});
 window.addEventListener('beforeunload',event=>{if(gradebook.isDirty()||grid.isDirty()||formDirty){event.preventDefault();event.returnValue='';}});
