@@ -155,6 +155,7 @@ document.addEventListener('click',event=>{
     state.classTab=['markbook',...ANALYSIS_TABS].includes(id)?id:'information';render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
   case 'analysis-evidence':openDetail('analysis-evidence',id);break;
   case 'analysis-select-assessment':state.analysisAssessment=id;state.classTab='class-analysis';render({top:true});byId('analysis-assessment')?.focus();break;
+  case 'analysis-print':window.print();break;
   case 'analysis-reset':clearAnalysis();render({top:true});byId('analysis-unit')?.focus();break;
   case 'new-unit':openDetail('unit-form',id);break;
   case 'new-assessment':openDetail('assessment-new',id);break;
