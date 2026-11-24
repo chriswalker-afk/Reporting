@@ -1,3 +1,4 @@
+import {expandButton,panelAttributes} from './expandable-details.mjs';
 import {disclosure,activeFilterCount,filterLabel} from './workspace-disclosures.mjs';
 import {rankedEvidence,evidenceShare} from './assessment-refinement.mjs';
 import {pupilIdentity} from './branding.mjs';
@@ -13,7 +14,7 @@ const link=(label,action,id)=>'<button type="button" class="inline-link" data-ac
 const tag=(label,kind='')=>'<span class="tag '+kind+'">'+e(label)+'</span>';
 const help=(id,label)=>'<button type="button" class="help" data-help="'+e(id)+'" aria-label="'+e('About '+label)+'" aria-expanded="false">ⓘ</button>';
 const empty=(title,detail='')=>'<div class="empty"><strong>'+e(title)+'</strong>'+e(detail)+'</div>';
-const panel=(title,body,tip='',extra='')=>'<section class="surface analysis-panel"><div class="panel-head"><h2>'+e(title)+(tip?help(tip,title):'')+'</h2>'+extra+'</div><div class="panel-body">'+body+'</div></section>';
+const panel=(title,body,tip='',extra='')=>'<section class="surface analysis-panel"'+panelAttributes('analysis',title)+'><div class="panel-head"><h2>'+e(title)+(tip?help(tip,title):'')+'</h2><div class="panel-expand-actions">'+extra+expandButton('analysis',title)+'</div></div><div class="panel-body">'+body+'</div></section>';
 const metric=(label,value,foot='',tip='')=>'<div class="metric"><div class="metric-head">'+e(label)+(tip?help(tip,label):'')+'</div><div class="metric-value">'+e(value)+'</div><div class="metric-foot">'+e(foot)+'</div></div>';
 const select=(id,options,value,label)=>'<label class="analysis-field">'+e(label)+'<select class="select" id="'+e(id)+'" aria-label="'+e(label)+'">'+options.map(([k,l])=>'<option value="'+e(k)+'" '+(k===value?'selected':'')+'>'+e(l)+'</option>').join('')+'</select></label>';
 const table=(head,rows,caption)=>rows.length?'<div class="table-scroll analysis-table" role="region" tabindex="0" aria-label="'+e(caption)+'"><table class="data-table"><thead><tr>'+head.map((h,i)=>'<th scope="col" '+(i===0?'class="sticky-first"':'')+'>'+e(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map((v,i)=>'<td '+(i===0?'class="sticky-first"':'')+'>'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No records in this selection');
