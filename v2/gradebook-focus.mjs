@@ -26,6 +26,25 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   const scale=Number(root.dataset.pageZoom||100)/100;
   flyout.style.setProperty('--gradebook-flyout-room',Math.max(100,(end-top-6)/scale)+'px');
  }
+ function syncHeaders(){
+  const node=surface(),t=table();if(!node||!t)return;
+  const expanded=node.dataset.headerDetails==='true';
+  for(const detail of node.querySelectorAll('[data-assessment-header-detail]'))detail.hidden=!expanded;
+  const button=node.querySelector('[data-action="gradebook-header-toggle"]');
+  if(button){
+   button.setAttribute('aria-expanded',String(expanded));
+   button.title=(expanded?'Collapse':'Expand')+' assessment header details';
+   button.querySelector('[data-header-toggle-label]').textContent=expanded?'Hide details':'Show details';
+  }
+  const head=t.querySelector('thead');
+  if(head)t.style.scrollPaddingTop=(head.offsetHeight+4)+'px';
+ }
+ function setHeaderDetails(expanded){
+  const node=surface();if(!node||!node.querySelector('[data-action="gradebook-header-toggle"]'))return false;
+  const pos=scrollPosition();
+  node.dataset.headerDetails=String(Boolean(expanded));syncHeaders();restoreScroll(pos);
+  return true;
+ }
  function sync(){
   const current=getContext(),node=surface();
   if(!node||!current||current!==context){active=false;panel='';context=current;outerScroll=0;}
@@ -48,7 +67,7 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   // The same exclusive tools panels drive the normal and full-screen views.
   // Open their inner disclosures only while the corresponding panel is shown.
   {const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';const tools=node.querySelector('[data-workspace-disclosure="single-tools"]');if(tools)tools.open=panel==='tools';}
-  fitPanel();
+  syncHeaders();fitPanel();
  }
  function setActive(value){
   if(!surface()||!getContext())return false;
@@ -82,5 +101,5 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   if(panel)closePanel();else setActive(false);
   return true;
  }
- return {sync,toggle:()=>setActive(!active),togglePanel,closePanel,outsidePointer,fitPanel,keyboard,isActive:()=>active};
+ return {sync,toggle:()=>setActive(!active),togglePanel,closePanel,outsidePointer,fitPanel,syncHeaders,setHeaderDetails,keyboard,isActive:()=>active};
 }

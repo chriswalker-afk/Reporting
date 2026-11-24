@@ -3,7 +3,7 @@ import {gradeDistance} from './analytics.mjs';
 
 export const LAYOUT_KEY='jis-hub-v2-gradebook-layout-1';
 export const SUMMARY_FIELDS=[['mtg','MTG'],['prediction','Pred.'],['overall','Overall % / grade'],['gap','Target gap']];
-export const DEFAULT_LAYOUT=Object.freeze({group:'none',order:'oldest',display:'marks',filter:'all',format:'all',from:'',to:'',hidden:[],custom:[],collapsed:[],summary:['mtg','prediction','overall'],density:'compact'});
+export const DEFAULT_LAYOUT=Object.freeze({group:'none',order:'oldest',display:'marks',filter:'all',format:'all',from:'',to:'',hidden:[],custom:[],collapsed:[],summary:['mtg','prediction','overall'],density:'compact',headerDetails:false});
 const choices={
  group:['none','unit','term','type'],order:['oldest','newest','title','custom'],display:['marks','percent','grade'],
  filter:['all','counted','draft','diagnostic','future'],format:['all','total','topics','questions'],density:['compact','comfortable']
@@ -13,6 +13,7 @@ const ids=v=>Array.isArray(v)?[...new Set(v.filter(x=>typeof x==='string'&&x.len
 export function normalizeLayout(input={}){
  const p=input&&typeof input==='object'?input:{},out={...DEFAULT_LAYOUT};
  for(const [k,allowed] of Object.entries(choices))if(allowed.includes(p[k]))out[k]=p[k];
+ out.headerDetails=p.headerDetails===true;
  for(const k of ['hidden','custom','collapsed'])out[k]=ids(p[k]);
  if(Array.isArray(p.summary))out.summary=SUMMARY_FIELDS.map(([id])=>id).filter(id=>p.summary.includes(id));else out.summary=[...DEFAULT_LAYOUT.summary];
  out.from=validDate(p.from)?p.from:'';out.to=validDate(p.to)?p.to:'';

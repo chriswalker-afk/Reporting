@@ -55,3 +55,25 @@ test('display modes and summary options render without altering marks or inventi
  assert.match(html,/gradebook-group-heading/);assert.match(html,/data-gradebook-gap/);assert.doesNotMatch(html,/class="gradebook-cell"/);assert.doesNotMatch(html,/data-gradebook-summary="/);
  assert.match(renderPage(w,state),/class="gradebook-cell"/);
 });
+
+test('assessment header detail preference is collapsed by default and isolated from evidence projection',()=>{
+ const {s,w,b,o}=setup(),compact=normalizeLayout(),expanded=normalizeLayout({headerDetails:true});
+ assert.equal(compact.headerDetails,false);assert.equal(expanded.headerDetails,true);
+ assert.equal(normalizeLayout({headerDetails:'true'}).headerDetails,false);
+ const memory=new Map(),storage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v)};
+ assert.ok(saveLayout(storage,'sam',cls,expanded));assert.equal(loadLayout(storage,'sam',cls).headerDetails,true);
+ assert.equal(loadLayout(storage,'avery',cls).headerDetails,false);
+ const a=projectGradebook(o,b.units,compact,[qla],w.asOf),d=projectGradebook(o,b.units,expanded,[qla],w.asOf);
+ assert.deepEqual(a.columns,d.columns);
+ const html=renderPage(w,state),details=renderPage(w,{...state,gradebookLayout:expanded});
+ assert.match(html,/data-header-details="false"/);
+ assert.match(html,/data-action="gradebook-header-toggle" aria-expanded="false"/);
+ assert.match(html,/class="assessment-header-details" data-assessment-header-detail hidden/);
+ assert.match(html,/assessment-max-mark/);
+ assert.match(html,/data-action="toggle-assessment-columns"/);
+ assert.match(details,/data-header-details="true"/);
+ assert.match(details,/data-action="gradebook-header-toggle" aria-expanded="true"/);
+ assert.doesNotMatch(details,/data-assessment-header-detail hidden/);
+ assert.equal((html.match(/class="gradebook-cell"/g)||[]).length,(details.match(/class="gradebook-cell"/g)||[]).length);
+ assert.equal(s.revision(),0);
+});

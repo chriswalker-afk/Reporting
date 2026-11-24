@@ -60,3 +60,29 @@
  .gradebook-toolbar-flyout,.gradebook-focus-panel-buttons,#gradebook-quick-display{display:none!important}
  .gradebook-save-bar .gradebook-policy-line{display:inline}
 }
+
+
+/* PR40: one disclosure for the optional details in every assessment heading. */
+@media screen{
+ .gradebook-table .gradebook-header-toggle{display:flex;align-items:center;gap:5px;margin-top:4px;padding:2px 5px;font-size:10px;min-height:22px;line-height:1.2;white-space:nowrap;color:var(--accent-dark)}
+ .gradebook-header-toggle[aria-expanded="true"] .gradebook-menu-chevron{transform:rotate(225deg);margin-top:3px}
+ .gradebook-surface [data-assessment-header-detail][hidden]{display:none!important}
+ .gradebook-table .assessment-header-essentials{display:flex;align-items:center;flex-wrap:wrap;gap:3px 6px;max-width:100%;min-width:0;line-height:1.2}
+ .gradebook-table .assessment-header-essentials .cell-sub{margin:0;white-space:nowrap}
+ .gradebook-table .assessment-header-essentials .gradebook-expand{min-height:20px;margin:0;line-height:1.2}
+ .gradebook-table .assessment-header-details:not([hidden]){display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0}
+ .gradebook-table .assessment-header-details .assessment-date-mark{font-size:10px}
+ .gradebook-table .assessment-header-details .gradebook-head-actions{display:flex;gap:6px;flex-wrap:wrap}
+ .gradebook-surface[data-header-details="false"] .gradebook-table:not(.gradebook-single-table) thead th{padding-block:4px;line-height:1.25}
+ .gradebook-surface[data-header-details="false"] .gradebook-item-heading .gradebook-item-parent{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:105px}
+ .gradebook-surface[data-header-details="false"] .gradebook-item-heading .assessment-header-essentials strong{font-size:12px}
+ .gradebook-surface[data-header-details="false"] .gradebook-table:not(.gradebook-single-table) .tracker-assessment{gap:3px}
+ .gradebook-surface[data-header-details="false"] .gradebook-assessment-title{line-height:1.2}
+ @media(max-width:760px){
+  .gradebook-table .gradebook-header-toggle{min-height:28px}
+  .gradebook-table .assessment-header-essentials .gradebook-expand{min-height:26px}
+ }
+}
+@media print{
+ .gradebook-header-toggle{display:none!important}
+}
