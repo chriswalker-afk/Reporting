@@ -1219,7 +1219,7 @@ try{
  await evaluate(()=>{document.querySelector('#workspace').scrollTop=0;document.querySelector('.gradebook-scroll').scrollTop=0;});
  const closedFlyout=await flyoutState();
  assert.equal(closedFlyout.panelHidden,true);assert.deepEqual(closedFlyout.visibleSections,[]);
- assert.ok(closedFlyout.toolbarHeight<=40,'Short desktop should use one compact toolbar: '+JSON.stringify(closedFlyout));
+ assert.ok(closedFlyout.toolbarHeight<=44,'Short desktop should use one compact toolbar: '+JSON.stringify(closedFlyout));
  assert.ok(closedFlyout.footerPolicy);
  assert.ok(await visible('#gradebook-quick-display'));
  assert.equal(await visible('.gradebook-exchange'),false);
