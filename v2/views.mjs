@@ -134,6 +134,17 @@ export function renderHome(w,s){
  panel(w.scope==='school'?'School reporting schedule':'Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+d.reportingRows.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
  note('Academic figures follow your selected scope. Personal actions and notice acknowledgements include all your assigned responsibilities. Select a row to open the relevant record.')+'</div>';
 }
+// Notice summaries stay on the board; the existing drawer provides full detail and actions.
+function pinnedPaper(w,n){
+ const tone=n.priority==='urgent'?'urgent':n.requiresAcknowledgement?'ack':n.priority==='important'?'important':'info';
+ const preview=n.body.length>180?n.body.slice(0,177)+'…':n.body;
+ return '<article class="notice-paper paper-'+tone+'"><span class="paper-pin" aria-hidden="true"></span><div class="paper-meta">'+esc(w.audienceLabel(n.audience))+' · '+esc(displayDate(n.publishedDate))+'</div><div class="paper-tags">'+tag(n.requiresAcknowledgement?'Acknowledgement required':'Information')+(n.priority!=='normal'?tag(n.priority==='urgent'?'Urgent':'Important',n.priority==='urgent'?'tag-danger':'tag-warning'):'')+(n.acknowledged?tag('Acknowledged','tag-success'):'')+(n.pinned?tag('Pinned'):'')+'</div><h3>'+esc(n.title)+'</h3><p class="paper-preview">'+esc(preview)+'</p><div class="paper-meta">'+esc(n.author||'')+'</div>'+(n.acknowledgementCount?'<div class="paper-meta">'+n.acknowledgementCount.done+' / '+n.acknowledgementCount.total+' acknowledged</div>':'')+btn('Expand notice','open-notice',n.id,'btn paper-open','arrow')+'</article>';
+}
+function paperGroups(w,items){
+ const groups=new Map();
+ for(const n of items){const label=w.audienceLabel(n.audience);if(!groups.has(label))groups.set(label,[]);groups.get(label).push(n);}
+ return [...groups].map(([label,rows])=>'<section class="board-group"><h3 class="board-label">'+esc(label)+'</h3><div class="paper-grid">'+rows.map(n=>pinnedPaper(w,n)).join('')+'</div></section>').join('');
+}
 export function renderNotices(w,s){
  const comm=w.communications(),filter=s.noticeFilter||'active',deadlineFilter=s.deadlineFilter||'open';
  const notices=comm.notices.filter(n=>matchText(s.query,n.title,n.body,w.audienceLabel(n.audience),n.author)&&(
@@ -141,7 +152,7 @@ export function renderNotices(w,s){
   filter==='archive'&&['archived','expired'].includes(n.status)||filter==='scheduled'&&n.status==='scheduled'));
  const board=notices.filter(n=>n.kind==='notice'),briefings=notices.filter(n=>n.kind==='briefing');
  const weeks=[...new Set(briefings.map(n=>n.week))].sort().reverse();
- const brief=weeks.map(week=>'<div class="week-label">Week commencing '+esc(displayDate(week))+'</div>'+briefings.filter(n=>n.week===week).map(n=>noticeRow(w,n)).join('')).join('');
+ const brief=weeks.map(week=>'<div class="week-label">Week commencing '+esc(displayDate(week))+'</div>'+paperGroups(w,briefings.filter(n=>n.week===week))).join('');
  const deadlineRows=comm.deadlines.filter(d=>matchText(s.query,d.title,d.event,d.details,w.audienceLabel(d.audience))&&(
   deadlineFilter==='all'||deadlineFilter==='open'&&!d.archived&&!d.completed||deadlineFilter==='overdue'&&d.status==='overdue'||
   deadlineFilter==='completed'&&d.completed&&!d.archived||deadlineFilter==='archived'&&d.archived));
@@ -150,8 +161,7 @@ export function renderNotices(w,s){
  (comm.publishAudiences.length?btn('Add notice','new-notice','','btn-primary','notice'):'')+help('notices','notice audience'),'Communication')+
  '<div class="metrics communication-metrics">'+metric('Active notices',comm.activeNotices.length,'Staff notices and briefings','notices','show-active-notices')+metric('Awaiting acknowledgement',comm.pendingAcknowledgements.length,'Your pending notices','acknowledgement','show-pending-notices')+metric('Open reporting reminders',comm.openDeadlines.length,comm.openDeadlines.filter(d=>d.status==='overdue').length+' overdue','reporting','focus-schedule')+'</div>'+
  '<div class="surface toolbar" style="margin-bottom:12px">'+field('page-query',s.query,'Search notices and deadlines')+select('notice-filter',filter,[['active','Active notices'],['pending','Awaiting acknowledgement'],['archive','Archive'],['scheduled','Scheduled'],['all','All accessible notices']],'Notice status')+'<span class="count">'+notices.length+' matching notices</span></div>'+
- '<div class="home-grid">'+panel('Staff noticeboard','<div class="list communication-list">'+(board.length?board.map(n=>noticeRow(w,n)).join(''):empty('No matching notices'))+'</div>')+
- panel('Briefing notices','<div class="list communication-list">'+(brief||empty('No matching briefings','Select Archive to see previous briefings.'))+'</div>',btn('Previous briefings','show-archive','','btn-quiet'))+'</div>'+
+ '<section class="surface noticeboard-shell'+(s.boardExpanded?' board-expanded':'')+'"><div class="panel-head"><h2>Staff noticeboard</h2><button type="button" class="btn" data-action="toggle-noticeboard" aria-expanded="'+Boolean(s.boardExpanded)+'" aria-controls="noticeboard-content">'+(s.boardExpanded?'Return to compact board':'Expand board')+'</button></div><div id="noticeboard-content" class="noticeboard-content"><div class="board-section"><h2>Staff notices</h2>'+(board.length?paperGroups(w,board):empty('No matching notices'))+'</div><div class="board-section"><div class="board-section-heading"><h2>Weekly staff briefings</h2>'+btn('Previous briefings','show-archive','','btn-quiet')+'</div>'+(brief||empty('No matching briefings','Select Archive to see previous briefings.'))+'</div></div></section>'+
  '<div id="schedule-panel" tabindex="-1" style="margin-top:12px">'+panel('Reporting schedule',
  '<div class="toolbar">'+select('deadline-filter',deadlineFilter,[['open','Open / upcoming'],['overdue','Overdue'],['completed','My completed'],['archived','Archived'],['all','All accessible deadlines']],'Reporting schedule filter')+'<span class="count">'+deadlineRows.length+' deadlines</span></div>'+schedule,
  (comm.canManageDeadline?btn('Add deadline','new-deadline','','btn-primary','calendar'):'')+help('reporting','reporting schedule'))+'</div>'+
