@@ -46,7 +46,7 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
     if(el){
      const td=el.closest('td'),label=td.querySelector('[data-entry-preview]');
      td.classList.toggle('gradebook-changed',Boolean(change));
-     el.toggleAttribute('aria-invalid',Boolean(change?.message));
+     if(change?.message)el.setAttribute('aria-invalid','true');else el.removeAttribute('aria-invalid');
      if(change?.message){label.textContent='Invalid mark';invalid=true;scored=false;}
      else if(change?.entry){
       const preview=entryPreview(a,r,change.entry);previews.set(a.id,preview);
