@@ -316,3 +316,9 @@
  .register-presentation-bar,.register-cards,.gradebook-entry-switch{display:none!important}
  .responsive-register>.table-scroll{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important}
 }
+
+@media screen{
+ #app[data-gradebook-focus="true"] [data-workspace-disclosure="single-tools"]>summary{display:none}
+ .gradebook-surface[data-entry-view="single"] .gradebook-save-bar{position:sticky;bottom:0;z-index:7}
+ .gradebook-single-table .pupil-identity-text{white-space:normal;overflow-wrap:anywhere}
+}
