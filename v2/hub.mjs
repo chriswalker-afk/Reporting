@@ -250,7 +250,7 @@ document.addEventListener('click',event=>{
   case 'gradebook-move-earlier':case 'gradebook-move-later':{
     const b=w.markbook(state.classId),p=personalLayout();
     // Keep the complete class's custom order when working in one curriculum unit.
-    changeLayout(moveAssessment(b.overview('').assessments,p,id,action==='gradebook-move-earlier'?-1:1),{focus:()=>gradebookActionFocus(action,id)});break;
+    changeLayout(moveAssessment(b.overview('').assessments,p,id,action==='gradebook-move-earlier'?-1:1,b.units,state.unitId),{focus:()=>gradebookActionFocus(action,id)});break;
   }
   case 'toggle-assessment-columns':{
     const b=w.markbook(state.classId),a=b.overview(state.unitId).assessments.find(a=>a.id===id&&a.mode!=='total');if(!a)break;
