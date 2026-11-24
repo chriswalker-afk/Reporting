@@ -1,3 +1,4 @@
+import {isPresented,focusRecord,restoreRecordFocus,nameScrollRegions} from './workspace-accessibility.mjs';
 import {createStore,STORAGE_KEY} from './store.mjs';
 import {groupFilter} from './home-dashboard.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
@@ -83,7 +84,7 @@ function render({top=false,keepFocus=false}={}){
  state.registerPresentation=registerPresentations.get(state.staffId)??{};
  nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);display.sync();
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
- disclosures.sync();gradebookFocus.sync();analysisPanels.sync();
+ disclosures.sync();gradebookFocus.sync();analysisPanels.sync();nameScrollRegions(main);
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  gradebook.mount();
@@ -108,13 +109,9 @@ function openClass(id,below=false){
  if(!w.scopedClassIds.has(id))state.scope='accessible';
  navigate('classes',{classId:id,below,classTab:!below&&state.page==='classes'&&state.classId?state.classTab:'information'});
 }
-function focusToken(el){return el?{element:el,id:el.id,action:el.dataset?.action,record:el.dataset?.id}:null;}
-function restoreFocus(token){
- if(!token)return;
- const matches=token.action?[...document.querySelectorAll('[data-action="'+CSS.escape(token.action)+'"]'+(token.record!==undefined?'[data-id="'+CSS.escape(token.record)+'"]':''))]:[];
- const node=token.element?.isConnected&&token.element.getClientRects().length?token.element:token.id?byId(token.id):matches.find(el=>el.getClientRects().length)??matches.find(el=>el.closest('.register-cards')?.getClientRects().length)??matches[0];
- if(node){for(let parent=node.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;node.focus({preventScroll:true});}
-}
+const focusToken=focusRecord;
+function restoreFocus(token){return restoreRecordFocus(document.body,token,detailDialog.open?detailDialog.querySelector('[data-action="close-detail"]'):main);}
+
 function canLeaveDetail(){
  if(formDirty&&!window.confirm('Discard unsaved form changes? Saved records will not change.'))return false;
  if(!grid.canLeave())return false;
@@ -132,7 +129,7 @@ function openDetail(kind,id,options={}){
   detailDialog.classList.toggle('wide-case',kind==='case');
   if(!detailDialog.open){drawerDisplay.reset();drawerPanels.reset();drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
-  drawerDisplay.sync();drawerPanels.sync();grid.init();detailDialog.querySelector('.dialog-head [data-action="detail-back"],.dialog-head [data-action="close-detail"]')?.focus({preventScroll:true});grid.focusRequested();
+  drawerDisplay.sync();drawerPanels.sync();nameScrollRegions(detailDialog);grid.init();detailDialog.querySelector('.dialog-head [data-action="detail-back"],.dialog-head [data-action="close-detail"]')?.focus({preventScroll:true});grid.focusRequested();
  }catch(error){notify(String(error.message||error));}
 }
 function addBack(){
@@ -147,7 +144,7 @@ function refreshDetail(markup=null){
  detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
  detailDialog.classList.toggle('wide-profile',detail.kind==='student');
  detailDialog.classList.toggle('wide-case',detail.kind==='case');
- detailDialog.innerHTML=markup??renderDetail(w,detail);addBack();drawerDisplay.sync();drawerPanels.sync();grid.init();
+ detailDialog.innerHTML=markup??renderDetail(w,detail);addBack();drawerDisplay.sync();drawerPanels.sync();nameScrollRegions(detailDialog);grid.init();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=scroll;
 }
 function detailBack(){
@@ -695,9 +692,17 @@ document.addEventListener('keydown',event=>{
 
 });
 for(const eventName of ['pointerover','focusin'])document.addEventListener(eventName,event=>{const el=event.target.closest?.('[data-help]');if(el&&!helpPinned)showHelp(el);});
-document.addEventListener('pointerout',event=>{if(helpAnchor&&!helpPinned&&helpAnchor.contains(event.target)&&!helpAnchor.contains(event.relatedTarget)&&document.activeElement!==helpAnchor)hideHelp();});
-document.addEventListener('focusout',event=>{if(helpAnchor&&!helpPinned&&event.target===helpAnchor)hideHelp();});
-window.addEventListener('resize',()=>{hideHelp();display.sync();disclosures.sync();gradebookFocus.sync();});document.addEventListener('scroll',hideHelp,true);
+document.addEventListener('pointerout',event=>{if(helpAnchor&&!helpPinned&&(helpAnchor.contains(event.target)||tooltip.contains(event.target))&&!helpAnchor.contains(event.relatedTarget)&&!tooltip.contains(event.relatedTarget)&&document.activeElement!==helpAnchor)hideHelp();});
+document.addEventListener('focusout',event=>{if(helpAnchor&&!helpPinned&&event.target===helpAnchor&&!tooltip.matches(':hover'))hideHelp();});
+window.addEventListener('resize',()=>{
+ const token=focusToken(document.activeElement);hideHelp();display.sync();disclosures.sync();gradebookFocus.sync();
+ // A table/card breakpoint can hide the active element. Recover its matching
+ // action instead of leaving focus on an invisible control or the document.
+ if(token?.element!==document.body&&!isPresented(token?.element)&&!display.isMenuOpen()){
+  if(detailDialog.open)restoreRecordFocus(detailDialog,token,detailDialog.querySelector('[data-action="close-detail"]'));
+  else if(!searchDialog.open&&!resetDialog.open&&main.contains(token?.element))restoreRecordFocus(main,token,main);
+ }
+});document.addEventListener('scroll',hideHelp,true);
 window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY||event.key===null)notify('Demo data changed in another tab. Reload before making further edits.');});
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
 detailDialog.addEventListener('cancel',event=>{event.preventDefault();if(drawerPanels.collapse()||drawerDisplay.restore())return;closeDetail();});
