@@ -2,6 +2,7 @@ import {createStore} from './store.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,PROFILE_TABS} from './student-profiles.mjs';
 import {profilePeers} from './student-profile-views.mjs';
+import {caseFormInput,unpackCaseAction} from './intervention-views.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {GROUPS,DEFAULT_GROUPS} from './class-overview.mjs';
@@ -218,7 +219,7 @@ document.addEventListener('click',event=>{
   case 'go-schedule':navigate('notices');byId('schedule-panel')?.focus();break;
   case 'focus-schedule':byId('schedule-panel')?.focus();break;
   case 'focus-attention':byId('attention-panel')?.focus();break;
-  case 'go-personal-actions':state.scope='accessible';navigate('intervention',{caseFilter:'actions'});break;
+  case 'go-personal-actions':navigate('intervention',{caseFilter:'actions'});break;
   case 'show-active-notices':state.noticeFilter='active';render();break;
   case 'show-pending-notices':state.noticeFilter='pending';render();break;
   case 'show-archive':state.noticeFilter='archive';render();break;
@@ -244,6 +245,9 @@ document.addEventListener('click',event=>{
   case 'students-soc':clearStudentFilters();state.studentSupport='active';render();break;
   case 'students-due':clearStudentFilters();state.studentSupport='due';render();break;
   case 'open-case':openDetail('case',id);break;
+  case 'new-case':openDetail('case-new',id,{revision:store.revision()});break;
+  case 'case-action':openDetail('case-action',id,{revision:store.revision()});break;
+  case 'cases-reset':clearRegisterFilters();state.caseClass=null;state.caseFilter='active';render();break;
   case 'open-notice':openDetail('notice',id);break;
   case 'open-deadline':openDetail('deadline',id);break;
   case 'new-notice':openDetail('notice-form','');break;
@@ -311,11 +315,39 @@ document.addEventListener('change',event=>{
  const registerFilters={'tutor-filter':'tutorFilter','house-filter':'houseFilter','track-filter':'trackFilter','support-filter':'supportFilter','class-year':'classYear','class-faculty':'classFaculty'};
  if(registerFilters[el.id]){state[registerFilters[el.id]]=el.value;if(el.id==='track-filter')state.below=false;render({keepFocus:true});}
  if(el.id==='below-filter'){state.below=el.checked;render({keepFocus:true});}
- if(el.id==='case-filter'){state.caseFilter=el.value;render({keepFocus:true});}
+ if(el.id==='case-filter'){state.caseFilter=el.value;if(el.value==='actions'){state.caseClass=null;state.tutorFilter='all';state.houseFilter='all';}render({keepFocus:true});}
  if(el.id==='notice-filter'){state.noticeFilter=el.value;render({keepFocus:true});}
  if(el.id==='deadline-filter'){state.deadlineFilter=el.value;render({keepFocus:true});}
 });
 document.addEventListener('submit',event=>{
+ if(['case-select-form','intervention-form'].includes(event.target.id)){
+  event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
+  if(!record)return;
+  suspendDetailRefresh=true;
+  try{
+   if(event.target.id==='case-select-form'){
+    if(record.kind!=='case-new')throw Error('No selected pupil');
+    const id=String(form.get('enrolmentId')??'');
+    const next={kind:'case-new',id,revision:store.revision()},markup=renderDetail(w,next);
+    detail=next;refreshDetail(markup);detailDialog.querySelector('.drawer-body').scrollTop=0;return;
+   }
+   let id;
+   if(record.kind==='case-new'){
+    if(record.revision!==store.revision())throw Error('Records changed since this form was opened; reopen it before saving');
+    id=store.startIntervention(state.staffId,record.id,caseFormInput(form,'startWave1')).id;
+   }else if(record.kind==='case-action'){
+    const [caseId,action]=unpackCaseAction(record.id);id=caseId;
+    store.interventionAction(state.staffId,id,action,caseFormInput(form,action),{expectedRevision:record.revision});
+   }else throw Error('Unknown intervention form');
+   // Keep the caller on the stack (pupil profile, class, or Home); don't add a stale form.
+   if(detailStack.at(-1)?.kind==='case'&&detailStack.at(-1).id===id)detailStack.pop();
+   detail={kind:'case',id};refreshDetail();detailDialog.querySelector('.drawer-body').scrollTop=0;
+   detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
+   notify('Intervention record saved. Student profiles and staff action queues updated.');
+  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=error.message;}else notify(error.message);}
+  finally{suspendDetailRefresh=false;}
+  return;
+ }
  if(event.target.id==='mark-grid-form'){
   event.preventDefault();try{grid.save(event.target);grid.error('');}catch(error){grid.error(error.message);}return;
  }

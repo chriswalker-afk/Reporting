@@ -1,0 +1,181 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createStore} from '../v2/store.mjs';
+import {createDemoData} from '../v2/demo-data.mjs';
+import {createWorkspace} from '../v2/workspace.mjs';
+import {createAccess} from '../v2/access.mjs';
+import {WAVE2_TRIGGERS,WAVE3_TRIGGERS,STRATEGIES} from '../v2/interventions.mjs';
+import {renderPage,renderDetail} from '../v2/views.mjs';
+import {caseActionId} from '../v2/intervention-views.mjs';
+
+const make=(options={})=>createStore({clock:()=> '2026-11-24T08:00:00.000Z',...options});
+const w=(s,id='sam',scope)=>createWorkspace(s,id,scope);
+const state=(page,extra={})=>({page,classId:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,sorts:{},...extra});
+const base={reason:'Demo academic concern: fluency practice',strategies:[STRATEGIES[0],STRATEGIES[1]],plan:'Provide two worked examples and check independent completion.',reviewDate:'2026-12-01'};
+const referral2={trigger:WAVE2_TRIGGERS[0],reason:'Demo review found continued difficulty; discussed with House.',reviewDate:'2026-12-02',confirmed:true};
+const referral3={trigger:WAVE3_TRIGGERS[0],reason:'Demo review unsuccessful after faculty support.',reviewDate:'2026-12-04',confirmed:true};
+const activate={plan:'Weekly academic support and assess independent practice.',houseRequest:'Agree a weekly study routine with tutor.',reviewDate:'2026-12-03',confirmed:true};
+const act=(s,staff,id,action,input,options)=>s.interventionAction(staff,id,action,input,options);
+const record=(s,id)=>s.snapshot().interventions.find(c=>c.id===id);
+const queue=(s,staff,id,type)=>w(s,staff).allHome().actions.some(a=>a.caseId===id&&a.type===type);
+const candidate=(s,staff='sam')=>w(s,staff,'teaching').caseStartOptions().find(o=>o.scoped&&o.classInfo.faculty.id==='mathematics');
+const start=(s,overrides={})=>{const e=candidate(s);assert.ok(e);return {e,id:s.startIntervention('sam',e.id,{...base,...overrides}).id};};
+
+test('starting Wave 1 is teacher-only, validated, unique and connected to all academic views',()=>{
+ const s=make(),e=candidate(s),before=s.revision();
+ assert.ok(e);
+ assert.throws(()=>s.startIntervention('avery',e.id,base),/assigned class teacher/);
+ assert.throws(()=>s.startIntervention('sam',e.id,{...base,strategies:[]}),/strategies/);
+ assert.throws(()=>s.startIntervention('sam',e.id,{...base,reviewDate:'2026-11-20'}),/review date/);
+ assert.throws(()=>s.startIntervention('sam',e.id,{...base,plan:' '}),/specific classroom intervention/);
+ assert.equal(s.revision(),before);
+ const id=s.startIntervention('sam',e.id,base).id,c=record(s,id);
+ assert.equal(c.state,'wave1');assert.equal(c.ownerStaffId,'sam');assert.equal(c.wave1Plan,base.plan);
+ assert.equal(c.history[0].action,'startWave1');
+ assert.throws(()=>s.startIntervention('sam',e.id,base),/active subject intervention/);
+ const workspace=w(s,'sam','faculty'),row=workspace.classRecord(e.classInfo.id).roster.find(r=>r.enrolmentId===e.id);
+ assert.ok(row.soc);assert.ok(row.active.some(c=>c.id===id));
+ assert.ok(workspace.studentProfile(e.student.id).activeCases.some(c=>c.id===id));
+ assert.ok(workspace.caseRows().some(c=>c.id===id));
+ assert.ok(!workspace.caseStartOptions().some(o=>o.id===e.id));
+ assert.equal(s.snapshot().audit.at(-1).recordId,id);
+ assert.equal(s.snapshot().audit.at(-1).actorStaffId,'sam');
+});
+test('Wave 2 referral is explicit; only assigned faculty activates and designated House responds',()=>{
+ const s=make(),{id,e}=start(s),d=w(s).caseDetail(id);
+ const faculty=d.participants.faculty[0].id,house=d.participants.house[0].id;
+ assert.throws(()=>act(s,'avery',id,'requestWave2',referral2),/not permitted/);
+ assert.throws(()=>act(s,'sam',id,'requestWave2',{...referral2,confirmed:false}),/Confirm/);
+ assert.throws(()=>act(s,'sam',id,'requestWave2',{...referral2,ownerStaffId:'avery'}),/assigned faculty lead/);
+ act(s,'sam',id,'requestWave2',{...referral2,ownerStaffId:faculty});
+ let c=record(s,id);
+ assert.equal(c.state,'wave2_requested');assert.equal(c.wave,2);assert.equal(c.ownerStaffId,faculty);
+ assert.equal(c.wave2Referral.reason,referral2.reason);assert.equal(c.facultyPlan,null);
+ assert.ok(queue(s,faculty,id,'activateWave2'));
+ assert.throws(()=>act(s,'avery',id,'activateWave2',activate),/not permitted/);
+ assert.throws(()=>act(s,faculty,id,'activateWave2',{...activate,houseOwnerStaffId:'avery'}),/assigned Head of House/);
+ act(s,faculty,id,'activateWave2',{...activate,houseOwnerStaffId:house});
+ c=record(s,id);assert.equal(c.state,'wave2');assert.equal(c.ownerStaffId,faculty);assert.equal(c.houseOwnerStaffId,house);
+ assert.ok(!queue(s,faculty,id,'activateWave2'));assert.ok(queue(s,house,id,'respondHouse'));
+ assert.throws(()=>act(s,'avery',id,'respondHouse',{response:'Demo response',complete:true}),/not permitted/);
+ act(s,house,id,'respondHouse',{response:'Tutor routine agreed; monitoring continues.',complete:false});
+ assert.ok(queue(s,house,id,'respondHouse'));
+ act(s,house,id,'respondHouse',{response:'Tutor check-in arranged.',complete:true});
+ assert.equal(record(s,id).houseResponse.actorStaffId,house);assert.ok(!queue(s,house,id,'respondHouse'));
+ assert.equal(record(s,id).enrolmentId,e.id);assert.equal(record(s,id).wave1Plan,base.plan);
+});
+test('serious concern can start and request Wave 2 atomically, with confirmation and reason',()=>{
+ const s=make(),e=candidate(s);
+ assert.throws(()=>s.startIntervention('sam',e.id,{...base,directReferral:true,trigger:WAVE2_TRIGGERS[0],referralReason:'Demo',confirmed:true}),/serious concern/);
+ assert.throws(()=>s.startIntervention('sam',e.id,{...base,directReferral:true,trigger:WAVE2_TRIGGERS[2],referralReason:'Demo',confirmed:false}),/Confirm/);
+ assert.equal(s.revision(),0);
+ const id=s.startIntervention('sam',e.id,{...base,directReferral:true,trigger:WAVE2_TRIGGERS[2],referralReason:'Demo serious academic concern',confirmed:true}).id;
+ const c=record(s,id);
+ assert.equal(c.state,'wave2_requested');assert.equal(c.history.length,2);assert.equal(c.wave2Referral.trigger,WAVE2_TRIGGERS[2]);
+ assert.equal(s.revision(),1);assert.equal(s.snapshot().audit.length,1);
+});
+test('Wave 3 handover is assigned, leadership activates, and outstanding House requests survive escalation',()=>{
+ const s=make(),{id}=start(s),participants=w(s).caseDetail(id).participants,faculty=participants.faculty[0].id,house=participants.house[0].id;
+ act(s,'sam',id,'requestWave2',referral2);
+ act(s,faculty,id,'activateWave2',activate);
+ act(s,faculty,id,'requestWave3',{...referral3,ownerStaffId:'avery'});
+ assert.equal(record(s,id).state,'wave3_requested');assert.equal(record(s,id).ownerStaffId,'avery');
+ assert.ok(queue(s,'avery',id,'respondLeadership'));assert.ok(queue(s,house,id,'respondHouse'));
+ assert.ok(!queue(s,'priya',id,'respondLeadership'));
+ assert.throws(()=>act(s,'priya',id,'respondLeadership',{plan:'Demo',reviewDate:'2026-12-05',confirmed:true}),/not permitted/);
+ act(s,'avery',id,'respondLeadership',{plan:'Joint academic review with faculty.',reviewDate:'2026-12-05',confirmed:true});
+ assert.equal(record(s,id).state,'wave3');assert.equal(record(s,id).ownerStaffId,'avery');
+ assert.ok(!queue(s,'avery',id,'respondLeadership'));assert.ok(queue(s,house,id,'respondHouse'));
+ assert.throws(()=>act(s,'sam',id,'review',{outcome:'resolved',evaluation:'Demo resolved',confirmed:true}),/not permitted/);
+ assert.throws(()=>act(s,'avery',id,'review',{outcome:'resolved',evaluation:'Demo resolved',confirmed:true}),/outstanding House request/);
+ act(s,house,id,'respondHouse',{response:'Agreed academic routine in place.',complete:true});
+ act(s,'avery',id,'review',{outcome:'resolved',evaluation:'Demo target achieved; support no longer required.',confirmed:true});
+ const c=record(s,id);assert.equal(c.state,'closed');assert.equal(c.wave,3);assert.equal(c.closedBy,'avery');
+ assert.equal(c.facultyPlan,activate.plan);assert.ok(c.wave2Referral&&c.wave3Referral&&c.leadershipPlan);
+ assert.equal(w(s,'avery').caseDetail(id).actions.length,0);
+ assert.ok(!w(s,'avery').allHome().actions.some(a=>a.caseId===id));
+ assert.throws(()=>act(s,'avery',id,'update',{text:'Unallowed edit'}),/not permitted/);
+});
+test('reviews require evidence, confirmation and a new date; closure clears flags without erasing history',()=>{
+ const s=make(),{id,e}=start(s),c=record(s,id),initialHistory=c.history.length;
+ const studentBefore=w(s,'avery','school').studentProfile(e.student.id);
+ assert.ok(studentBefore.activeCases.some(c=>c.id===id));
+ assert.throws(()=>act(s,'sam',id,'review',{outcome:'continue',evaluation:'Demo',reviewDate:'2026-11-24',confirmed:true}),/after the demo/);
+ assert.throws(()=>act(s,'sam',id,'review',{outcome:'revise',evaluation:'Demo',reviewDate:'2026-12-02',confirmed:true}),/revised intervention/);
+ act(s,'sam',id,'review',{outcome:'revise',evaluation:'Demo evidence supports adjusted practice',plan:'New measured practice plan.',reviewDate:'2026-12-02',confirmed:true});
+ assert.equal(record(s,id).wave1Plan,'New measured practice plan.');
+ act(s,'sam',id,'review',{outcome:'resolved',evaluation:'Demo: achieved independent target.',confirmed:true});
+ const workspace=w(s,'sam','faculty'),row=workspace.classRecord(e.classInfo.id).roster.find(r=>r.enrolmentId===e.id);
+ assert.ok(!row.active.some(c=>c.id===id));
+ assert.equal(record(s,id).history.length,initialHistory+2);
+ assert.ok(workspace.studentProfile(e.student.id).closedCases.some(c=>c.id===id));
+ assert.ok(!workspace.studentProfile(e.student.id).activeCases.some(c=>c.id===id));
+ assert.ok(workspace.caseStartOptions().some(o=>o.id===e.id));
+ const newer=s.startIntervention('sam',e.id,base).id;
+ assert.notEqual(newer,id);assert.equal(record(s,id).state,'closed');assert.equal(record(s,newer).state,'wave1');
+});
+test('individual study plan reviews are separate, owned, audited and linked to personal queues',()=>{
+ const s=make(),{id}=start(s),planInput={target:'Demo: complete two revision tasks independently',actions:['Teacher: supply tasks','Pupil: complete and review'],reviewDate:'2026-11-24'};
+ assert.throws(()=>act(s,'avery',id,'saveStudyPlan',planInput),/not permitted/);
+ act(s,'sam',id,'saveStudyPlan',planInput);
+ const d=w(s).caseDetail(id);assert.equal(d.studyPlan.ownerStaffId,'sam');assert.equal(d.studyPlan.target,planInput.target);
+ assert.ok(queue(s,'sam',id,'reviewStudyPlan'));assert.ok(!queue(s,'sam',id,'review'));
+ assert.throws(()=>act(s,'sam',id,'reviewStudyPlan',{outcome:'continue',evaluation:'Demo',reviewDate:'2026-11-24',confirmed:true}),/after the demo/);
+ act(s,'sam',id,'reviewStudyPlan',{outcome:'revise',evaluation:'Demo partial completion',target:'Complete three tasks',actions:['Pupil: complete three tasks'],reviewDate:'2026-12-04',confirmed:true});
+ assert.ok(!queue(s,'sam',id,'reviewStudyPlan'));assert.equal(record(s,id).reviewDate,base.reviewDate);
+ act(s,'sam',id,'reviewStudyPlan',{outcome:'achieved',evaluation:'Demo all tasks completed',confirmed:true});
+ let p=w(s).caseDetail(id).studyPlan;
+ assert.equal(p.completedDate,'2026-11-24');assert.equal(p.history.length,2);assert.equal(record(s,id).state,'wave1');
+ assert.throws(()=>act(s,'sam',id,'saveStudyPlan',planInput),/Confirm/);
+ act(s,'sam',id,'saveStudyPlan',{...planInput,confirmed:true});
+ p=w(s).caseDetail(id).studyPlan;assert.equal(p.completedDate,null);assert.equal(p.history.length,2);
+ assert.ok(queue(s,'sam',id,'reviewStudyPlan'));assert.equal(s.snapshot().studyPlans.filter(p=>p.interventionId===id).length,1);
+ assert.equal(s.snapshot().audit.at(-1).after.plan.target,planInput.target);
+});
+test('case and study plan writes persist; stale revisions and denied requests are atomic',()=>{
+ const map=new Map(),storage={getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,v)};
+ const s=make({storage}),{id}=start(s),rev=s.revision();
+ act(s,'sam',id,'update',{text:'Demo updated observation'});
+ const current=s.snapshot();
+ assert.throws(()=>act(s,'sam',id,'requestWave2',referral2,{expectedRevision:rev}),/changed since/);
+ assert.deepEqual(s.snapshot(),current);
+ const denied=s.snapshot().staff.find(p=>!createAccess(s.snapshot(),p.id).canViewCase(id));
+ assert.ok(denied);assert.throws(()=>act(s,denied.id,id,'update',{text:'Demo'}),/not permitted/);
+ assert.throws(()=>w(s,denied.id).caseDetail(id),/outside/);
+ assert.deepEqual(s.snapshot(),current);
+ const reload=make({storage});assert.equal(record(reload,id).history.at(-1).text,'Progress update: Demo updated observation');
+ assert.equal(reload.snapshot().audit.length,2);
+});
+test('case dashboard, action forms and profile render actual data and enforce authorised controls',()=>{
+ const s=make(),{id,e}=start(s),workspace=w(s,'sam','faculty');
+ const html=renderPage(workspace,state('intervention'));assert.match(html,/Start Wave 1/);assert.match(html,/Pending referrals/);
+ assert.match(renderDetail(workspace,{kind:'case-new',id:''}),/case-select-form/);
+ const c=renderDetail(workspace,{kind:'case',id});
+ assert.match(c,/Wave 1 · Classroom intervention/);assert.match(c,/Individual study plan/);assert.match(c,/Academic context/);
+ assert.match(c,/Request Wave 2/);assert.match(c,/Case history/);
+ assert.match(renderDetail(workspace,{kind:'case-action',id:caseActionId(id,'requestWave2')}),/intervention-form/);
+ assert.throws(()=>renderDetail(w(s,'avery'),{kind:'case-action',id:caseActionId(id,'requestWave2')}),/not permitted/);
+ assert.throws(()=>renderDetail(workspace,{kind:'case-new',id:e.id}),/active subject case/);
+ assert.match(renderPage(workspace,state('home')),/case-action/);
+ const pending=renderPage(workspace,state('intervention',{caseFilter:'actions'}));assert.match(pending,/All my responsibilities/);
+ const p=renderDetail(workspace,{kind:'student',id:e.student.id,tab:'support'});assert.match(p,/Active interventions/);
+ for(const staff of s.snapshot().staff){
+  const view=w(s,staff.id);
+  for(const c of view.caseRows()){
+   const result=renderDetail(view,{kind:'case',id:c.id});
+   assert.doesNotMatch(result,/undefined|NaN%/);
+  }
+ }
+});
+test('legacy snapshots without referral metadata remain actionable and read-only closed records stay intact',()=>{
+ const data=createDemoData();
+ for(const c of data.interventions){
+  delete c.wave1Plan;delete c.wave2Referral;delete c.wave3Referral;delete c.houseOwnerStaffId;
+  c.ownerStaffId=data.classes.find(x=>x.id===data.enrolments.find(e=>e.id===c.enrolmentId).classId).teacherIds[0];
+ }
+ const s=make({initialData:data}),c=w(s,'avery').caseDetail('I004');
+ assert.match(c.owner,/Leadership/);assert.ok(c.actions.includes('respondLeadership'));
+ act(s,'avery','I004','respondLeadership',{plan:'Demo follow-up',reviewDate:'2026-12-06',confirmed:true});
+ assert.equal(record(s,'I004').ownerStaffId,'avery');
+ assert.equal(w(s,'avery').caseDetail('I005').actions.length,0);
+});

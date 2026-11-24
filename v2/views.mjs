@@ -6,6 +6,7 @@ import {renderAcademicAnalysis,renderAnalysisEvidence} from './analysis-views.mj
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,profileCounts} from './student-profiles.mjs';
 import {renderStudentProfile,renderProfileResult} from './student-profile-views.mjs';
+import {renderCase,renderCaseStart,renderCaseAction,caseActionId} from './intervention-views.mjs';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={
  home:'M3 10 12 3l9 7v10h-6v-7H9v7H3z',notice:'M4 11V8l15-5v14L4 13z M7 14l2 6h4l-2-5 M19 8h2',
@@ -59,7 +60,7 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Student profiles</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Interventions</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
  return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
@@ -73,7 +74,7 @@ export function renderHome(w,s){
  const classTable=table('homeClasses',classColumns,classes,classCell,s,{compact:true});
  const queue=[
    ...comm.pendingAcknowledgements.map(n=>({kind:'notice',html:listRow('Acknowledge: '+n.title,w.audienceLabel(n.audience),'open-notice',n.id,'notice',tag('Pending','tag-warning'))})),
-   ...actions.map(a=>{const r=w.caseDetail(a.caseId);return {kind:'case',html:listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'open-case',r.id,'support',r.overdue?tag('Overdue','tag-danger'):'')};})
+   ...actions.map(a=>{const r=w.caseDetail(a.caseId);return {kind:'case',html:listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'case-action',caseActionId(r.id,a.type),'support',a.reviewDate<w.asOf?tag('Overdue','tag-danger'):'')};})
  ];
  const attention=queue.length?queue.slice(0,4).map(a=>a.html).join(''):empty('Nothing awaiting your attention','Your notice acknowledgements and intervention actions appear here.');
  const notices=comm.activeNotices.slice(0,3),reportingRows=w.access.has('leadership')?comm.deadlines.filter(d=>!d.archived&&(!d.recipient||!d.completed)):comm.openDeadlines,deadlines=reportingRows.slice(0,3);
@@ -84,7 +85,7 @@ export function renderHome(w,s){
  '<div id="attention-panel" tabindex="-1">'+panel('Requires your attention','<div class="list">'+attention+'</div><div class="attention-footer">'+btn('Interventions ('+actions.length+')','go-personal-actions','','btn-quiet')+btn('Notices ('+comm.pendingAcknowledgements.length+')','go-acknowledgements','','btn-quiet')+'</div>','', 'personalActions')+'</div></div>'+
  '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>noticeRow(w,n)).join(''):empty('No active notices'))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+
  panel(w.access.has('leadership')?'School reporting schedule':'Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+reportingRows.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
- note('Academic figures follow the selected scope. Your action queue and communications cover all your assigned responsibilities. Intervention plan editing follows in V2-08.');
+ note('Academic figures follow the selected scope. Your action queue and communications cover all your assigned responsibilities. Open an intervention reminder to complete its action directly.');
 }
 export function renderNotices(w,s){
  const comm=w.communications(),filter=s.noticeFilter||'active',deadlineFilter=s.deadlineFilter||'open';
@@ -135,7 +136,8 @@ export function renderClasses(w,s){
   if(k==='flags')return '<div class="tags">'+(p.tags.length?p.tags.map(t=>tag(t==='Access arrangements'?'AA':t)).join(''):'<span class="muted">—</span>')+'</div>';
   if(k==='wave'){
    const subject=p.active.map(c=>link('W'+c.wave,'open-case',c.id)).join(' ');
-   return p.soc?'<div class="tags">'+tag('SOC','tag-warning')+(subject||link('Other','open-student',p.studentId))+'</div>':'—';
+   const start=w.access.canStartWave1(p.enrolmentId)?link('+ W1','new-case',p.enrolmentId):'';
+   return p.soc||start?'<div class="tags">'+(p.soc?tag('SOC','tag-warning')+(subject||link('Other','open-student-support',p.studentId)):'')+start+'</div>':'—';
   }
   if(k==='average')return link(pct(p.average),'subject-summary',p.enrolmentId);
   if(k==='latestPercent')return p.latestPercent===null?'—':link(pct(p.latestPercent)+' · '+p.latestGrade,'subject-summary',p.enrolmentId);
@@ -192,21 +194,40 @@ export function renderStudents(w,s){
  },s)+'</section>'+note('Directory counts use the selected cohort and subject scope. Open a profile to see all records permitted by your combined responsibilities. No cross-subject average or automatic SOC classification is calculated.');
 }
 export function renderIntervention(w,s){
- const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),h=w.home();
- const actionIds=new Set(h.actions.map(a=>a.caseId));
- const rows=all.filter(c=>matchText(s.query,c.studentName,c.classCode,c.house,c.student.tutorGroupId,c.reason)&&
-  (!s.caseClass||c.classInfo.id===s.caseClass)&&
-  (s.caseFilter==='all'||s.caseFilter==='active'&&c.state!=='closed'||s.caseFilter==='due'&&c.due||s.caseFilter==='actions'&&actionIds.has(c.id)||s.caseFilter==='closed'&&c.state==='closed'||s.caseFilter==='w'+c.wave&&c.state!=='closed'));
- return heading('Intervention',SCOPE_LABELS[w.scope]+' · Shared student support records',help('intervention','intervention counts'),'Student support')+
- '<div class="metrics">'+metric('Active cases',active.length,new Set(active.map(c=>c.student.id)).size+' individual pupils','intervention','filter-active')+metric('Reviews due',active.filter(c=>c.due).length,active.filter(c=>c.overdue).length+' overdue','due','filter-due')+metric('Your actions',h.actions.length,'Relevant hand-offs and reviews','','go-actions')+metric('Closed cases',all.length-active.length,'Retained in history','','filter-closed')+'</div>'+
- '<section class="surface"><div class="toolbar">'+field('page-query',s.query,'Filter pupil, class or House')+select('case-filter',s.caseFilter,[['active','Active'],['actions','My actions'],['due','Reviews due'],['w1','Wave 1'],['w2','Wave 2'],['w3','Wave 3'],['closed','Closed'],['all','All cases']],'Intervention status')+(s.caseClass?btn('Clear class filter','clear-case-class'):'')+'<span class="count">'+rows.length+' records</span></div>'+
- table('cases',[['studentName','Student'],['classCode','Class'],['house','House'],['status','Stage'],['reviewDate','Review date'],['owner','Case owner']],rows,(c,k)=>{
+ const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),personal=w.allHome().actions;
+ const filter=s.caseFilter??'active',actionMode=filter==='actions';
+ const actionRows=personal.map(a=>({...w.caseDetail(a.caseId),actionType:a.type,actionDate:a.reviewDate}));
+ const match=c=>matchText(s.query,c.studentName,c.classCode,c.house,c.student.tutorGroupId,c.reason,c.owner)&&
+  (!s.caseClass||c.classInfo.id===s.caseClass)&&(!s.tutorFilter||s.tutorFilter==='all'||c.student.tutorGroupId===s.tutorFilter)&&
+  (!s.houseFilter||s.houseFilter==='all'||c.house===s.houseFilter);
+ const rows=actionMode?actionRows.filter(match):all.filter(c=>match(c)&&
+  (filter==='all'||filter==='active'&&c.state!=='closed'||filter==='due'&&c.due||filter==='closed'&&c.state==='closed'||filter==='referrals'&&c.state.endsWith('_requested')||filter==='w'+c.wave&&c.state!=='closed'));
+ const filterBase=actionMode?actionRows:all;
+ const unique=fn=>[...new Set(filterBase.map(fn))].sort((a,b)=>String(a).localeCompare(String(b),'en',{numeric:true}));
+ const opts=(values,label)=>[['all',label],...values.map(v=>[v,v])];
+ const canStart=w.caseStartOptions().some(o=>o.scoped);
+ const columns=[['studentName','Student'],['classCode','Class'],['house','House'],['status','Stage'],[actionMode?'actionDate':'reviewDate','Review / action date'],['owner','Case owner'],[actionMode?'actionType':'nextActions','Action','caseQueue']];
+ return heading('Intervention',(actionMode?'All my responsibilities':SCOPE_LABELS[w.scope])+' · Shared academic support records',(canStart?btn('Start Wave 1','new-case','','btn-primary'):'')+help('caseWorkflow','Wave 1–3 workflow'),'Student support')+
+ '<div class="metrics">'+metric('Active cases',active.length,new Set(active.map(c=>c.student.id)).size+' individual pupils','intervention','filter-active')+
+ metric('Reviews due',active.filter(c=>c.due).length,active.filter(c=>c.overdue).length+' overdue','due','filter-due')+
+ metric('My actions',personal.length,'Across all assigned responsibilities','caseQueue','go-personal-actions')+
+ metric('Closed cases',all.length-active.length,'Retained in history','','filter-closed')+'</div>'+
+ '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil, class, owner or House')+
+ select('case-filter',filter,[['active','Active'],['actions','My actions (all responsibilities)'],['due','Reviews due'],['referrals','Pending referrals'],['w1','Wave 1'],['w2','Wave 2'],['w3','Wave 3'],['closed','Closed'],['all','All cases']],'Intervention status')+
+ select('tutor-filter',s.tutorFilter??'all',opts(unique(c=>c.student.tutorGroupId),'All tutor groups'),'Tutor group')+
+ select('house-filter',s.houseFilter??'all',opts(unique(c=>c.house),'All Houses'),'House')+
+ (s.caseClass?btn('Clear class filter','clear-case-class'):'')+btn('Clear filters','cases-reset','','btn-quiet')+
+ '<span class="count">'+rows.length+(actionMode?' actions':' records')+'</span></div>'+
+ table('cases',columns,rows,(c,k)=>{
   if(k==='studentName')return link(c.studentName,'open-case',c.id)+'<span class="cell-sub">TG '+esc(c.student.tutorGroupId)+'</span>';
   if(k==='status')return waveTag(c);
-  if(k==='reviewDate')return esc(displayDate(c.reviewDate))+(c.overdue?' '+tag('Overdue','tag-danger'):'');
+  if(k==='reviewDate'||k==='actionDate')return esc(displayDate(c[k]))+(c.state!=='closed'&&c[k]<w.asOf?' '+tag('Overdue','tag-danger'):c.state!=='closed'&&c[k]===w.asOf?' '+tag('Due today','tag-warning'):'');
+  if(k==='actionType')return btn(ACTION_LABELS[c.actionType],'case-action',caseActionId(c.id,c.actionType),'btn-primary');
+  if(k==='nextActions')return c.pending.length?'<div class="case-list-actions">'+c.pending.map(a=>btn(ACTION_LABELS[a.type],'case-action',caseActionId(c.id,a.type),'btn-quiet')).join('')+'</div>':link('View case','open-case',c.id);
   return esc(c[k]);
- },s)+'</section>'+note('This is the connected read-only intervention preview. Wave transitions, reviews and study-plan editing follow in V2-08; safeguarding remains separate.');
+ },s)+'</section>'+note('One shared case per pupil and subject. My actions are personal handovers and due reviews, independent of the academic scope. Safeguarding remains separate; no external submission or email is performed.');
 }
+
 export function renderPage(w,s){return '<div class="workspace-inner">'+({home:renderHome,notices:renderNotices,classes:renderClasses,students:renderStudents,intervention:renderIntervention}[s.page]||renderHome)(w,s)+'</div>';}
 const facts=entries=>'<dl class="drawer-summary">'+entries.map(([key,value])=>'<div class="fact"><dt>'+esc(key)+'</dt><dd>'+esc(value??'—')+'</dd></div>').join('')+'</dl>';
 const section=(name,body)=>'<section class="drawer-section"><h3>'+esc(name)+'</h3><div class="content">'+body+'</div></section>';
@@ -221,10 +242,11 @@ export function renderDetail(w,detail){
  if(kind==='student'){const d=renderStudentProfile(w,detail);return drawer(d.title,d.sub,d.body);}
  if(kind==='profile-result'){const d=renderProfileResult(w,id);return drawer(d.title,d.sub,d.body);}
 
- if(kind==='case'){
-  const c=w.caseDetail(id);
-  return drawer(c.studentName,c.classInfo.name+' · '+c.id,facts([['Tutor group',c.student.tutorGroupId],['House',c.house],['Review date',displayDate(c.reviewDate)],['Stage',c.status],['Case owner',c.owner],['Updated',displayDate(c.updatedDate)]])+section('Wave 1 · Classroom intervention','<p>'+esc(c.reason)+'</p><div class="tags">'+(c.strategies||[]).map(x=>tag(x)).join('')+'</div>')+(c.wave>=2?section('Wave 2 · Faculty and House','<strong>Faculty plan</strong><p>'+esc(c.facultyPlan||'Awaiting faculty plan')+'</p><strong>House request</strong><p>'+esc(c.houseRequest||'Not yet assigned')+'</p><strong>House response</strong><p>'+esc(c.houseResponse?.response||'No response recorded')+'</p>'):'')+(c.wave>=3?section('Wave 3 · Leadership','<p>'+esc(c.leadershipPlan||'Awaiting leadership plan')+'</p>'):'')+section('History',(c.history||[]).map(h=>'<p><strong>'+esc(displayDate(h.date))+'</strong> · '+esc(h.text)+'</p>').join(''))+(c.evaluation?section('Evaluation','<p>'+esc(c.evaluation)+'</p>'):'')+note('View only in V2-02. Intervention actions are implemented in V2-08.'),btn('Student profile','open-student',c.student.id,'btn-quiet'));
+ if(kind==='case'||kind==='case-new'||kind==='case-action'){
+  const d=kind==='case'?renderCase(w,id):kind==='case-new'?renderCaseStart(w,id):renderCaseAction(w,id);
+  return drawer(d.title,d.sub,d.body,d.footer??'');
  }
+
  if(kind==='notice'){
   const n=w.noticeDetail(id),editable=n.editable&&n.status!=='archived';
   const status=n.canAcknowledge?'Acknowledgement required':n.acknowledged?'Acknowledged by you':n.requiresAcknowledgement&&!n.recipient?'Oversight only':n.requiresAcknowledgement?'Not currently actionable':'No acknowledgement required';

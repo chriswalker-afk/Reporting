@@ -30,7 +30,7 @@ function overview(p){
   s.targetEditable?link(s.minimumGrade??'Set','edit-target',s.enrolmentId):e(s.minimumGrade??'—'),
   s.editable?link(s.predictedGrade??'Set','edit-prediction',s.enrolmentId):e(s.predictedGrade??'—'),
   gap(s.gapToTarget),status(s),link(coverage(s),'profile-select-subject',s.enrolmentId),
-  s.activeCases.length?s.activeCases.map(c=>link('W'+c.wave,'open-case',c.id)).join(' '):'—',
+  s.activeCases.length?s.activeCases.map(c=>link('W'+c.wave,'open-case',c.id)).join(' '):s.canStart?link('+ W1','new-case',s.enrolmentId):'—',
   link(s.noteCount?String(s.noteCount):s.canComment?'+ Add':'View','subject-comments',s.enrolmentId)
  ]);
  const needs=subjects.filter(s=>s.onTrack===false||s.onTrack===null);
@@ -83,9 +83,10 @@ function support(p){
  return '<div class="metrics profile-metrics">'+metric('Active cases',p.activeCases.length,'Visible subject interventions')+
  metric('Reviews due',p.activeCases.filter(c=>c.due).length,p.activeCases.filter(c=>c.overdue).length+' overdue')+
  metric('Closed cases',p.closedCases.length,'Retained in history')+'</div>'+
+ '<div class="profile-controls">'+p.subjects.filter(s=>s.canStart).map(s=>btn('Start Wave 1 · '+subjectName(s),'new-case',s.enrolmentId,'btn-primary')).join('')+'</div>'+
  section('Active interventions',table(['Subject / case','Stage','Owner','Review','Updated','Action'],rows(p.activeCases),'Active interventions'),'intervention')+
  section('Historic interventions',table(['Subject / case','Stage','Owner','Review','Updated','Action'],rows(p.closedCases),'Closed interventions'),'intervention')+
- '<p class="stage-note">Open a case to see its plans and history. Case creation, escalation, study plans and review actions follow in V2-08. A low grade does not automatically create an intervention.</p>';
+ '<p class="stage-note">Open a case to view or complete authorised actions, including plans, reviews and referrals. A low grade does not automatically create an intervention.</p>';
 }
 export function profilePeers(w,detail){
  const all=w.profilePeers(detail.id);

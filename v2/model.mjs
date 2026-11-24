@@ -180,11 +180,36 @@ export function validateData(data) {
       activeCases.add(c.enrolmentId);
     }
     if(c.state==='closed'&&!isText(c.evaluation))err(c.id,'closed intervention requires evaluation');
+    for(const f of ['wave1Plan','facultyPlan','houseRequest','leadershipPlan','evaluation'])if(c[f]!=null&&!isText(c[f]))err(c.id,'invalid '+f);
+    if(c.strategies!==undefined&&(!Array.isArray(c.strategies)||c.strategies.some(s=>!isText(s))))err(c.id,'invalid classroom strategies');
+    for(const f of ['wave2Referral','wave3Referral']){
+      const r=c[f];if(r!==undefined&&r!==null){
+        if(!isText(r.trigger)||!isText(r.reason)||!isDate(r.date))err(c.id,'invalid '+f);
+        ref(c.id,'staff',r.requestedBy);ref(c.id,'staff',r.ownerStaffId);
+      }
+    }
+    if(c.houseOwnerStaffId!==undefined)ref(c.id,'staff',c.houseOwnerStaffId);
+    if(c.houseResponse!=null){
+      const r=c.houseResponse;if(!isText(r.response)||typeof r.complete!=='boolean')err(c.id,'invalid House response');
+      if(r.actorStaffId!==undefined)ref(c.id,'staff',r.actorStaffId);
+      if(r.date!==undefined&&!isDate(r.date))err(c.id,'invalid House response date');
+    }
+    if(c.closedDate!==undefined&&!isDate(c.closedDate))err(c.id,'invalid close date');
+    if(c.closedBy!==undefined)ref(c.id,'staff',c.closedBy);
     for(const h of c.history||[]){ref(c.id,'staff',h.actorStaffId);if(!isDate(h.date)||!isText(h.text))err(c.id,'invalid case history');}
   }
+  const plannedCases=new Set();
   for(const p of data.studyPlans){
     ref(p.id,'interventions',p.interventionId);ref(p.id,'staff',p.ownerStaffId);
-    if(!isDate(p.reviewDate)||!Array.isArray(p.actions)||!isText(p.target))err(p.id,'invalid study plan');
+    if(plannedCases.has(p.interventionId))err(p.id,'duplicate study plan for case');
+    plannedCases.add(p.interventionId);
+    if(!isDate(p.reviewDate)||!Array.isArray(p.actions)||!p.actions.length||p.actions.some(a=>!isText(a))||!isText(p.target))err(p.id,'invalid study plan');
+    for(const f of ['createdDate','updatedDate','completedDate'])if(p[f]!=null&&!isDate(p[f]))err(p.id,'invalid '+f);
+    if(p.evaluation!=null&&!isText(p.evaluation))err(p.id,'invalid study plan evaluation');
+    if(p.history!==undefined){
+      if(!Array.isArray(p.history))err(p.id,'invalid study plan history');
+      else for(const h of p.history){ref(p.id,'staff',h.actorStaffId);if(!isDate(h.date)||!isText(h.text)||!['continue','revise','achieved'].includes(h.outcome))err(p.id,'invalid study plan review');}
+    }
   }
   const audience=(r)=>{
     if(!r.audience||!['all','faculty','house','tutorGroup','year'].includes(r.audience.type)){err(r.id,'invalid audience');return;}

@@ -3,6 +3,7 @@ import {projectRegisterRow,sortValue} from './class-overview.mjs';
 import {createMarkbook} from './markbook.mjs';
 import {createAcademicAnalysis} from './academic-analysis.mjs';
 import {directoryRow,studentCounts,orderedNotes,createProfileEvidence} from './student-profiles.mjs';
+import {CASE_ACTION_LABELS,pendingCaseActions} from './interventions.mjs';
 export const NAV=[
   ['home','Home','home'],['notices','Notices','notice'],['classes','Classes','class'],
   ['students','Students','students'],['intervention','Intervention','support']
@@ -16,8 +17,7 @@ export const SCOPE_LABELS={accessible:'All my access',teaching:'My classes',facu
 export const ROLE_LABELS={teacher:'Teacher',faculty:'HoF / HoD',tutor:'Tutor',house:'HsM',leadership:'SLT'};
 export const WAVE_LABELS={wave1:'Wave 1',wave2_requested:'Wave 2 requested',wave2:'Wave 2',
   wave3_requested:'Wave 3 requested',wave3:'Wave 3',closed:'Closed'};
-export const ACTION_LABELS={activateWave2:'Complete Wave 2 plan',respondHouse:'Respond to House request',
-  respondLeadership:'Review Wave 3 referral',review:'Review intervention'};
+export const ACTION_LABELS=CASE_ACTION_LABELS;
 export const HELP={
   scope:'Changes the displayed cohort, not your permissions. All my access combines your assigned responsibilities. House and tutor views use only members of those groups.',
   average:'Weighted mean of complete, included assessment percentages for each pupil, then the mean of those pupil percentages. Missing and excluded marks are omitted; zero is valid.',
@@ -55,6 +55,9 @@ export const HELP={
   reporting:'One centrally managed reporting schedule. Completing a reminder is personal and does not submit reports or grades to SIMS. Revised deadlines reset completion markers.',
   personalActions:'Your intervention actions across all assigned responsibilities. Academic scope filters do not hide tasks from this Home queue.',
   edit:'Only assigned teachers can edit predicted grades. The new grade is validated against the course grading scale and recorded in demo audit history.',
+  caseWorkflow:'One active academic case per subject. Wave 1 is teacher-led; a referral records the reason and assigns the next responsible staff member. A requested wave is not an activated plan. Only the appropriate roles can perform each action. All changes retain their history.',
+  studyPlan:'An individual academic study plan has a measurable target, specific actions, responsible staff member and separate review date. A completed plan can be deliberately reopened. Its review does not automatically close the intervention.',
+  caseQueue:'Outstanding referrals, House requests and due case/study-plan reviews are calculated from the shared records and your assigned roles. A case can have more than one action.',
   due:'Active cases with a review date on or before the fictional reference date. Overdue means strictly earlier than that date.',
 };
 export const pct=v=>finite(v)?v.toFixed(1)+'%':'—';
@@ -135,12 +138,20 @@ export function createWorkspace(store,staffId,requestedScope){
     if(!n)throw new Error('Comment outside current demo scope');
     return {...n,editable:access.canEditSubjectNote(id),subject:subjectDetail(n.enrolmentId)};
   }
+  const people=ids=>ids.map(id=>({id,name:get('staff',id)?.name??id}));
+  const staffName=id=>get('staff',id)?.name??'—';
+  function caseParticipants(enrolmentId){
+    const e=get('enrolments',enrolmentId),c=enrolmentClass(enrolmentId),p=get('students',e.studentId);
+    return {teachers:people(c.teacherIds),faculty:people(c.faculty.headIds),house:people(get('houses',p.houseId).headIds),
+      tutors:people(get('tutorGroups',p.tutorGroupId).tutorIds),leadership:people(data.staff.filter(s=>s.roles.includes('leadership')).map(s=>s.id))};
+  }
+  const plansByCase=new Map(data.studyPlans.map(p=>[p.interventionId,p]));
   const enrichCase=c=>{
     const p=studentInfo(get('enrolments',c.enrolmentId).studentId),cls=enrolmentClass(c.enrolmentId);
     return {...c,student:p,classInfo:cls,studentName:p.name,classCode:cls.code,faculty:cls.faculty.name,house:p.house,
-      status:WAVE_LABELS[c.state],owner:get('staff',c.ownerStaffId)?.name??'—',
+      status:WAVE_LABELS[c.state],owner:c.state==='wave2_requested'&&!c.wave2Referral?'Faculty lead (earlier record)':c.state==='wave3_requested'&&!c.wave3Referral?'Leadership (earlier record)':get('staff',c.ownerStaffId)?.name??'—',
       due:c.state!=='closed'&&c.reviewDate<=data.asOf,overdue:c.state!=='closed'&&c.reviewDate<data.asOf,
-      actions:access.caseActions(c.id)};
+      actions:access.caseActions(c.id),pending:pendingCaseActions(data,access,c)};
   };
   const caseRows=()=>scopedCases.map(enrichCase);
   const classIdsFor=ids=>new Set(data.enrolments.filter(e=>ids.has(e.id)).map(e=>e.classId));
@@ -212,7 +223,7 @@ export function createWorkspace(store,staffId,requestedScope){
     const cases=[...d.cases].sort((a,b)=>Number(a.state==='closed')-Number(b.state==='closed')||
       (a.state==='closed'?b.updatedDate.localeCompare(a.updatedDate):a.reviewDate.localeCompare(b.reviewDate))||a.id.localeCompare(b.id));
     const subjects=d.subjects.map(s=>({...s,targetEditable:access.canEditMinimumTarget(s.enrolmentId),
-      canComment:access.canAddSubjectNote(s.enrolmentId),noteCount:notes.filter(n=>n.visibility==='subject'&&n.enrolmentId===s.enrolmentId).length,
+      canComment:access.canAddSubjectNote(s.enrolmentId),canStart:access.canStartWave1(s.enrolmentId),noteCount:notes.filter(n=>n.visibility==='subject'&&n.enrolmentId===s.enrolmentId).length,
       activeCases:cases.filter(c=>c.state!=='closed'&&c.enrolmentId===s.enrolmentId)}))
       .sort((a,b)=>a.classInfo.subject.name.localeCompare(b.classInfo.subject.name)||a.enrolmentId.localeCompare(b.enrolmentId));
     const profile={student:{...d.student,tutors:people(group.tutorIds),houseHeads:people(house.headIds),tutorGroupName:group.name},
@@ -238,7 +249,26 @@ export function createWorkspace(store,staffId,requestedScope){
   function caseDetail(id){
     const c=visibleCases.find(c=>c.id===id);
     if(!c)throw new Error('Intervention outside current demo scope');
-    return enrichCase(c);
+    const row=enrichCase(c),plan=plansByCase.get(c.id),participants=caseParticipants(c.enrolmentId);
+    const summary=read.student(row.student.id).subjects.find(s=>s.enrolmentId===c.enrolmentId);
+    return {...row,participants,summary,
+      wave2Referrer:staffName(c.wave2Referral?.requestedBy),wave3Referrer:staffName(c.wave3Referral?.requestedBy),
+      houseOwner:c.houseOwnerStaffId?staffName(c.houseOwnerStaffId):participants.house.map(p=>p.name).join(', '),
+      houseResponder:staffName(c.houseResponse?.actorStaffId),
+      history:c.history.map(h=>({...h,actor:staffName(h.actorStaffId)})),
+      studyPlan:plan?{...plan,owner:staffName(plan.ownerStaffId),history:(plan.history??[]).map(h=>({...h,actor:staffName(h.actorStaffId)}))}:null};
+  }
+  let startOptionsCache;
+  function caseStartOptions(){
+    return startOptionsCache??=data.enrolments.filter(e=>access.canStartWave1(e.id)).map(e=>{
+      const p=studentInfo(e.studentId),c=enrolmentClass(e.id);
+      return {id:e.id,student:p,classInfo:c,label:p.name+' · '+c.code+' · '+c.subject.name,scoped:scopeIds.has(e.id)};
+    }).sort((a,b)=>a.label.localeCompare(b.label,'en',{numeric:true}));
+  }
+  function caseStartDetail(id){
+    const option=caseStartOptions().find(e=>e.id===id);
+    if(!option)throw Error('An assigned teacher must select a pupil without an active subject case');
+    return {...option,participants:caseParticipants(id),summary:read.student(option.student.id).subjects.find(s=>s.enrolmentId===id)};
   }
   const communications=()=>read.communications();
   function noticeDetail(id){
@@ -283,5 +313,5 @@ export function createWorkspace(store,staffId,requestedScope){
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
     home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,studentProfile,profileSubject,profileResult,profilePeers,subjectDetail,noteDetail,markbook,academicAnalysis,
-    caseRows,caseDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
+    caseRows,caseDetail,caseStartOptions,caseStartDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
 }
