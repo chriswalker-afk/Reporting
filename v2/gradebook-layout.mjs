@@ -29,9 +29,16 @@ export function orderedAssessments(assessments,layout){
  const p=normalizeLayout(layout),rank=new Map(p.custom.map((id,i)=>[id,i]));
  return [...assessments].sort((a,b)=>p.order==='newest'?byDate(b,a):p.order==='title'?a.title.localeCompare(b.title)||byDate(a,b):p.order==='custom'?(rank.get(a.id)??Infinity)-(rank.get(b.id)??Infinity)||byDate(a,b):byDate(a,b));
 }
-export function moveAssessment(assessments,layout,id,delta){
- const ordered=orderedAssessments(assessments,layout).map(a=>a.id),i=ordered.indexOf(id),j=i+delta;
- if(i<0||j<0||j>=ordered.length)return normalizeLayout(layout);
+export function reorderPeers(assessments,layout,id,units=[],unitId=''){
+ const p=normalizeLayout(layout),a=assessments.find(a=>a.id===id);
+ if(!a)return [];
+ return orderedAssessments(assessments,p).filter(x=>(!unitId||x.unitId===unitId)&&groupOf(x,p.group,units).id===groupOf(a,p.group,units).id);
+}
+export function moveAssessment(assessments,layout,id,delta,units=[],unitId=''){
+ const ordered=orderedAssessments(assessments,layout).map(a=>a.id),peers=reorderPeers(assessments,layout,id,units,unitId).map(a=>a.id);
+ const index=peers.indexOf(id),next=index+delta;
+ if(index<0||next<0||next>=peers.length)return normalizeLayout(layout);
+ const i=ordered.indexOf(id),j=ordered.indexOf(peers[next]);
  [ordered[i],ordered[j]]=[ordered[j],ordered[i]];
  return updateLayout(layout,{order:'custom',custom:ordered});
 }
