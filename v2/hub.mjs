@@ -1,4 +1,4 @@
-import {createStore} from './store.mjs';
+import {createStore,STORAGE_KEY} from './store.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,PROFILE_TABS} from './student-profiles.mjs';
 import {profilePeers} from './student-profile-views.mjs';
@@ -481,7 +481,7 @@ for(const eventName of ['pointerover','focusin'])document.addEventListener(event
 document.addEventListener('pointerout',event=>{if(helpAnchor&&!helpPinned&&helpAnchor.contains(event.target)&&!helpAnchor.contains(event.relatedTarget)&&document.activeElement!==helpAnchor)hideHelp();});
 document.addEventListener('focusout',event=>{if(helpAnchor&&!helpPinned&&event.target===helpAnchor)hideHelp();});
 window.addEventListener('resize',hideHelp);document.addEventListener('scroll',hideHelp,true);
-window.addEventListener('storage',event=>{if(event.key==='jis-hub-v2-synthetic-schema-'+store.snapshot().schemaVersion||event.key===null)notify('Demo data changed in another tab. Reload before making further edits.');});
+window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY||event.key===null)notify('Demo data changed in another tab. Reload before making further edits.');});
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
 detailDialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
 for(const d of [searchDialog,detailDialog])d.addEventListener('click',event=>{if(event.target===d){const rect=d.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)d===detailDialog?closeDetail():closeSearch();}});
