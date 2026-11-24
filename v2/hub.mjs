@@ -19,7 +19,7 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},gradebookExpanded:{},gradebookLayout:null,gradebookLayoutOpen:false,classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},gradebookExpanded:{},gradebookLayout:null,gradebookLayoutOpen:false,classTab:'information',unitId:'',reportPeriod:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
@@ -268,9 +268,12 @@ document.addEventListener('click',event=>{
   case 'search-result':pickSearch(id);break;
   case 'open-class':openClass(id);break;
   case 'class-tab':
-    state.classTab=['markbook',...ANALYSIS_TABS].includes(id)?id:'information';
+    state.classTab=['markbook','report-grades',...ANALYSIS_TABS].includes(id)?id:'information';
     {const hash=routeHash('classes',state.classId,state.classTab);if(location.hash!==hash)history.pushState(null,'',hash);}
     render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
+  case 'calculation-policy':openDetail('calculation-policy',id,{revision:store.revision()});break;
+  case 'report-grade-detail':openDetail('report-grade',id,{revision:store.revision()});break;
+  case 'use-calculated-report':{const grade=byId('report-grade');if(grade&&[...grade.options].some(o=>o.value===id)){grade.value=id;formDirty=true;}break;}
   case 'analysis-evidence':openDetail('analysis-evidence',id);break;
   case 'analysis-select-assessment':state.analysisAssessment=id;state.classTab='class-analysis';history.replaceState(null,'',routeHash('classes',state.classId,state.classTab));render({top:true});byId('analysis-assessment')?.focus();break;
   case 'analysis-print':window.print();break;
@@ -456,6 +459,7 @@ document.addEventListener('change',event=>{
   if(summary?el.checked:!el.checked)set.add(el.value);else set.delete(el.value);
   changeLayout(updateLayout(p,{[key]:[...set]}),{focus:()=>main.querySelector('.'+(summary?'gradebook-summary-choice':'gradebook-assessment-choice')+'[value="'+CSS.escape(el.value)+'"]')?.focus({preventScroll:true})});return;
  }
+ if(el.id==='report-period'){state.reportPeriod=el.value;render({keepFocus:true});return;}
  if(el.id==='markbook-unit'){if(!gradebook.guard()){el.value=main.querySelector('#gradebook-surface')?.dataset.unitId??'';return;}state.unitId=el.value;render({keepFocus:true});return;}
  if(gradebook.isDirty()&&['staff','scope','quick-class'].includes(el.id)){gradebook.guard();el.value=el.id==='staff'?state.staffId:el.id==='scope'?state.scope:state.classId;return;}
  const analysisFields={'analysis-student':'analysisStudent','analysis-assessment':'analysisAssessment','analysis-common':'analysisCommon','analysis-unit':'analysisUnit','analysis-from':'analysisFrom','analysis-to':'analysisTo'};
@@ -476,6 +480,24 @@ document.addEventListener('change',event=>{
  if(el.id==='deadline-filter'){state.deadlineFilter=el.value;render({keepFocus:true});}
 });
 document.addEventListener('submit',event=>{
+ if(['calculation-faculty-form','calculation-course-form','report-grade-form'].includes(event.target.id)){
+  event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
+  suspendDetailRefresh=true;
+  try{
+   if(!record)throw Error('No selected reporting record');
+   const [classId,periodId,enrolmentId]=unpackBookId(record.id),get=name=>String(form.get(name)??''),confirmed=form.has('confirmed'),reason=get('reason');
+   if(record.kind==='calculation-policy'){
+    const level=get('level');store.setCalculationPolicy(state.staffId,classId,{level,method:get('calculation-'+level+'-method')||null,defaultWeight:Number(get('defaultWeight')),confirmed,reason},{expectedRevision:record.revision});
+    notify('Calculation settings saved. Live attainment recalculated; submitted reports unchanged.');
+   }else if(record.kind==='report-grade'){
+    const action=get('report-action');store.saveReportGrade(state.staffId,periodId,enrolmentId,{action,grade:get('report-grade'),confirmed,reason},{expectedRevision:record.revision});
+    notify(action==='submit'?'Report grade submitted in the fictional Hub.':action==='reopen'?'Report grade reopened to draft.':'Report grade draft saved.');
+   }else throw Error('Invalid reporting action');
+   formDirty=false;closeDetail();
+  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=error.message;}else notify(error.message);}
+  finally{suspendDetailRefresh=false;}
+  return;
+ }
  if(['case-select-form','intervention-form'].includes(event.target.id)){
   event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
   if(!record)return;
