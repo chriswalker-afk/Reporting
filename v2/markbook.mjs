@@ -60,7 +60,7 @@ export function cellMark(text,item){
 export function previewRow(assessment,bands,status,marks,excluded=false){
  const complete=status==='present'&&assessment.items.every(i=>Object.hasOwn(marks,i.id));
  const total=complete?assessment.items.reduce((n,i)=>n+marks[i.id],0):null;
- const percent=total===null?null:100*total/maxMarks(assessment);
+ const maximum=maxMarks(assessment),percent=total===null?null:total===maximum?100:Math.min(100,100*total/maximum);
  return {total,percent,grade:gradeFor(percent,{bands}),state:excluded?'excluded':status==='present'?complete?'scored':'incomplete':status};
 }
 /** CSV/TSV parser: RFC-style quoted fields, escaped quotes and CRLF, with strict malformed-input rejection. */

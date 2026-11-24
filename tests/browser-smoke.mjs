@@ -114,23 +114,59 @@ try{
  assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
  const markbookId=JSON.stringify(['11-maths-1','11-maths-A3','']);
+ assert.ok(await q('.tracker-coverage'));
+ const pupilMarkId=JSON.stringify(['11-maths-1','11-maths-A3','P121@11-maths']);
+ const clickRecord=async(action,id)=>evaluate((name,key)=>{const el=[...document.querySelectorAll('[data-action="'+name+'"]')].find(e=>e.dataset.id===key);if(!el)throw Error('Missing record link '+name);el.click();},action,id);
+ await clickRecord('open-markbook',pupilMarkId);
+ assert.ok(await q('[data-mark-row="P121@11-maths"].requested-mark-row'));
+ assert.equal(await evaluate(()=>document.activeElement.closest('tr')?.dataset.markRow),'P121@11-maths');
+ assert.match(await text('#mark-focus'),/Demo Student 121/);
+ const press=async(key,mods={})=>evaluate((key,mods)=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true,...mods})),key,mods);
+ await evaluate(()=>document.querySelector('[data-mark-row="P121@11-maths"] [data-item="q1"]').focus());
+ await press('Tab');assert.equal(await evaluate(()=>document.activeElement.dataset.item),'q2');
+ await press('Tab',{shiftKey:true});assert.equal(await evaluate(()=>document.activeElement.dataset.item),'q1');
+ await press('ArrowDown');assert.equal(await evaluate(()=>document.activeElement.dataset.row),'1');
+ await press('Enter',{shiftKey:true});assert.equal(await evaluate(()=>document.activeElement.dataset.row),'0');
+ assert.ok(await evaluate(()=>document.activeElement.matches('.mark-cell')&&document.activeElement.closest('tr').classList.contains('mark-row-focus')));
+ assert.match(await text('#mark-focus'),/Demo Student 121/);
+ await close();
  // data-id contains quotes, so use matching via dataset rather than CSS escaping.
  await evaluate(id=>{const el=[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id);if(!el)throw Error('Missing assessment');el.click();},markbookId);
  assert.ok(await q('#mark-grid-form'));
  assert.ok(await q('[data-mark-row="P121@11-maths"] .house-logo[src$="/argus.jpg"]'));
  const mark='[data-mark-row="P121@11-maths"] [data-item="q1"]';
  const original=await evaluate(sel=>document.querySelector(sel).value,mark);
+ const pendingButton=await evaluate(()=>!document.querySelector('[data-action="next-unfinished-mark"]').disabled);
+ if(pendingButton){
+  await action('next-unfinished-mark',undefined,'#detail-dialog ');
+  assert.ok(await evaluate(()=>['missing','incomplete','invalid'].includes(document.activeElement.closest('tr').dataset.entryState)));
+ }
+ await fill(mark,'9999');assert.equal(await text('#entry-stat-invalid'),'1');
+ assert.ok(await q(mark+'[aria-invalid=true]'));
+ assert.match(await text('#mark-dirty'),/Unsaved changes/);
+ assert.ok(await q('[data-mark-row="P121@11-maths"].changed-mark-row'));
  await fill(mark,original==='6'?'5':'6');
+ assert.equal(await text('#entry-stat-invalid'),'0');
  dialogs.push({contains:'Discard unsaved marks',accept:false});await close();
  assert.ok(await q('#detail-dialog[open]'));
- await fill(mark,'6');await fill('[data-mark-row="P121@11-maths"] [data-item="q2"]','10');await fill('[data-mark-row="P121@11-maths"] [data-item="q3"]','14');
- await click('#mark-grid-form button[type=submit]');
+ await evaluate(sel=>{
+  const cell=document.querySelector(sel),data=new DataTransfer();data.setData('text/plain','6\t10\t14');
+  cell.focus();cell.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));
+ },mark);
+ assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');
+ await press('s',{ctrlKey:true});
  assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');
  assert.match(await text('#mark-dirty'),/No unsaved changes/);
  await close();
- await action('class-tab','class-analysis');
+ await clickRecord('markbook-analysis',markbookId);
  assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/class-analysis');
- await fill('#analysis-assessment','11-maths-A3');
+ assert.equal(await evaluate(()=>document.querySelector('#analysis-assessment').value),'11-maths-A3');
+ assert.match(await text('.analysis-focus'),/Follow up assessment evidence/);
+ assert.ok(await q('.teaching-evidence'));
+ await click('.teaching-evidence');
+ assert.match(await text('#detail-dialog'),/contributing pupil records/);
+ assert.ok(await q('#detail-dialog [data-action="open-markbook"]'));
+ await close();
  assert.ok(await q('.frequency-bin'));
  await evaluate(()=>{const bins=[...document.querySelectorAll('.frequency-bin')];bins.at(-1).click();});
  assert.match(await text('#detail-dialog'),/Demo Student 121/);await close();
@@ -202,7 +238,13 @@ try{
  await open('#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
  await evaluate(id=>[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id).click(),markbookId);
- assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');await close();
+ assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');
+ // Explicitly verify the new assessment surfaces at phone width, not just the Home shell.
+ await viewport(390,844);
+ assert.ok(await evaluate(()=>{const d=document.querySelector('#detail-dialog'),t=d.querySelector('.entry-table');return d.getBoundingClientRect().width<=innerWidth&&t.scrollWidth>=t.clientWidth&&t.getBoundingClientRect().width<=innerWidth;}));
+ await close();
+ await clickRecord('markbook-analysis',markbookId);await viewport(390,844);
+ await viewport(1440,900);
  await action('demo-guide');await action('demo-scenario','tutor','#detail-dialog ');
  assert.equal(await evaluate(()=>document.querySelector('#scope').value),'tutor');
  assert.match(await heading(),/Students/);

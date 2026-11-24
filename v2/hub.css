@@ -470,3 +470,100 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 @media print{.register-toolbar,.register-layout-bar,.register-extra-filters,.register-mark-shortcut,.column-toolbar,.class-switcher{display:none!important}}
 
 .profile-top .profile-identity-staff .drawer-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* Assessment and analysis refinement: focused spreadsheet entry and evidence hierarchy. */
+.tracker-assessment{display:grid;gap:3px;min-width:133px;max-width:200px}
+.tracker-assessment>.inline-link{white-space:normal;text-align:left;font-weight:740}
+.tracker-assessment .tags{flex-wrap:wrap}
+.tracker-coverage{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tracker-coverage-track{display:block;height:5px;min-width:24px;max-width:45px;flex:1;border-radius:4px;background:#ece8eb;overflow:hidden}
+.tracker-coverage-track>span{display:block;height:100%;background:#25816c}
+.tracker-needs-entry{font-size:10px;color:var(--warning);font-weight:650}
+.tracker-analysis{min-height:24px;padding:2px 5px;font-size:10px;justify-self:start;color:var(--accent-dark)}
+.markbook-summary .data-table td:has(.tracker-cell){padding:3px 4px}
+.tracker-cell{display:block;text-align:left;width:100%;min-width:83px;border:1px solid transparent;border-radius:5px;padding:5px 7px;min-height:39px;font-variant-numeric:tabular-nums}
+.tracker-cell:hover,.tracker-cell:focus-visible{border-color:#ca97ac;background:#fcf1f6}
+.tracker-missing,.tracker-incomplete{background:#fff8e8}
+.tracker-excluded{background:#f5f0ec}
+.tracker-cell .number{font-weight:740}
+.entry-overview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-bottom:7px}
+.entry-stat{display:grid;gap:3px;background:#fcf9fa;border:1px solid var(--border);border-radius:7px;padding:7px 9px;min-width:0}
+.entry-stat span{font-size:10px;color:var(--muted);font-weight:650}
+.entry-stat strong{font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.entry-context{display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px}
+.entry-context .btn,.entry-guide .btn{min-height:29px;padding:4px 8px;font-size:11px}
+.entry-guide{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;border-top:1px solid var(--line);padding:7px 0}
+.entry-guide strong{font-size:12px;color:var(--ink)}
+.entry-guide p{margin-top:3px}
+.mark-focus{padding:6px 9px;background:#f8e9ef;border:1px solid #e6c9d5;border-radius:6px;color:var(--accent-dark);font-size:11px;font-weight:650;margin-bottom:7px;min-height:28px;overflow-wrap:anywhere}
+#mark-grid-form{gap:7px}
+.entry-table{max-height:min(57dvh,560px);scroll-padding:44px 8px 8px 164px}
+.entry-table .data-table{font-size:11px}
+.entry-table .data-table th{padding:6px;min-width:68px}
+.entry-table .data-table .sticky-first{min-width:155px;max-width:190px}
+.entry-table .data-table td{padding:3px 4px}
+#mark-grid-form .mark-cell{height:30px;min-width:54px;width:65px;border-radius:3px;padding:3px 5px;background:white}
+#mark-grid-form .mark-cell:focus{outline:2px solid var(--accent);outline-offset:-1px;position:relative;z-index:1}
+#mark-grid-form .mark-cell[aria-invalid=true]{border-color:var(--danger);background:var(--danger-bg)}
+#mark-grid-form .inactive-mark-row .mark-cell{background:#f3f1f2;color:var(--muted)}
+.entry-table .data-table .mark-column-focus{background:#f7edf2}
+.entry-table .data-table tr.mark-row-focus td{background:#fcf3f7}
+.entry-table .data-table tr.mark-row-focus td.sticky-first{box-shadow:inset 3px 0 var(--jis-burgundy)}
+.entry-table .data-table tr.changed-mark-row td.sticky-first .pupil-identity-text:after{content:'Unsaved';display:block;font-size:9px;color:var(--accent-dark);font-weight:700}
+.entry-table .data-table tr[data-entry-state=invalid] td[data-preview=status]{color:var(--danger);font-weight:750}
+.entry-table .data-table tr[data-entry-state=missing] td[data-preview=status],.entry-table .data-table tr[data-entry-state=incomplete] td[data-preview=status]{color:var(--warning);font-weight:700}
+.entry-table .data-table tr[data-entry-state=scored] td[data-preview=percent]{font-weight:750;color:var(--ink)}
+.entry-table .data-table tr.requested-mark-row td.sticky-first{border-left:3px solid var(--jis-gold)}
+.mark-save-bar{position:sticky;bottom:0;z-index:5;background:#fff;border-color:#dac6d0;box-shadow:0 -3px 9px #30151c0a}
+.mark-save-bar #mark-dirty{font-weight:700;color:var(--accent-dark)}
+.mark-save-bar #mark-clear-count{color:var(--warning)}
+.mark-save-bar .check-field{font-size:11px}
+.analysis-focus-items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:9px}
+.analysis-focus-card{display:grid;gap:4px;text-align:left;background:#fcfafb;border:1px solid var(--border);border-radius:8px;padding:9px 10px;min-width:0}
+.analysis-focus-card:hover,.analysis-focus-card:focus-visible{border-color:#ca97ac;background:#fcf1f6}
+.analysis-focus-label{font-size:11px;font-weight:700;color:var(--muted)}
+.analysis-focus-card>strong{font-size:23px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.analysis-focus-card.attention>strong,.comparison-count.attention{color:var(--warning);font-weight:750}
+.analysis-focus-link{font-size:11px;font-weight:650;color:var(--accent-dark)}
+.teaching-rank-head{display:grid;grid-template-columns:minmax(95px,1fr) minmax(55px,1fr) 46px;gap:7px;align-items:center;font-size:10px;color:var(--muted);padding:0 5px}
+.teaching-axis{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;gap:1px}
+.teaching-rank-list{display:grid;gap:2px;max-height:330px;overflow:auto;scrollbar-gutter:stable}
+.teaching-evidence{display:grid;grid-template-columns:minmax(95px,1fr) minmax(55px,1fr) 46px;align-items:center;gap:7px;min-height:41px;border-radius:5px;padding:5px;text-align:left;border-bottom:1px solid var(--line);min-width:0}
+.teaching-evidence:hover,.teaching-evidence:focus-visible{background:#fcf1f6}
+.teaching-evidence-label{display:grid;gap:2px;min-width:0}
+.teaching-evidence-label strong{font-size:12px;overflow-wrap:anywhere}
+.teaching-evidence-label .small{font-size:10px;overflow-wrap:anywhere}
+.teaching-track{height:11px;display:block;background:linear-gradient(90deg,#e8ecec 49.5%,#c5cdcd 49.5%,#c5cdcd 50.5%,#e8ecec 50.5%);border-radius:3px;overflow:hidden}
+.teaching-fill{display:block;height:100%;background:#267f7c;border-radius:3px}
+.teaching-value{text-align:right;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.no-evidence .teaching-track{background:repeating-linear-gradient(135deg,#ece9eb,#ece9eb 4px,#f7f5f6 4px,#f7f5f6 8px)}
+.histogram-layout{display:flex;gap:4px;min-width:0}
+.histogram-y{display:flex;flex-direction:column;justify-content:space-between;padding:16px 0 28px;height:155px;font-size:10px;color:var(--muted);text-align:right;min-width:18px}
+.histogram-layout .frequency-chart{flex:1;min-width:0}
+.histogram-layout .frequency-column{background:repeating-linear-gradient(to top,#dce3e6 0px,#dce3e6 1px,transparent 1px,transparent 25%)}
+.histogram-caption{font-size:10px}
+.analysis-panel .panel-body{padding:10px 12px;gap:7px}
+.academic-analysis{gap:10px}
+.academic-analysis .metrics{gap:8px}
+.academic-analysis .metric{padding:8px 11px}
+.academic-analysis .metric-value{font-size:24px}
+@media(max-width:760px){
+ .entry-overview{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .entry-stat{padding:5px 7px}.entry-stat strong{font-size:17px}
+ .entry-table{max-height:48dvh;scroll-padding-left:125px}
+ .entry-table .data-table .sticky-first{min-width:125px;max-width:160px}
+ #mark-grid-form .mark-cell{width:56px;min-width:50px}
+ .mark-save-bar{position:static;padding:7px;gap:6px}
+ .mark-save-bar .check-field{flex-basis:100%}
+ .analysis-focus-items{gap:5px;padding:7px}
+ .analysis-focus-card{padding:7px;gap:3px}
+ .analysis-focus-card>strong{font-size:20px}
+ .analysis-focus-label,.analysis-focus-link{font-size:10px}
+ .teaching-rank-head,.teaching-evidence{grid-template-columns:minmax(85px,1fr) minmax(40px,.8fr) 43px;gap:5px}
+ .analysis-panel .panel-body{padding:9px}
+ .academic-analysis .metric-value{font-size:22px}
+}
+@media(max-width:390px){.analysis-focus-items{grid-template-columns:1fr}.analysis-focus-card{grid-template-columns:minmax(0,1fr) auto;align-items:center}.analysis-focus-card>strong{grid-column:2;grid-row:1}.analysis-focus-link{text-align:right}}
+@media print{.teaching-rank-list{max-height:none;overflow:visible}.analysis-focus-card{box-shadow:none}.tracker-analysis{display:none}}
+
+.evidence-summary{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:10px;background:#faf6f7;border:1px solid var(--border);border-radius:7px;flex-wrap:wrap}.evidence-summary strong{font-size:23px;color:var(--ink);font-variant-numeric:tabular-nums}.evidence-summary span{font-size:12px;color:var(--muted)}

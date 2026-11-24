@@ -1,6 +1,7 @@
 import {pupilIdentity} from './branding.mjs';
 import {maxMarks,previewRow,csvTemplate} from './markbook.mjs';
 import {pct,displayDate} from './workspace.mjs';
+import {assessmentCoverage} from './assessment-refinement.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const btn=(label,action,id='',kind='')=>'<button type="button" class="btn '+kind+'" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
 const link=(label,action,id)=>'<button type="button" class="inline-link" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
@@ -21,11 +22,18 @@ export function renderMarkbook(w,s,r){
  const b=w.markbook(r.id),unitId=b.units.some(u=>u.id===s.unitId)?s.unitId:'',overview=b.overview(unitId),list=overview.assessments;
  const rows=overview.rows;
  const unitOptions=[['','All units'],...b.units.map(u=>[u.id,u.title])];
- const detailActions= a=>link(a.title,'open-markbook',bookId(r.id,a.id))+'<span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span>'+flags(a);
+ const detailActions=a=>{
+  const c=assessmentCoverage(rows,a.id);
+  return '<div class="tracker-assessment">'+link(a.title,'open-markbook',bookId(r.id,a.id))+'<span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span>'+flags(a)+
+   '<div class="tracker-coverage"><span class="tracker-coverage-track" aria-hidden="true"><span style="width:'+(c.eligible?100*c.scored/c.eligible:0)+'%"></span></span><span>'+c.scored+'/'+c.eligible+' scored</span></div>'+
+   (c.needsEntry?'<span class="tracker-needs-entry">'+c.needsEntry+' missing / incomplete</span>':'')+
+   (a.status==='published'&&a.date<=w.asOf?btn('Analyse','markbook-analysis',bookId(r.id,a.id),'btn-quiet tracker-analysis'):'')+'</div>';
+ };
  const cell=(a,p)=>{
   const x=p.results[a.id];
-  return x.status==='scored'?'<span class="number">'+e(x.rawMark+'/'+x.maxMarks)+'</span><span class="cell-sub">'+e(pct(x.percent)+' · '+x.grade)+'</span>':
+  const value=x.status==='scored'?'<span class="number">'+e(x.rawMark+'/'+x.maxMarks)+'</span><span class="cell-sub">'+e(pct(x.percent)+' · '+x.grade)+'</span>':
    statusBadge(x.status)+(x.recordedPercent!==null?'<span class="cell-sub">'+e(x.rawMark+'/'+x.maxMarks+' retained')+'</span>':'');
+  return '<button type="button" class="tracker-cell tracker-'+e(x.status)+'" data-action="open-markbook" data-id="'+e(bookId(r.id,a.id,p.enrolmentId))+'" aria-label="'+e(p.name+' · '+a.title+' · '+(x.status==='scored'?pct(x.percent):x.status)+' · Open result')+'">'+value+'</button>';
  };
  return '<section class="surface"><div class="toolbar markbook-toolbar">'+select('markbook-unit',unitOptions,unitId,'Curriculum unit')+
  (b.canCreate?btn('Add assessment','new-assessment',bookId(r.id,unitId),'btn-primary'):'')+
@@ -35,7 +43,7 @@ export function renderMarkbook(w,s,r){
  (r.partial?'<div class="info-box scope-inline">Only pupils in the current scope appear here.</div>':'')+
  (list.length?'<div class="table-scroll markbook-summary" role="region" tabindex="0" aria-label="Assessment tracker"><table class="data-table"><thead><tr><th class="sticky-first" scope="col">Student</th><th scope="col">'+(unitId?'Unit':'Overall')+' % / grade</th>'+list.map(a=>'<th scope="col" class="assessment-heading">'+detailActions(a)+'</th>').join('')+'</tr></thead><tbody>'+
  rows.map(p=>'<tr><td class="sticky-first">'+pupilIdentity(link(p.name,'open-student',p.studentId)+'<span class="cell-sub">TG '+e(p.tutorGroupId)+'</span>',p)+'</td><td><strong>'+e(pct(p.summary.average))+'</strong><span class="cell-sub">'+e(p.summary.grade??'—')+' · '+p.summary.coverage.scored+'/'+p.summary.coverage.eligible+'</span></td>'+list.map(a=>'<td>'+cell(a,p)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No assessments in this unit',b.canCreate?'Add an assessment or reuse an existing definition.':'No visible assessments have been assigned.'))+
- '<div class="panel-body small muted">Select an assessment heading to view or enter marks. Overall/unit summaries use complete, included published results up to the demo reference date. Drafts and diagnostics remain visible here but do not contribute to summaries. A common assessment has one shared definition, with marks recorded separately for each class.</div></section>';
+ '<div class="panel-body small muted">Select an assessment heading to open the mark grid, a pupil result to jump to that row, or Analyse to see the evidence. Overall/unit summaries use complete, included published results up to the demo reference date. Drafts and diagnostics remain visible here but do not contribute to summaries. A common assessment has one shared definition, with marks recorded separately for each class.</div></section>';
 }
 const facts=items=>'<dl class="drawer-summary">'+items.map(([k,v])=>'<div class="fact"><dt>'+e(k)+'</dt><dd>'+e(v??'—')+'</dd></div>').join('')+'</dl>';
 const section=(title,body)=>'<section class="drawer-section"><h3>'+e(title)+'</h3><div class="content">'+body+'</div></section>';
@@ -75,20 +83,23 @@ export function renderBookDetail(w,detail){
  }
  const d=b.detail(assessmentId),a=d.assessment;
  if(kind==='mark-grid'){
+  if(enrolmentId&&!d.rows.some(r=>r.enrolmentId===enrolmentId))throw Error('Pupil outside current assessment scope');
+  const stats=(label,key,n)=>'<div class="entry-stat"><span>'+e(label)+'</span><strong id="entry-stat-'+key+'">'+e(n)+'</strong></div>';
   const body='<div class="markbook-detail-head">'+flags(a)+'<p class="small muted">'+e(modeName[a.mode]+' · '+d.maxMarks+' marks · Weight '+a.weight+' · '+displayDate(a.date))+'</p></div>'+
-   facts([['Scored',d.coverage.scored+'/'+d.coverage.eligible],['Absent',d.coverage.absent],['Missing / incomplete',d.coverage.missing+d.coverage.incomplete],['Excluded',d.coverage.excluded],['Classes assigned',d.affectedClasses.join(', ')]])+
-   (d.editable?'<p class="small muted">Enter marks, then Save changes. Enter moves down; Tab moves across. Paste a block of Excel cells starting at a mark cell, or import by Student ID. Blank is not zero. Exclusion does not erase marks.</p>':'<p class="info-box">Read-only view. Only assigned class teachers can enter marks.</p>')+
+   '<div class="entry-overview" aria-label="Assessment entry progress">'+stats('Scored','scored',d.coverage.scored+'/'+d.coverage.eligible)+stats('Missing / incomplete','pending',d.coverage.missing+d.coverage.incomplete)+stats('Absent','absent',d.coverage.absent)+stats('Excluded','excluded',d.coverage.excluded)+stats('Invalid','invalid',0)+'</div>'+
+   '<div class="entry-context"><span class="small muted">Assigned classes: '+e(d.affectedClasses.join(', '))+(d.editable?' · Local preview until saved':'')+'</span>'+(a.status==='published'&&a.date<=w.asOf?btn('Analyse assessment','markbook-analysis',key,'btn-quiet'):'')+'</div>'+
+   (d.editable?'<div class="entry-guide"><div><strong>Mark entry</strong> <span class="small muted">Enter / ↑ ↓ move vertically · Tab / Shift+Tab across · ← → at cell edges</span><p class="small muted">Paste a block from Excel. Blank is not zero. Save explicitly; Ctrl / Cmd+S also saves.</p></div>'+btn('Next unfinished','next-unfinished-mark','','btn-quiet')+'</div><div id="mark-focus" class="mark-focus" aria-live="polite">Select a mark cell to begin.</div>':'<p class="info-box">Read-only view. Only assigned class teachers can enter marks.</p>')+
    '<form id="mark-grid-form" class="form-stack"><div class="table-scroll entry-table" role="region" tabindex="0" aria-label="Assessment mark entry"><table class="data-table"><thead><tr><th class="sticky-first">Student</th><th>Entry status</th>'+
-   a.items.map(i=>'<th>'+e(i.label)+'<span class="cell-sub">'+e('/'+i.maxMarks+(i.topic?' · '+i.topic:'')+(i.ao?' · '+i.ao:''))+'</span></th>').join('')+'<th>Total</th><th>%</th><th>Grade</th><th>Result status</th><th>Inclusion</th></tr></thead><tbody>'+
+   a.items.map((i,j)=>'<th data-mark-header="'+j+'">'+e(i.label)+'<span class="cell-sub">'+e('/'+i.maxMarks+(i.topic?' · '+i.topic:'')+(i.ao?' · '+i.ao:''))+'</span></th>').join('')+'<th>Total</th><th>%</th><th>Grade</th><th>Result status</th><th>Inclusion</th></tr></thead><tbody>'+
    d.rows.map((r,n)=>{
     const p=previewRow(a,d.bands,r.entryStatus,r.marks,Boolean(r.exclusionReason));
-    return '<tr data-mark-row="'+e(r.enrolmentId)+'" data-student-id="'+e(r.studentId)+'"><td class="sticky-first">'+pupilIdentity(e(r.name)+'<span class="cell-sub">'+e(r.studentId)+'</span>',r)+'</td><td>'+
+    return '<tr data-mark-row="'+e(r.enrolmentId)+'" data-student-id="'+e(r.studentId)+'" data-entry-state="'+e(p.state)+'" tabindex="-1"'+(r.enrolmentId===enrolmentId?' class="requested-mark-row"':'')+'><td class="sticky-first">'+pupilIdentity(e(r.name)+'<span class="cell-sub">'+e(r.studentId)+'</span>',r)+'</td><td>'+
     (r.editable?'<select class="select entry-status" aria-label="Entry status for '+e(r.name)+'">'+[['missing','Missing'],['present','Present'],['absent','Absent']].map(([v,l])=>option(v,l,r.entryStatus)).join('')+'</select>':e(r.entryStatus))+'</td>'+
-    a.items.map((i,j)=>'<td>'+(r.editable?'<input class="input mark-cell" type="text" inputmode="decimal" autocomplete="off" data-item="'+e(i.id)+'" data-row="'+n+'" data-col="'+j+'" value="'+e(r.marks[i.id]??'')+'" aria-label="'+e(r.name+' '+i.label+' out of '+i.maxMarks)+'">':e(r.marks[i.id]??'—'))+'</td>').join('')+
+    a.items.map((i,j)=>'<td data-mark-column="'+j+'">'+(r.editable?'<input class="input mark-cell" type="text" inputmode="decimal" autocomplete="off" data-item="'+e(i.id)+'" data-row="'+n+'" data-col="'+j+'" value="'+e(r.marks[i.id]??'')+'" aria-label="'+e(r.name+' '+i.label+' out of '+i.maxMarks)+'">':e(r.marks[i.id]??'—'))+'</td>').join('')+
     '<td data-preview="total">'+e(p.total===null?'—':p.total+'/'+d.maxMarks)+'</td><td data-preview="percent">'+e(pct(p.percent))+'</td><td data-preview="grade">'+e(p.grade??'—')+'</td><td data-preview="status">'+statusBadge(p.state)+'</td><td>'+
     (r.editable?link(r.exclusionReason?'Re-include':'Exclude','student-exclusion',bookId(classId,a.id,r.enrolmentId)):r.exclusionReason?tag('Excluded','tag-warning'):'—')+'</td></tr>';
    }).join('')+'</tbody></table></div>'+
-   (d.editable?'<div class="mark-save-bar"><span id="mark-dirty" class="small muted" role="status">No unsaved changes</span>'+check('confirmClear','Confirm clearing any previously entered marks')+submit('Save changes')+'</div>'+error:'')+'</form>'+
+   (d.editable?'<div class="mark-save-bar"><div><span id="mark-dirty" class="small muted" role="status">No unsaved changes</span><p id="mark-clear-count" class="small muted"></p></div>'+check('confirmClear','Confirm clearing previously entered marks')+submit('Save changes')+'</div>'+error:'')+'</form>'+
    (d.editable?'<details class="drawer-section import-panel"><summary>Import from Excel / CSV</summary><div class="content"><p>Copy this template to Excel, or save it as CSV. Keep Student ID and item identifiers in the header. Leave Status blank to infer Present when entering new marks, or set Present explicitly. Blank import cells leave existing marks unchanged; type CLEAR to remove a mark. Preview changes before applying them to the unsaved grid.</p>'+
    '<textarea id="csv-template" class="input text-area" rows="3" readonly aria-label="CSV template">'+e(csvTemplate(a,d.rows))+'</textarea><div class="page-actions">'+btn('Copy template','copy-mark-template')+btn('Download CSV','download-mark-template')+'</div><label>Choose CSV file (fictional data only)<input id="mark-import-file" type="file" accept=".csv,.tsv,text/csv,text/plain"></label><textarea id="mark-import-text" class="input text-area" rows="5" placeholder="Paste CSV or tab-separated data with Student ID header" aria-label="Paste assessment results"></textarea>'+btn('Preview import','preview-mark-import')+'<div id="mark-import-preview" aria-live="polite"></div></div></details>':'');
   const footer=d.manageable?btn('Edit definition','edit-assessment',key)+ (a.status==='draft'?btn('Publish draft','publish-assessment',key,'btn-primary'):'')+btn(a.includeInSummary?'Exclude assessment':'Re-include assessment','assessment-exclusion',key,a.includeInSummary?'btn-danger':''):'';

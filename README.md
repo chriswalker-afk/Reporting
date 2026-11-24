@@ -156,3 +156,5 @@ The V2 branding pass uses the supplied JIS crest and campus photo, local House b
 Home refinement: scope-specific faculty/teaching, tutor, House and school overviews, direct filtered navigation, prioritised personal action queue, and consistent compact JIS typography and layout.
 
 Class/profile refinement: daily and full register layouts, quick cohort filters, direct tracker/assessment-history access, filtered pupil navigation and compact cross-subject profiles with connected support and attainment evidence.
+
+Assessment/analysis refinement: direct pupil mark links, spreadsheet navigation and live unsaved coverage, evidence-first teaching priorities with real denominators, and direct mark/analysis navigation.
