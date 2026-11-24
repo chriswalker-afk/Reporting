@@ -57,3 +57,29 @@ test('deadline highlights and reporting labels agree with accessible personal an
  assert.match(html,/data-action="new-deadline"/);
  assert.doesNotMatch(renderPage(a,state),/data-action="new-deadline"/);
 });
+
+
+test('notices header presents live authorised counts and every shortcut exactly once without duplicate cards',()=>{
+ const store=createStore();
+ for(const staff of store.snapshot().staff){
+  const workspace=createWorkspace(store,staff.id),comm=workspace.communications(),h=communicationHighlights(comm);
+  const html=renderPage(workspace,state);
+  const header=html.match(/<section class="surface communication-priority notices-header"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(header,staff.id);
+  assert.match(header,/<h1>Notices<\/h1>/);
+  assert.doesNotMatch(html,/data-workspace-disclosure="communication-summary"|class="metrics communication-metrics"/);
+  for(const [action,value,label] of [
+   ['show-active-notices',comm.activeNotices.length,'active notices'],
+   ['show-priority-notices',h.urgent,'urgent'],
+   ['show-pending-notices',h.pending,'awaiting acknowledgement'],
+   ['focus-schedule',h.open.length,'open deadlines']
+  ]){
+   assert.equal((header.match(new RegExp('data-action="'+action+'"','g'))||[]).length,1);
+   assert.ok(header.includes('<strong>'+value+'</strong> '+label),staff.id+': '+label);
+  }
+  assert.ok(header.includes('<strong>'+h.overdue+'</strong> overdue'));
+  assert.ok(header.includes('<strong>'+h.today+'</strong> due today'));
+  if(h.open.length!==comm.openDeadlines.length)assert.ok(header.includes('<strong>'+comm.openDeadlines.length+'</strong> yours'));
+  assert.equal(header.includes('data-action="new-notice"'),Boolean(comm.publishAudiences.length));
+ }
+});
