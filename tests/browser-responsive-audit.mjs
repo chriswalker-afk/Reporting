@@ -150,7 +150,7 @@ try{
   assert.ok(result.heading.trim(),label+': missing visible page heading');
   assert.ok(result.documentWidth<=result.width+1,label+': document overflows '+JSON.stringify(result));
   assert.ok(result.rect.width>0&&result.rect.height>0&&result.mainHeight>0,label+': collapsed workspace');
-  assert.ok(result.rect.left>=-2&&result.rect.right<=result.width+2,label+': workspace outside viewport');
+  assert.ok(result.rect.left>=-2&&result.rect.right<=result.width+2,label+': workspace outside viewport '+JSON.stringify(result.rect)+' / '+result.width);
   assert.deepEqual(result.duplicates,[],label+': duplicate IDs');
   assert.deepEqual(result.offscreen,[],label+': essential controls outside viewport');
   assert.ok(result.controls>0,label+': no available controls');
@@ -245,7 +245,7 @@ try{
  await fill('#gradebook-single-assessment','11-maths-A1');await screen(320,568);
  assert.equal(await evaluate(s=>document.querySelector(s).value,keyboardCell),'19');
  assert.match(await text('#gradebook-save-status'),/unsaved/i);
- await activate('gradebook-discard');await activate('gradebook-entry-view','spreadsheet');await activate('gradebook-focus-toggle');
+ dialogs.push({contains:'Discard',accept:true});await activate('gradebook-discard');await activate('gradebook-entry-view','spreadsheet');await activate('gradebook-focus-toggle');
  assert.equal(dialogs.length,0);assert.deepEqual(errors,[]);
  // Findings are grouped rather than silently discarded. Non-blocking diagnostic
  // checks are listed in the CI log; assertions above enforce the critical gates.
