@@ -80,6 +80,7 @@ try{
    button.click();
   }
   const exchange=el?.closest('details.gradebook-exchange');if(exchange&&!exchange.open)exchange.open=true;
+  if(el?.closest('[data-assessment-header-detail][hidden]'))document.querySelector('[data-action="gradebook-header-toggle"]')?.click();
  },selector);
  const click=async(selector)=>{
   await revealGradebookControl(selector);
@@ -1260,6 +1261,49 @@ try{
  await action('gradebook-close-panel');await action('gradebook-focus-toggle');
  await action('gradebook-undo');assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),oldFlyoutMark);
  assert.match(await text('#gradebook-save-status'),/All changes saved/);
+ // PR40: compact assessment headers reveal details without replacing the grid.
+ await viewport(1260,514);
+ await action('reset-workspace-display');
+ if(await evaluate(()=>document.querySelector('#gradebook-surface').dataset.headerDetails==='true'))await action('gradebook-header-toggle');
+ const headerMetrics=()=>evaluate(()=>{
+  const surface=document.querySelector('#gradebook-surface'),head=surface.querySelector('thead'),table=surface.querySelector('.gradebook-scroll'),row=surface.querySelector('tbody tr');
+  return {expanded:surface.dataset.headerDetails==='true',height:head.getBoundingClientRect().height,firstRowTop:row.getBoundingClientRect().top,tableHeight:table.clientHeight,columns:head.querySelectorAll('th').length,visibleDetails:[...head.querySelectorAll('[data-assessment-header-detail]')].filter(n=>!n.hidden).length,allDetails:head.querySelectorAll('[data-assessment-header-detail]').length};
+ });
+ await evaluate(()=>{document.querySelector('#workspace').scrollTop=0;document.querySelector('.gradebook-scroll').scrollTop=0;});
+ const headerCollapsed=await headerMetrics();
+ assert.equal(headerCollapsed.expanded,false);assert.equal(headerCollapsed.visibleDetails,0);
+ assert.ok(await visible('.gradebook-assessment-title'));assert.ok(await visible('.assessment-max-mark'));
+ assert.ok(await visible('.gradebook-expand'));assert.equal(await visible('.assessment-header-details'),false);
+ assert.ok(await evaluate(()=>[...document.querySelectorAll('.assessment-header-essentials .assessment-status-short')].some(el=>el.textContent==='Draft'||el.textContent==='Diagnostic')));
+ const headerSavedMark=await evaluate(sel=>document.querySelector(sel).value,firstYear);
+ await fill(firstYear,headerSavedMark==='14'?'15':'14');
+ const headerDraft=await evaluate(sel=>{const cell=document.querySelector(sel);cell.dataset.headerIdentity='original';return cell.value;},firstYear);
+ const headerStatus=await text('#gradebook-save-status'),headerSelected=await text('#gradebook-selection');
+ await action('gradebook-header-toggle');
+ const headerExpanded=await headerMetrics();
+ assert.equal(headerExpanded.expanded,true);assert.equal(headerExpanded.visibleDetails,headerExpanded.allDetails);
+ assert.ok(headerExpanded.height>headerCollapsed.height+20,'Collapsed headers must recover useful vertical space: '+JSON.stringify({headerCollapsed,headerExpanded}));
+ assert.equal(headerExpanded.columns,headerCollapsed.columns);
+ assert.ok(await visible('[data-action="assessment-settings"]'));
+ assert.ok(await visible('[data-action="markbook-analysis"]'));
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.headerIdentity,firstYear),'original');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),headerDraft);
+ assert.equal(await text('#gradebook-save-status'),headerStatus);assert.equal(await text('#gradebook-selection'),headerSelected);
+ console.log('Assessment header collapse measurement',JSON.stringify({headerCollapsed,headerExpanded}));
+ await action('gradebook-header-toggle');assert.equal((await headerMetrics()).expanded,false);
+ await viewport(1366,768);await action('gradebook-focus-toggle');
+ await action('gradebook-header-toggle');assert.equal((await headerMetrics()).expanded,true);
+ await action('gradebook-focus-toggle');assert.equal((await headerMetrics()).expanded,true);
+ await action('gradebook-undo');assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),headerSavedMark);
+ assert.match(await text('#gradebook-save-status'),/All changes saved/);
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded header preference');
+ await open('v2/#classes/11-maths-1/markbook');assert.equal((await headerMetrics()).expanded,true);
+ await action('gradebook-header-toggle');assert.equal((await headerMetrics()).expanded,false);
+ for(const [width,height] of [[390,844],[844,390],[1366,768]]){
+  await viewport(width,height);await action('gradebook-header-toggle');
+  assert.equal((await headerMetrics()).expanded,true);
+  await action('gradebook-header-toggle');assert.equal((await headerMetrics()).expanded,false);
+ }
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
