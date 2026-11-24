@@ -1,3 +1,4 @@
+import {renderResponsiveRegister} from './responsive-register.mjs';
 import {assetUrl,houseBadge,pupilIdentity,HOUSES} from './branding.mjs';
 import {disclosure,activeFilterCount,filterLabel as disclosureFilterLabel} from './workspace-disclosures.mjs';
 import {homeDashboard,HOME_PREVIEW} from './home-dashboard.mjs';
@@ -53,8 +54,10 @@ const tableFirst={classes:'code',homeClasses:'code',roster:'name',students:'name
 function table(name,columns,rows,cell,state,{compact=false}={}){
  const sort=state.sorts[name],ordered=sort&&columns.some(c=>c[0]===sort.key)?sortRows(rows,sort.key,sort.direction):rows;
  if(!rows.length)return empty('No matching records','Try clearing a filter or choosing a different scope.');
- return '<div class="table-scroll '+(compact?'home-table':name==='roster'?'roster-table':'')+'" role="region" tabindex="0" aria-label="'+esc(name==='roster'?'Class register':name+' table')+'"><table class="data-table"><thead><tr>'+columns.map(c=>sortHeader(c,name,state)).join('')+'</tr></thead><tbody>'+
+ const tableHtml='<div class="table-scroll '+(compact?'home-table':name==='roster'?'roster-table':'')+'" role="region" tabindex="0" aria-label="'+esc(name==='roster'?'Class register':name+' table')+'"><table class="data-table"><thead><tr>'+columns.map(c=>sortHeader(c,name,state)).join('')+'</tr></thead><tbody>'+
  ordered.map(row=>'<tr>'+columns.map(([key])=>'<td class="'+(key===tableFirst[name]?'sticky-first ':'')+(['mean','average','below','scored','students','cases','gapToTarget','subjects','latestPercent','nextGradePoints','coverageCount','gapToPrediction','noteCount'].includes(key)?'num':'')+'">'+cell(row,key)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+ const identityCell=name==='roster'?p=>pupilIdentity(link(p.name,'open-student',p.studentId)+'<span class="cell-sub">TG '+esc(p.tutorGroupId)+'</span><span class="tags">'+(p.flags??p.tags).map(t=>tag(t==='Access arrangements'?'AA':t,t==='SOC'?'tag-warning':'')).join('')+'</span>',p):null;
+ return compact?tableHtml:renderResponsiveRegister(name,columns,ordered,cell,tableHtml,state,{identity:tableFirst[name]??columns[0][0],identityCell});
 }
 const classColumns=[['code','Class'],['students','Pupils'],['mean','Mean','average'],['scored','Coverage','coverage'],['below','Below MTG','target'],['cases','Cases','intervention'],['tracker','Assessments',null,false]];
 function classCell(r,key){
