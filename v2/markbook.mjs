@@ -154,9 +154,9 @@ export function createMarkbook(data,access,classId,scope){
  }
  function overview(unitId){
   const selected=assessments.filter(a=>!unitId||a.unitId===unitId);
-  return {assessments:selected.map(a=>({ ...a,maxMarks:maxMarks(a),manageable:access.canManageAssessment(a.id)})),
+  return {assessments:selected.map(a=>({ ...a,maxMarks:maxMarks(a),bands:ix.gradeSchemes.get(a.gradeSchemeId).bands,manageable:access.canManageAssessment(a.id)})),
     rows:ordered.map(e=>({...rowBase(e),summary:unitId?engine.unitSummary(e.id,unitId):engine.studentSummary(e.id),
-      results:Object.fromEntries(selected.map(a=>[a.id,engine.resultFor(a.id,e.id)]))}))};
+      results:Object.fromEntries(selected.map(a=>[a.id,{...engine.resultFor(a.id,e.id),entryStatus:ix.resultsByPair.get(resultKey(a.id,e.id))?.status??'missing',editable:access.canEditResult(a.id,e.id)}]))}))};
  }
  return {classId,classCode:c.code,course,units,assessments,templates,assignmentOptions,canCreate:assignmentOptions.length>0,
    canCreateUnit:access.leads(classId),defaultBands:scheme.bands,detail,template,overview};
