@@ -191,6 +191,30 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       return {before,after};
     });
   }
+  // A gradebook save spans multiple assessments in a single validated transaction.
+  function saveGradebookBatch(staffId,classId,entries,{confirmed=false,confirmClear=false,expectedRevision=null}={}){
+    must(confirmed===true,'Confirm saving gradebook changes');
+    must(expectedRevision===null||expectedRevision===revision,'Records changed since the gradebook was opened. Reload before saving.');
+    must(Array.isArray(entries)&&entries.length>0&&entries.length<=10000,'Enter a non-empty batch of gradebook results');
+    must(new Set(entries.map(e=>resultKey(e.assessmentId,e.enrolmentId))).size===entries.length,'Duplicate result in gradebook batch');
+    return transaction(staffId,'saveGradebookBatch',classId,(d,a)=>{
+      const before=[],after=[];
+      for(const entry of entries){
+        const assessment=lookup(d,'assessments',entry.assessmentId),enrolment=lookup(d,'enrolments',entry.enrolmentId);
+        must(assessment&&enrolment?.classId===classId&&a.canEditResult(entry.assessmentId,entry.enrolmentId),'Only assigned teaching staff may edit this class gradebook');
+        must(assessment.mode==='total'&&assessment.items.length===1,'Edit topic/question results in the assessment detail');
+        const old=resultRecord(d,entry.assessmentId,entry.enrolmentId),clean=resultInput(assessment,entry.status,entry.marks);
+        must(!old?.exclusionReason,'Edit excluded results in the assessment detail');
+        const clears=old&&Object.keys(old.marks).some(id=>!Object.hasOwn(clean.marks,id));
+        must(!clears||confirmClear===true,'Confirm clearing previously recorded marks');
+        if(old&&old.status===clean.status&&JSON.stringify(old.marks)===JSON.stringify(clean.marks)||!old&&clean.status==='missing'&&!Object.keys(clean.marks).length)continue;
+        before.push(old?clone(old):null);
+        const record=ensureResult(d,entry.assessmentId,entry.enrolmentId);
+        record.status=clean.status;record.marks=clean.marks;after.push(clone(record));
+      }
+      return {before,after};
+    });
+  }
   function saveResult(staffId,assessmentId,enrolmentId,{status,marks,confirmClear=false}){
     return transaction(staffId,'saveResult',resultKey(assessmentId,enrolmentId),(d,a)=>{
       must(a.canEditResult(assessmentId,enrolmentId),'Only the teaching staff of this class can edit marks');
@@ -359,6 +383,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    addUnit,saveAssessment,publishAssessment,saveResultBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
+    addUnit,saveAssessment,publishAssessment,saveResultBatch,saveGradebookBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,startIntervention,interventionAction,setDemoDate,
     saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }

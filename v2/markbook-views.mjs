@@ -2,6 +2,7 @@ import {pupilIdentity} from './branding.mjs';
 import {maxMarks,previewRow,csvTemplate} from './markbook.mjs';
 import {pct,displayDate} from './workspace.mjs';
 import {assessmentCoverage} from './assessment-refinement.mjs';
+import {canEnter,entryValue} from './gradebook-entry.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const btn=(label,action,id='',kind='')=>'<button type="button" class="btn '+kind+'" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
 const link=(label,action,id)=>'<button type="button" class="inline-link" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
@@ -19,31 +20,34 @@ export function classTabs(active='information'){
  return '<div class="tabs" aria-label="Class views">'+[['information','Student information'],['markbook','Assessment tracker'],['student-analysis','Student analysis'],['class-analysis','Class analysis'],['faculty-analysis','Faculty analysis']].map(([id,label])=>'<button type="button" class="tab" data-action="class-tab" data-id="'+id+'" aria-pressed="'+(active===id)+'">'+label+'</button>').join('')+'</div>';
 }
 export function renderMarkbook(w,s,r){
- const b=w.markbook(r.id),unitId=b.units.some(u=>u.id===s.unitId)?s.unitId:'',overview=b.overview(unitId),list=overview.assessments;
- const rows=overview.rows;
+ const b=w.markbook(r.id),unitId=b.units.some(u=>u.id===s.unitId)?s.unitId:'',overview=b.overview(unitId),list=overview.assessments,rows=overview.rows;
+ const editable=rows.some(p=>list.some(a=>canEnter(a,p.results[a.id])));
  const unitOptions=[['','All units'],...b.units.map(u=>[u.id,u.title])];
  const detailActions=a=>{
   const c=assessmentCoverage(rows,a.id);
-  return '<div class="tracker-assessment">'+link(a.title,'open-markbook',bookId(r.id,a.id))+'<span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span>'+flags(a)+
-   '<div class="tracker-coverage"><span class="tracker-coverage-track" aria-hidden="true"><span style="width:'+(c.eligible?100*c.scored/c.eligible:0)+'%"></span></span><span>'+c.scored+'/'+c.eligible+' scored</span></div>'+
-   (c.needsEntry?'<span class="tracker-needs-entry">'+c.needsEntry+' missing / incomplete</span>':'')+
-   (a.status==='published'&&a.date<=w.asOf?btn('Analyse','markbook-analysis',bookId(r.id,a.id),'btn-quiet tracker-analysis'):'')+'</div>';
+  return '<div class="tracker-assessment"><span class="gradebook-title">'+e(a.title)+'</span><span class="cell-sub">'+e(displayDate(a.date)+' · /'+a.maxMarks)+'</span>'+
+   '<span class="cell-sub">'+(a.status==='draft'?'Draft · not counted':!a.includeInSummary?'Diagnostic · not counted':a.date>w.asOf?'Future · not counted':a.classIds.length>1?'Common assessment':'Published')+'</span>'+
+   '<span class="tracker-coverage" data-gradebook-coverage="'+e(a.id)+'">'+c.scored+'/'+c.eligible+' scored</span>'+
+   '<div class="gradebook-head-actions">'+link(a.mode==='total'?'Details':a.mode==='topics'?'Topics':'Questions','open-markbook',bookId(r.id,a.id))+
+   (a.status==='published'&&a.date<=w.asOf?btn('Analyse','markbook-analysis',bookId(r.id,a.id),'btn-quiet tracker-analysis'):'')+'</div></div>';
  };
- const cell=(a,p)=>{
-  const x=p.results[a.id];
+ const cell=(a,p,i,j)=>{
+  const x=p.results[a.id],key=bookId(r.id,a.id,p.enrolmentId);
+  if(canEnter(a,x))return '<td class="gradebook-entry" data-gradebook-row="'+i+'" data-gradebook-col="'+j+'"><input class="gradebook-cell" type="text" inputmode="text" autocomplete="off" spellcheck="false" data-row="'+i+'" data-col="'+j+'" data-assessment="'+e(a.id)+'" data-enrolment="'+e(p.enrolmentId)+'" value="'+e(entryValue(a,x))+'" aria-label="'+e(p.name+' · '+a.title+' · out of '+a.maxMarks)+'"><span class="gradebook-cell-preview" data-entry-preview>'+e(x.status==='scored'?pct(x.percent)+' · '+x.grade:x.status==='absent'?'Absent':x.status==='incomplete'?'Incomplete':'—')+'</span></td>';
   const value=x.status==='scored'?'<span class="number">'+e(x.rawMark+'/'+x.maxMarks)+'</span><span class="cell-sub">'+e(pct(x.percent)+' · '+x.grade)+'</span>':
    statusBadge(x.status)+(x.recordedPercent!==null?'<span class="cell-sub">'+e(x.rawMark+'/'+x.maxMarks+' retained')+'</span>':'');
-  return '<button type="button" class="tracker-cell tracker-'+e(x.status)+'" data-action="open-markbook" data-id="'+e(bookId(r.id,a.id,p.enrolmentId))+'" aria-label="'+e(p.name+' · '+a.title+' · '+(x.status==='scored'?pct(x.percent):x.status)+' · Open result')+'">'+value+'</button>';
+  return '<td data-gradebook-row="'+i+'" data-gradebook-col="'+j+'"><button type="button" class="tracker-cell tracker-'+e(x.status)+'" data-action="open-markbook" data-id="'+e(key)+'" aria-label="'+e(p.name+' · '+a.title+' · Open result')+'">'+value+'</button></td>';
  };
- return '<section class="surface"><div class="toolbar markbook-toolbar">'+select('markbook-unit',unitOptions,unitId,'Curriculum unit')+
+ return '<section class="surface gradebook-surface" id="gradebook-surface" data-class-id="'+e(r.id)+'" data-unit-id="'+e(unitId)+'"><div class="toolbar markbook-toolbar">'+select('markbook-unit',unitOptions,unitId,'Curriculum unit')+
  (b.canCreate?btn('Add assessment','new-assessment',bookId(r.id,unitId),'btn-primary'):'')+
  (b.canCreateUnit?btn('Add unit','new-unit',bookId(r.id)):'')+
  (b.canCreate&&b.templates.length?'<span class="reuse-control">'+select('reuse-assessment',[['','Choose previous assessment'],...b.templates.map(t=>[t.id,t.title+' · '+displayDate(t.date)])],'','Previous assessment template')+btn('Reuse','reuse-assessment',bookId(r.id,unitId))+'</span>':'')+
  '<span class="count">'+list.length+' assessments · '+rows.length+' pupils</span></div>'+
  (r.partial?'<div class="info-box scope-inline">Only pupils in the current scope appear here.</div>':'')+
- (list.length?'<div class="table-scroll markbook-summary" role="region" tabindex="0" aria-label="Assessment tracker"><table class="data-table"><thead><tr><th class="sticky-first" scope="col">Student</th><th scope="col">'+(unitId?'Unit':'Overall')+' % / grade</th>'+list.map(a=>'<th scope="col" class="assessment-heading">'+detailActions(a)+'</th>').join('')+'</tr></thead><tbody>'+
- rows.map(p=>'<tr><td class="sticky-first">'+pupilIdentity(link(p.name,'open-student',p.studentId)+'<span class="cell-sub">TG '+e(p.tutorGroupId)+'</span>',p)+'</td><td><strong>'+e(pct(p.summary.average))+'</strong><span class="cell-sub">'+e(p.summary.grade??'—')+' · '+p.summary.coverage.scored+'/'+p.summary.coverage.eligible+'</span></td>'+list.map(a=>'<td>'+cell(a,p)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No assessments in this unit',b.canCreate?'Add an assessment or reuse an existing definition.':'No visible assessments have been assigned.'))+
- '<div class="panel-body small muted">Select an assessment heading to open the mark grid, a pupil result to jump to that row, or Analyse to see the evidence. Overall/unit summaries use complete, included published results up to the demo reference date. Drafts and diagnostics remain visible here but do not contribute to summaries. A common assessment has one shared definition, with marks recorded separately for each class.</div></section>';
+ (editable?'<div class="gradebook-save-bar"><div><strong id="gradebook-save-status" role="status">All changes saved</strong><span class="small muted" id="gradebook-selection">Select a mark cell</span></div><div class="page-actions"><button class="btn" type="button" data-action="gradebook-discard" disabled>Discard</button><button class="btn btn-primary" type="button" data-action="gradebook-save" disabled>Save changes</button></div></div><p class="gradebook-instructions small muted">Enter marks directly. A = absent; blank = missing. Enter / arrows / Tab navigate; Shift + arrows or Shift + click select a range. Paste rectangular Excel blocks in the displayed row and column order; blanks leave marks unchanged. Ctrl / Cmd+S saves.</p><p id="gradebook-error" class="error" role="alert" hidden></p>':'<div class="panel-body small muted">Read-only here for this class, or use the assessment detail for topic/question entry.</div>')+
+ (list.length?'<div class="table-scroll markbook-summary gradebook-scroll" role="region" tabindex="0" aria-label="Assessment tracker"><table class="data-table gradebook-table"><thead><tr><th class="sticky-first" scope="col">Student</th><th scope="col">MTG</th><th scope="col">Pred.</th><th scope="col">'+(unitId?'Unit':'Overall')+' % / grade</th>'+list.map(a=>'<th scope="col" class="assessment-heading">'+detailActions(a)+'</th>').join('')+'</tr></thead><tbody>'+
+ rows.map((p,i)=>'<tr data-gradebook-pupil="'+i+'"><td class="sticky-first">'+pupilIdentity(link(p.name,'open-student',p.studentId)+'<span class="cell-sub">TG '+e(p.tutorGroupId)+'</span>',p)+'</td><td>'+e(p.summary.minimumGrade??'—')+'</td><td>'+e(p.summary.predictedGrade??'—')+'</td><td class="gradebook-overall" data-gradebook-summary="'+i+'"><strong>'+e(pct(p.summary.average))+'</strong><span class="cell-sub">'+e(p.summary.grade??'—')+' · '+p.summary.coverage.scored+'/'+p.summary.coverage.eligible+'</span></td>'+list.map((a,j)=>cell(a,p,i,j)).join('')+'</tr>').join('')+'</tbody></table></div>':empty('No assessments in this unit',b.canCreate?'Add an assessment or reuse an existing definition.':'No visible assessments have been assigned.'))+
+ '<div class="panel-body small muted">Totals and grades preview immediately. Other pages update after saving. Only complete, included, published results through the reference date count in the overall grade. Open assessment details for topic/question marks, exclusions, boundaries and publication.</div></section>';
 }
 const facts=items=>'<dl class="drawer-summary">'+items.map(([k,v])=>'<div class="fact"><dt>'+e(k)+'</dt><dd>'+e(v??'—')+'</dd></div>').join('')+'</dl>';
 const section=(title,body)=>'<section class="drawer-section"><h3>'+e(title)+'</h3><div class="content">'+body+'</div></section>';

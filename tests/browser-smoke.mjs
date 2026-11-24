@@ -120,6 +120,29 @@ try{
  await action('demo-scenario','faculty','#detail-dialog ');
  assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
+ // Edit several assessment columns without leaving the main gradebook.
+ const inline=(id,pupil='P121')=>'.gradebook-cell[data-assessment="'+id+'"][data-enrolment="'+pupil+'@11-maths"]';
+ const inlineA1=inline('11-maths-A1'),inlineA4=inline('11-maths-A4','P123'),inlineA5=inline('11-maths-A5','P123');
+ assert.ok(await q(inlineA1));assert.ok(await q(inlineA4));assert.ok(await q(inlineA5));
+ await fill(inlineA1,'999');assert.ok(await q(inlineA1+'[aria-invalid]'));
+ assert.equal(await evaluate(()=>document.querySelector('[data-action="gradebook-save"]').disabled),true);
+ await fill(inlineA1,'39');
+ assert.equal(await text(inlineA1+' + [data-entry-preview]'),'97.5% · 9');
+ await evaluate(sel=>{const el=document.querySelector(sel);el.focus();el.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',shiftKey:true,bubbles:true,cancelable:true}));},inlineA1);
+ assert.equal(await evaluate(()=>document.querySelectorAll('.gradebook-selected').length),2);
+ await evaluate(sel=>{const el=document.querySelector(sel),data=new DataTransfer();data.setData('text/plain','18\t29');el.focus();el.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));},inlineA4);
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA4),'18');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA5),'29');
+ assert.match(await text('#gradebook-save-status'),/3 unsaved results/);
+ await action('navigate','home');assert.equal(await evaluate(()=>location.hash),'#classes/11-maths-1/markbook');
+ const liveOverall=await text('[data-gradebook-summary="0"]');
+ await action('gradebook-save');assert.match(await text('#gradebook-save-status'),/All changes saved/);
+ assert.equal(await text('[data-gradebook-summary="0"]'),liveOverall);
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA1),'39');
+ assert.equal(await q('#detail-dialog[open]'),false);
+ await fill(inlineA1,'38');dialogs.push({contains:'Discard unsaved gradebook changes',accept:true});await action('gradebook-discard');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA1),'39');
+ assert.match(await text('#gradebook-save-status'),/All changes saved/);
  const markbookId=JSON.stringify(['11-maths-1','11-maths-A3','']);
  assert.ok(await q('.tracker-coverage'));
  const pupilMarkId=JSON.stringify(['11-maths-1','11-maths-A3','P121@11-maths']);
@@ -266,6 +289,10 @@ try{
  await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded previous document');
  await open('#classes/11-maths-1/markbook');
  assert.ok(await q('[data-action="class-tab"][data-id="markbook"][aria-pressed="true"]'));
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA1),'39');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA4),'18');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,inlineA5),'29');
+ await viewport(390,844);await viewport(1440,900);
  await evaluate(id=>[...document.querySelectorAll('[data-action="open-markbook"]')].find(e=>e.dataset.id===id).click(),markbookId);
  assert.equal(await text('[data-mark-row="P121@11-maths"] [data-preview="percent"]'),'100.0%');
  // Explicitly verify the new assessment surfaces at phone width, not just the Home shell.
