@@ -389,3 +389,12 @@ The global toolbar has a Collapse / Expand control, independent of the sidebar, 
 The preference is stored locally per preview staff member with existing display preferences (older settings default to expanded). Reset workspace display restores the expanded bar. The app-level focus mode still hides the entire global header and restores the previous header setting when exiting. Switching the bar does not rerender the active page, change permissions, modify records or discard unsaved marks or history. Keyboard and mobile navigation remain accessible.
 
 Tests cover preference compatibility, staff isolation, header height reduction, viewport bounds, keyboard expansion, mobile navigation, persistence after reload, and preservation of the same gradebook inputs, selection, drafts and undo history.
+
+
+## Streamlined assessment tracker (PR37)
+
+The normal assessment tracker now uses the same grouped toolbar as full-screen focus mode. Assessment, Layout, Tools and Help are exclusive on-demand panels rather than permanently visible rows. The unit selector, assessment creation action, grid/single-assessment switch, assessment count and full-screen toggle remain available. Escape closes an open panel before leaving focus mode. Panel changes preserve the active spreadsheet, draft values, range selection, undo history and scroll position.
+
+The class header and tabs use tighter spacing on the gradebook only. Longer class context starts collapsed. The default compact grid uses smaller mark inputs and tighter row padding, shorter assessment metadata, a clickable assessment title for details, and compact action links. Draft, diagnostic and future evidence labels, coverage, calculation method and unsaved/error warnings remain accessible. Comfortable row density remains available through Layout.
+
+Regression coverage measures the usable table area and visible pupil rows in the normal workspace at 1366×768, 1280×720 and 1024×768, in addition to the existing responsive and focus-mode matrix. These are representative CSS viewports, not a claim about a particular physical school monitor.

@@ -679,3 +679,87 @@
   #app[data-workspace-topbar="collapsed"] .topbar .search-launch{margin:0}
  }
 }
+
+
+/* PR37: the spreadsheet is the normal working surface, not the last item
+   in a stack of permanent toolbars. Focus mode uses the same controls. */
+@media screen{
+ .gradebook-class-heading .page-heading{margin-bottom:4px;gap:4px 10px;align-items:center}
+ .gradebook-class-heading .workspace-heading-main:has(>.disclosure-context:not([open])){display:flex;align-items:center;flex-wrap:wrap;gap:3px 8px}
+ .gradebook-class-heading .page-heading h1{font-size:clamp(18px,1.7vw,23px);line-height:1.2;margin:0}
+ .gradebook-class-heading .disclosure-context{margin:0}
+ .gradebook-class-heading .disclosure-context>summary{font-size:11px;min-height:24px;padding:3px 4px}
+ .gradebook-class-heading .class-switcher{gap:4px}
+ .gradebook-class-heading .class-switcher .btn,.gradebook-class-heading .class-switcher .select{min-height:28px;height:28px;padding-block:3px}
+ .gradebook-class-heading+.tabs{margin-bottom:5px;flex-wrap:nowrap;overflow-x:auto}
+ .gradebook-class-heading+.tabs .tab{padding:6px 9px;flex-shrink:0}
+ .gradebook-surface .markbook-toolbar{padding:4px 7px;gap:4px 6px;align-items:center}
+ .gradebook-surface .markbook-toolbar>.select{min-width:0;max-width:min(180px,100%);height:30px}
+ .gradebook-surface .markbook-toolbar .btn{min-height:30px;padding:4px 7px;font-size:12px}
+ .gradebook-surface .gradebook-entry-switch{padding:0;gap:2px;flex-wrap:nowrap}
+ .gradebook-surface .gradebook-entry-switch .btn{min-height:30px}
+ .gradebook-surface .gradebook-focus-panel-buttons{display:flex;flex-wrap:wrap;gap:3px;min-width:0}
+ .gradebook-surface .gradebook-focus-panel-button[aria-expanded="true"]{background:#f0e1e9;border-color:#b68a9e;color:var(--accent-dark)}
+ .gradebook-surface [data-gradebook-focus-section]{display:none}
+ #app[data-gradebook-focus-panel="assessment"] .gradebook-surface [data-gradebook-focus-section="assessment"]{display:flex;flex:1 1 100%;order:9;padding:5px 0;border-top:1px solid var(--line)}
+ #app[data-gradebook-focus-panel="layout"] .gradebook-surface [data-gradebook-focus-section="layout"],
+ #app[data-gradebook-focus-panel="tools"] .gradebook-surface [data-gradebook-focus-section="tools"],
+ #app[data-gradebook-focus-panel="help"] .gradebook-surface [data-gradebook-focus-section="help"]{display:block}
+ .gradebook-surface .gradebook-secondary-panels{max-height:min(38dvh,340px);overflow:auto;overscroll-behavior:contain}
+ .gradebook-surface [data-gradebook-focus-section="help"] .workspace-disclosure>summary,
+ .gradebook-surface [data-workspace-disclosure="single-tools"]>summary{display:none}
+ .gradebook-surface .gradebook-policy-line{padding:2px 7px;font-size:10px;line-height:1.4}
+ .gradebook-surface .gradebook-save-bar{padding:4px 7px;gap:5px}
+ .gradebook-surface .gradebook-save-bar>div:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:3px 9px}
+ .gradebook-surface .gradebook-save-bar .btn{min-height:30px;padding:4px 8px}
+ .gradebook-surface .gradebook-save-bar #gradebook-selection{font-size:11px}
+ .gradebook-surface .tracker-coverage{display:flex;align-items:center;flex-wrap:wrap;gap:2px 5px}
+ .assessment-status-short{color:var(--accent-dark);font-weight:650;white-space:normal}
+ .gradebook-surface .gradebook-assessment-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25;font-size:12px;text-align:left;white-space:normal;max-width:100%;min-height:0;padding:0}
+ .gradebook-surface .gradebook-head-actions{gap:3px 5px;flex-wrap:wrap}
+ .gradebook-surface .gradebook-head-actions .inline-link{font-size:10px;white-space:nowrap;padding:2px 0}
+ .gradebook-surface .gradebook-expand{min-height:21px;font-size:10px;padding:2px 4px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) th,
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) td{padding:3px 5px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .assessment-heading{min-width:104px;max-width:145px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .tracker-assessment{min-width:96px;max-width:135px;gap:2px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .gradebook-entry{min-width:83px;padding:2px 4px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .gradebook-cell{height:24px;padding:1px 4px;font-size:12px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .gradebook-cell-preview{min-height:11px;line-height:1.15;padding-top:1px;font-size:10px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .tracker-cell{min-height:32px;padding:2px 4px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .sticky-first{min-width:142px;max-width:178px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .pupil-identity{gap:4px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .house-logo{width:23px;height:23px}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .cell-sub{font-size:10px;line-height:1.2}
+ @media(max-width:760px){
+  .gradebook-class-heading .workspace-heading-main{flex-basis:100%}
+  .gradebook-class-heading .class-switcher .select{flex:1 1 100px;max-width:100%}
+  .gradebook-surface .gradebook-focus-panel-buttons{order:5;flex:1 1 100%}
+  .gradebook-surface .gradebook-focus-panel-buttons .btn{flex:1}
+  .gradebook-surface .markbook-toolbar .btn,.gradebook-surface .gradebook-entry-switch .btn{min-height:32px}
+  .gradebook-surface .gradebook-focus-toggle{margin-left:auto}
+  .gradebook-surface .markbook-toolbar .count{font-size:10px}
+  .gradebook-surface .gradebook-single-table .gradebook-cell{height:42px}
+ }
+}
+
+
+/* Keep the tallest assessment heading from determining an unnecessarily
+   tall sticky header across the entire spreadsheet. */
+@media screen{
+ .gradebook-surface .gradebook-table:not(.gradebook-single-table) thead th{vertical-align:top}
+ .gradebook-surface .gradebook-assessment-title{display:block;width:100%;max-height:none;overflow:visible}
+ .gradebook-surface .gradebook-title-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;max-height:2.5em;line-height:1.25}
+ .gradebook-surface .assessment-date-mark{line-height:1.2;white-space:normal;margin:0}
+ .gradebook-surface .tracker-coverage{font-size:10px;line-height:1.2}
+ .gradebook-surface .assessment-status-short{white-space:nowrap;line-height:1.2}
+ .gradebook-surface .gradebook-head-actions{display:grid;grid-template-columns:repeat(2,minmax(0,max-content));align-items:center;gap:2px 6px;line-height:1.2}
+ .gradebook-surface .gradebook-head-actions>.gradebook-expand{grid-column:1/-1;min-height:21px;line-height:1.2;white-space:nowrap;margin:0}
+ .gradebook-surface .gradebook-head-actions>.inline-link{line-height:1.2;min-height:0;padding:1px 0;white-space:nowrap}
+ .gradebook-surface .gradebook-table:not(.gradebook-single-table) .tracker-assessment{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+ .gradebook-surface .gradebook-table:not(.gradebook-single-table) .tracker-coverage{width:100%}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .gradebook-cell-preview:empty{min-height:0;padding:0}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .gradebook-result-status{height:22px;min-height:22px;margin-top:1px;padding:1px 3px;line-height:1.2}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .tracker-cell{min-height:27px;line-height:1.2}
+ .gradebook-density-compact .gradebook-table:not(.gradebook-single-table) .tracker-cell .cell-sub{margin:0}
+}

@@ -19,14 +19,14 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   if(!node||!current||current!==context){active=false;panel='';context=current;outerScroll=0;}
   if(panel&&!panelButton(panel))panel='';
   app.dataset.gradebookFocus=String(active);
-  app.dataset.gradebookFocusPanel=active?panel:'';
+  app.dataset.gradebookFocusPanel=panel;
   if(!node)return;
   const control=toggle();
   if(control){control.textContent=active?'Exit focus':'Full screen';control.setAttribute('aria-pressed',String(active));control.title=active?'Exit focus mode (Escape)':'Maximise the gradebook within the browser window';}
-  for(const id of FOCUS_PANELS){const button=panelButton(id);if(button)button.setAttribute('aria-expanded',String(active&&panel===id));}
-  // In focus mode Help is a top-level panel. Outside focus, the ordinary
-  // disclosure controller owns its open/closed state.
-  if(active){const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';const tools=node.querySelector('[data-workspace-disclosure="single-tools"]');if(tools)tools.open=panel==='tools';}
+  for(const id of FOCUS_PANELS){const button=panelButton(id);if(button)button.setAttribute('aria-expanded',String(panel===id));}
+  // The same exclusive tools panels drive the normal and full-screen views.
+  // Open their inner disclosures only while the corresponding panel is shown.
+  {const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';const tools=node.querySelector('[data-workspace-disclosure="single-tools"]');if(tools)tools.open=panel==='tools';}
  }
  function setActive(value){
   if(!surface()||!getContext())return false;
@@ -41,11 +41,11 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   return true;
  }
  function togglePanel(id){
-  if(!active||!FOCUS_PANELS.includes(id))return false;
+  if(!surface()||!getContext()||!FOCUS_PANELS.includes(id)||!panelButton(id))return false;
   const pos=scrollPosition();panel=nextFocusPanel(panel,id);sync();restoreScroll(pos);panelButton(id)?.focus({preventScroll:true});return true;
  }
  function keyboard(event){
-  if(!active||event.key!=='Escape'||event.defaultPrevented||app.ownerDocument.querySelector('dialog[open]'))return false;
+  if((!active&&!panel)||event.key!=='Escape'||event.defaultPrevented||app.ownerDocument.querySelector('dialog[open]'))return false;
   event.preventDefault();
   if(panel)togglePanel(panel);else setActive(false);
   return true;
