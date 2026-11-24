@@ -567,3 +567,67 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 @media print{.teaching-rank-list{max-height:none;overflow:visible}.analysis-focus-card{box-shadow:none}.tracker-analysis{display:none}}
 
 .evidence-summary{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:10px;background:#faf6f7;border:1px solid var(--border);border-radius:7px;flex-wrap:wrap}.evidence-summary strong{font-size:23px;color:var(--ink);font-variant-numeric:tabular-nums}.evidence-summary span{font-size:12px;color:var(--muted)}
+
+/* Intervention workflow refinement — scope, responsibility and review evidence. */
+.intervention-metrics{gap:8px;margin-bottom:10px}
+.intervention-metrics .metric{padding:9px 11px}.intervention-metrics .metric-value{font-size:25px}
+.case-pipeline{margin-bottom:11px}.case-pipeline .panel-head{padding:9px 12px}
+.case-stage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:9px 11px}
+.case-stage-card{display:flex;align-items:center;gap:9px;text-align:left;min-width:0;padding:10px 12px;background:#fcf9fa;border:1px solid var(--border);border-radius:8px}
+.case-stage-card:hover,.case-stage-card[aria-pressed=true]{background:#f8e9ef;border-color:#ca97ac}
+.stage-number{display:grid;place-items:center;width:31px;height:31px;flex:none;border:1px solid #d8bac9;border-radius:50%;color:var(--accent-dark);background:#fff;font-size:15px;font-weight:750}
+.case-stage-name{display:grid;gap:3px;flex:1;min-width:0}.case-stage-name strong{font-size:13px;color:var(--ink)}.case-stage-name>span{font-size:11px;color:var(--muted)}
+.case-stage-card>b{font-size:25px;font-variant-numeric:tabular-nums;color:var(--accent-dark);font-weight:760}
+.case-pipeline-note{padding:0 12px 10px}
+.intervention-register{min-width:0}.intervention-register .panel-head{padding:9px 12px}.intervention-register .panel-head h2{margin-bottom:3px}
+.case-focus-bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:7px 10px;border-bottom:1px solid var(--line)}
+.case-filters{padding:7px 10px}.case-filters .input,.case-filters .select{min-height:31px;height:31px;font-size:11px}
+.intervention-register .data-table td,.intervention-register .data-table th{padding:7px 9px;vertical-align:middle}
+.intervention-register .data-table .sticky-first{min-width:168px;max-width:220px}
+.intervention-register .table-scroll{max-height:min(58dvh,650px)}
+.compact-wave{display:grid;gap:4px;min-width:91px}.compact-wave .cell-sub{white-space:normal}
+.compact-wave-nodes{display:flex;align-items:center;gap:7px;position:relative;width:max-content}
+.compact-wave-nodes:before{content:'';position:absolute;height:2px;background:#e3dce0;left:8px;right:8px;top:9px}
+.compact-wave-nodes i{display:grid;place-items:center;position:relative;border:1px solid #d8d5da;color:#69616b;border-radius:50%;width:20px;height:20px;background:#f5f3f4;font-size:10px;font-weight:750;font-style:normal}
+.compact-wave-nodes .wave-recorded{background:#e6f2ee;border-color:#b8d8cb;color:#1e6552}
+.compact-wave-nodes .wave-active{background:#176f70;border-color:#176f70;color:white}
+.compact-wave-nodes .wave-requested{background:#fff2d6;border:2px dashed #b98a33;color:#8b5e19}
+.case-next-task{min-width:150px;max-width:220px;white-space:normal;display:grid;gap:3px;align-items:start}
+.case-next-task>strong{font-size:12px;color:var(--ink);overflow-wrap:anywhere}
+.case-next-task .cell-sub{margin:0;overflow-wrap:anywhere}
+.case-next-task .tag{justify-self:start}.case-quick-action{font-size:11px;min-height:28px;padding:4px 7px;white-space:normal;text-align:left}
+.detail-dialog.wide-case{width:min(920px,100vw)}
+.case-workspace{display:grid;gap:10px;min-width:0}
+.case-workspace>.drawer-section,.case-workspace .case-overview-grid>.drawer-section,.case-workspace .case-steps,.case-workspace .case-action-strip{margin:0}
+.case-identity{display:grid;grid-template-columns:minmax(185px,1fr) minmax(210px,1.45fr);gap:9px 12px;align-items:center;padding:11px 13px;background:#fcf8f9;border:1px solid #e7d9df;border-radius:8px}
+.case-identity-main{display:flex;gap:9px;align-items:center;min-width:0}.case-identity-main .tags{margin-top:4px;flex-wrap:wrap}
+.case-identity-info .drawer-summary{grid-template-columns:repeat(2,minmax(0,1fr));margin:0;gap:6px 10px}
+.case-identity>.inline-link{justify-self:start;grid-column:1/-1}
+.case-step.wave-recorded{background:#e6f2ee;border-color:#c6e1d7;color:#1e6552}.case-step.wave-recorded>span{background:#c6e1d7;color:#1e6552}
+.case-step.wave-active{background:#e5f2f0;border-color:#176f70;color:#125c60;box-shadow:inset 0 0 0 1px #176f70}.case-step.wave-active>span{background:#176f70;color:white}
+.case-step.wave-requested{background:#fff6e2;border:1px dashed #b98a33;color:#8b5e19}.case-step.wave-requested>span{background:#b98a33;color:white}
+.case-task-list{display:grid;gap:5px}.case-task{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;padding:8px 10px;background:#fcfafb;border:1px solid var(--border);border-radius:7px;flex-wrap:wrap}
+.case-task-main{min-width:0;flex:1;display:flex;align-items:center;gap:5px;flex-wrap:wrap}.case-task-main>strong{font-size:13px}.case-task-main>.cell-sub{flex-basis:100%;margin:0;font-size:11px;overflow-wrap:anywhere}.case-task .btn{font-size:11px;min-height:30px;white-space:normal}
+.case-workspace .case-action-strip{align-items:center;background:#faf6f7;padding:6px 9px}.case-workspace .case-action-strip .btn{font-size:11px;min-height:28px;padding:4px 7px}
+.case-overview-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:9px;align-items:start}
+.case-overview-grid .drawer-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.case-workspace .drawer-section h3{background:#faf6f7;padding:9px 11px}.case-workspace .drawer-section .content{padding:10px 12px;gap:8px;overflow-wrap:anywhere}
+.case-house-request{border-top:1px solid var(--border);padding-top:8px;margin-top:3px;display:grid;gap:6px}
+.case-house-request .drawer-summary{margin:0}
+.case-plan-section{scroll-margin-top:8px}.study-plan-meta .drawer-summary{margin:0;grid-template-columns:repeat(3,minmax(0,1fr))}
+.study-target{padding:9px 10px;background:#f8f3f5;border-left:3px solid var(--jis-burgundy);border-radius:4px;display:grid;gap:5px}
+.study-target strong{font-size:13px;white-space:pre-wrap}
+.study-action-list{display:grid;gap:6px}.study-action-list ol{display:grid;gap:5px;padding-left:22px}
+.study-action-list li{padding:3px 0;overflow-wrap:anywhere}
+.case-plan-actions{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.study-reviews summary,.case-history-disclosure summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--ink);padding:9px 12px;background:#faf6f7}
+.case-history-disclosure[open] summary{border-bottom:1px solid var(--border)}
+.study-reviews summary{padding:6px 8px;border-radius:5px;margin-bottom:7px}
+.case-timeline{position:relative;display:grid;gap:5px;padding-left:10px;border-left:2px solid #d9e5e1;margin-left:4px}
+.case-timeline .case-history-event{position:relative;margin:0;border-left:0;background:#faf8f9;border-radius:5px;padding:8px 10px}
+.case-timeline .case-history-event:before{content:'';position:absolute;width:7px;height:7px;left:-15px;top:13px;border-radius:50%;background:#176f70;border:1px solid white}
+.case-event-outcome{margin-top:4px}.case-earlier{display:grid;gap:5px}.case-earlier>h3{font-size:12px;color:var(--muted);padding:3px 0}
+.case-latest-review{border-bottom:1px solid var(--line);padding-bottom:7px}
+@media(max-width:1080px){.case-stage-card{padding:8px;gap:6px}.case-stage-card>b{font-size:21px}.stage-number{width:27px;height:27px}.case-stage-name strong{font-size:12px}.case-stage-name>span{font-size:10px}}
+@media(max-width:760px){.intervention-metrics .metric{padding:7px 8px}.intervention-metrics .metric-value{font-size:21px}.case-stage-grid{grid-template-columns:1fr;padding:7px;gap:5px}.case-stage-card{padding:6px 9px}.case-stage-name{display:flex;align-items:center;flex-wrap:wrap;gap:5px}.case-stage-card>b{font-size:19px}.case-focus-bar{gap:4px;padding:6px 8px}.case-overview-grid{grid-template-columns:1fr}.case-identity{grid-template-columns:1fr;padding:9px}.case-workspace{gap:8px}.case-workspace .drawer-section .content{padding:8px}.case-task{padding:7px}.case-task .btn{flex-shrink:0}.case-task-main{flex-basis:100%}.case-plan-actions .btn{white-space:normal}.case-workspace .case-steps{gap:4px}.case-workspace .case-step{padding:6px 4px}.case-workspace .case-step strong{font-size:10px}.case-workspace .case-step small{font-size:9px}.intervention-register .data-table .sticky-first{min-width:135px;max-width:160px}.study-plan-meta .drawer-summary{gap:5px}.case-pipeline-note{padding:0 8px 8px}}
+@media print{.case-focus-bar,.case-filters,.case-action-strip,.case-plan-actions,.case-task .btn{display:none!important}}

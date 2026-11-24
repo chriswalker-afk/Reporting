@@ -81,7 +81,7 @@ export function renderCase(w,id){
  const waveTitle=['','Wave 1 · Classroom intervention','Wave 2 · Faculty and House','Wave 3 · School leadership'];
  const waveBody=['',wave1,wave2,wave3];
  const earlier=Array.from({length:c.wave-1},(_,i)=>i+1).map(n=>detailSection(waveTitle[n],waveBody[n])).join('');
- const reviews=reviewEvents(c.history),history=c.history.slice().reverse();
+ const reviews=reviewEvents(c.history),history=c.history.slice().reverse(),latestUpdate=history.find(h=>h.action==='update');
  const reviewSummary=(c.evaluation?'<div class="case-latest-review"><strong>'+e(active?'Latest case evaluation':'Closure evaluation')+'</strong>'+text(c.evaluation)+(c.closedDate?'<p class="small muted">Closed '+e(displayDate(c.closedDate))+'</p>':'')+'</div>':'')+
  (reviews.length?'<div class="case-timeline">'+reviews.slice(0,3).map(eventMarkup).join('')+'</div>':empty('No recorded reviews yet','Current marks are context, not a measured change since intervention began.'));
  return {title:c.studentName,sub:c.classInfo.name+' · '+c.id,body:
@@ -92,6 +92,7 @@ export function renderCase(w,id){
  '<div class="case-overview-grid">'+section(waveTitle[c.wave],waveBody[c.wave],'caseWorkflow')+section('Academic context',evidence(c.summary),'studentAverage')+'</div>'+
  '<section id="case-study-plan" class="drawer-section case-plan-section" tabindex="-1"><h3>Individual study plan '+help('studyPlan','individual study plan')+'</h3><div class="content">'+plan+(planActions?'<div class="case-plan-actions">'+planActions+'</div>':'')+'</div></section>'+
  section('Review evidence',reviewSummary,'caseHistory')+
+ (latestUpdate?section('Latest progress update',eventMarkup(latestUpdate)):'')+
  (earlier?'<div class="case-earlier"><h3>Earlier waves</h3>'+earlier+'</div>':'')+
  detailSection('Responsible staff',facts([['Class teacher',staff(c.participants.teachers)],['Faculty lead',staff(c.participants.faculty)],['Head of House',staff(c.participants.house)],['Tutor',staff(c.participants.tutors)],['School leadership',staff(c.participants.leadership)]]))+
  detailSection('Case history ('+history.length+')',history.length?'<div class="case-timeline">'+history.map(eventMarkup).join('')+'</div>':empty('No recorded history'),'caseHistory')+
