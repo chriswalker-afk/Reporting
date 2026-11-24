@@ -1,0 +1,62 @@
+/* PR39: spreadsheet-first gradebook controls. Loaded after responsive-workspace.css. */
+@media screen{
+ .gradebook-surface .gradebook-focus-top{position:relative;z-index:10;min-width:0;background:#fff}
+ #app[data-gradebook-focus="true"] .gradebook-surface .gradebook-focus-top{position:sticky;top:0;z-index:10}
+ .gradebook-surface .markbook-toolbar{padding:3px 6px;gap:4px;align-items:center}
+ .gradebook-surface .markbook-toolbar>.select{height:28px;min-height:28px;font-size:11px;padding:3px 5px}
+ .gradebook-surface #markbook-unit{max-width:min(145px,100%)}
+ .gradebook-surface #gradebook-quick-display{width:auto;min-width:0;max-width:120px}
+ .gradebook-surface .markbook-toolbar .btn{height:28px;min-height:28px;font-size:11px;padding:3px 6px;white-space:nowrap}
+ .gradebook-surface .gradebook-focus-panel-buttons{gap:3px;flex:0 1 auto;order:0}
+ .gradebook-surface .gradebook-focus-panel-button{display:inline-flex;align-items:center;justify-content:center;gap:5px}
+ .gradebook-menu-chevron{width:6px;height:6px;flex:none;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);margin-top:-3px}
+ .gradebook-focus-panel-button[aria-expanded="true"] .gradebook-menu-chevron{transform:rotate(225deg);margin-top:3px}
+ .gradebook-surface .markbook-toolbar .count{margin-left:auto;white-space:normal;min-width:0;font-size:10px;line-height:1.2}
+ .gradebook-surface .gradebook-focus-toggle{margin-inline-start:0}
+ /* Hidden is authoritative: do not rely on page/focus CSS selectors alone. */
+ #app .gradebook-surface .gradebook-toolbar-flyout[hidden],
+ #app .gradebook-surface [data-gradebook-focus-section][hidden]{display:none!important}
+ #app .gradebook-surface .gradebook-toolbar-flyout:not([hidden]){
+  position:absolute;top:calc(100% - 1px);right:6px;left:auto;
+  width:min(740px,calc(100% - 12px));min-width:0;max-width:calc(100% - 12px);
+  max-height:min(44dvh,360px);
+  max-height:min(calc(44dvh * var(--page-zoom-inverse,1)),360px,var(--gradebook-flyout-room,360px));
+  overflow:auto;overscroll-behavior:contain;
+  background:white;border:1px solid var(--border);border-radius:7px;
+  box-shadow:0 10px 28px #30142238;z-index:12
+ }
+ #app .gradebook-surface .gradebook-toolbar-flyout>[data-gradebook-focus-section]:not([hidden]){
+  display:block;min-width:0;max-width:100%;padding:0;order:0;border:0
+ }
+ .gradebook-flyout-header{display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:2;padding:5px 8px;border-bottom:1px solid var(--line);background:#f8f4f6;font-size:12px;color:var(--accent-dark)}
+ .gradebook-flyout-header strong{min-width:0;overflow-wrap:anywhere}
+ .gradebook-flyout-header .btn{height:26px;min-height:26px;flex:none;font-size:11px;padding:3px 7px}
+ .gradebook-toolbar-flyout .gradebook-assessment-options{padding:8px;gap:6px}
+ .gradebook-toolbar-flyout .gradebook-assessment-options .btn,.gradebook-toolbar-flyout .gradebook-assessment-options .select{max-width:100%;min-width:0}
+ .gradebook-toolbar-flyout .reuse-control{flex-wrap:wrap;min-width:0;max-width:100%}
+ .gradebook-toolbar-flyout .gradebook-layout-bar,.gradebook-toolbar-flyout .gradebook-bulk-tools{border-top:0;padding:6px 8px}
+ .gradebook-toolbar-flyout .gradebook-layout-panel:not([hidden]){border-bottom:0}
+ .gradebook-toolbar-flyout .gradebook-exchange{border-bottom:0}
+ .gradebook-toolbar-flyout .gradebook-exchange-body{padding:6px 0}
+ .gradebook-toolbar-flyout .gradebook-focus-section>.workspace-disclosure{margin:0;border:0}
+ .gradebook-surface .gradebook-save-bar .gradebook-policy-line{padding:0;border:0;background:none;font-size:10px;line-height:1.25;min-width:0}
+ .gradebook-surface .gradebook-save-bar>div:first-child{min-width:0;flex:1 1 auto;column-gap:8px;row-gap:3px}
+ .gradebook-surface .gradebook-save-bar>.page-actions{flex:0 0 auto}
+ .gradebook-surface .gradebook-readonly-footer{padding:4px 7px}
+ @media(max-width:760px){
+  .gradebook-surface .gradebook-focus-panel-buttons{flex:1 1 auto;order:0}
+  .gradebook-surface .gradebook-focus-panel-buttons .btn{flex:0 1 auto}
+  .gradebook-surface .markbook-toolbar .btn,.gradebook-surface .markbook-toolbar>.select{min-height:32px;height:32px}
+  .gradebook-surface .markbook-toolbar .count{margin-left:0}
+  .gradebook-surface .gradebook-save-bar>.page-actions{flex-wrap:wrap}
+  .gradebook-flyout-header .btn{min-height:32px;height:32px}
+ }
+ @media(max-height:420px){
+  #app[data-gradebook-focus="true"] .gradebook-surface .gradebook-focus-top{position:relative}
+  #app .gradebook-surface .gradebook-toolbar-flyout:not([hidden]){max-height:min(calc(42dvh * var(--page-zoom-inverse,1)),260px,var(--gradebook-flyout-room,260px))}
+ }
+}
+@media print{
+ .gradebook-toolbar-flyout,.gradebook-focus-panel-buttons,#gradebook-quick-display{display:none!important}
+ .gradebook-save-bar .gradebook-policy-line{display:inline}
+}

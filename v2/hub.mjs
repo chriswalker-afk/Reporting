@@ -250,11 +250,11 @@ document.addEventListener('click',event=>{
  if(disclosures.click(event))return;
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-entry-view','drawer-expand','expand-panel','toggle-workspace-topbar','page-zoom-in','page-zoom-out','page-zoom-reset'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-close-panel','gradebook-entry-view','drawer-expand','expand-panel','toggle-workspace-topbar','page-zoom-in','page-zoom-out','page-zoom-reset'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
-  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);break;
+  case 'page-zoom-in':case 'page-zoom-out':case 'page-zoom-reset':pageZoom.change(action);gradebookFocus.fitPanel();break;
   case 'drawer-expand':drawerDisplay.toggle();break;
   case 'expand-panel':(detailDialog.contains(el)?drawerPanels:analysisPanels).toggle(el);break;
   case 'gradebook-entry-view':{
@@ -271,6 +271,7 @@ document.addEventListener('click',event=>{
   }
   case 'gradebook-focus-toggle':gradebookFocus.toggle();break;
   case 'gradebook-focus-panel':gradebookFocus.togglePanel(id);break;
+  case 'gradebook-close-panel':gradebookFocus.closePanel();break;
   case 'gradebook-save':gradebook.save();break;
   case 'gradebook-discard':gradebook.discard();break;
   case 'gradebook-undo':case 'gradebook-redo':case 'gradebook-copy':case 'gradebook-fill':case 'gradebook-clear':case 'gradebook-export':case 'gradebook-import-preview':case 'gradebook-import-apply':gradebook.bulkAction(action);break;
@@ -301,7 +302,7 @@ document.addEventListener('click',event=>{
   case 'close-menu':display.closeMenu();break;
   case 'toggle-workspace-navigation':display.toggleNavigation();break;
    case 'toggle-workspace-topbar':display.toggleTopbar();break;
-  case 'reset-workspace-display':display.reset();disclosures.reset();pageZoom.resetAll();break;
+  case 'reset-workspace-display':display.reset();disclosures.reset();pageZoom.resetAll();gradebookFocus.sync();break;
   case 'search':openSearch();break;
   case 'close-search':closeSearch();break;
   case 'search-result':pickSearch(id);break;
@@ -472,7 +473,7 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('paste',event=>{if(!gradebook.paste(event))grid.paste(event);});
 document.addEventListener('copy',event=>gradebook.copy(event));
-document.addEventListener('pointerdown',event=>gradebook.pointer(event));
+document.addEventListener('pointerdown',event=>{gradebookFocus.outsidePointer(event);gradebook.pointer(event);});
 document.addEventListener('focusin',event=>{gradebook.onFocus(event.target);grid.onFocus(event.target);});
 window.addEventListener('beforeunload',event=>{if(gradebook.isDirty()||grid.isDirty()||formDirty){event.preventDefault();event.returnValue='';}});
 document.addEventListener('input',event=>{
@@ -509,7 +510,7 @@ document.addEventListener('change',event=>{
   if(summary?el.checked:!el.checked)set.add(el.value);else set.delete(el.value);
   changeLayout(updateLayout(p,{[key]:[...set]}),{focus:()=>main.querySelector('.'+(summary?'gradebook-summary-choice':'gradebook-assessment-choice')+'[value="'+CSS.escape(el.value)+'"]')?.focus({preventScroll:true})});return;
  }
- if(el.id==='workspace-density'){display.setDensity(el.value);disclosures.sync();return;}
+ if(el.id==='workspace-density'){display.setDensity(el.value);disclosures.sync();gradebookFocus.sync();return;}
  if(el.id==='report-period'){state.reportPeriod=el.value;render({keepFocus:true});return;}
  if(el.id==='markbook-unit'){if(!gradebook.guard()){el.value=main.querySelector('#gradebook-surface')?.dataset.unitId??'';return;}state.unitId=el.value;render({keepFocus:true});return;}
  if(gradebook.isDirty()&&['staff','scope','quick-class'].includes(el.id)){gradebook.guard();el.value=el.id==='staff'?state.staffId:el.id==='scope'?state.scope:state.classId;return;}

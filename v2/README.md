@@ -409,3 +409,12 @@ Zoom uses native CSS layout-aware scaling, not a transform that leaves unusable 
 Zoom updates the existing DOM without re-rendering the page or calling save/discard. Scroll offsets are retained within the new scroll bounds; mark values, selected ranges, pending edits and undo history remain in place. The controls have accessible names, normal keyboard button behaviour and disabled limits.
 
 Tests cover preference validation, per-view/staff isolation, persistence after reload, physical mark row scaling and visible row capacity, responsive bounds, gradebook focus mode and draft preservation. The separate responsive audit also visits all main destinations and class tabs at 70% and 150% on desktop and phone widths.
+
+
+## Compact gradebook toolbar flyouts (PR39)
+
+The assessment tracker uses a single wrapping toolbar for the unit, assessment creation, grid/single view, raw marks/percentage/grade selector, Manage, Columns, Tools, Help and focus toggle. The calculation method and source now share the save/status bar rather than taking another permanent row.
+
+All secondary panels start explicitly hidden in the markup. The selected panel opens in a bounded floating region over the existing spreadsheet, instead of increasing the height of the gradebook header. Manage contains assessment reuse, curriculum units and calculation settings; Columns contains personal layout and visibility; Tools contains range editing, undo/redo and CSV exchange; Help contains entry instructions and shortcuts. Close, Escape, selecting the same toolbar button or clicking outside dismisses the panel. One panel is open at a time, and its content is scrollable at small viewport heights and zoom levels.
+
+The same gradebook DOM and controller remain in place. Switching panels does not clear staged marks, range selection, undo history, import contents or calculation warnings. Both root and V2 entrypoints load the dedicated toolbar styles. Tests check a single compact toolbar at 1260×514, unchanged table height when opening panels, accessible dismissal, draft integrity and mobile/focus-mode use.

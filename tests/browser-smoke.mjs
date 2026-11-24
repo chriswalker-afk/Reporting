@@ -79,6 +79,7 @@ try{
    if(!button)throw Error('Missing gradebook panel for '+sel);
    button.click();
   }
+  const exchange=el?.closest('details.gradebook-exchange');if(exchange&&!exchange.open)exchange.open=true;
  },selector);
  const click=async(selector)=>{
   await revealGradebookControl(selector);
@@ -1209,6 +1210,56 @@ try{
  await fill('#staff','sam');assert.equal(await pageZoomLevel(),90);
  await action('reset-workspace-display');assert.equal(await pageZoomLevel(),100);
  await open('v2/#classes/11-maths-1/markbook');assert.equal(await pageZoomLevel(),100);
+ // PR39: menus use an overlay, never a stack of permanent gradebook rows.
+ await viewport(1260,514);await action('reset-workspace-display');
+ const flyoutState=()=>evaluate(()=>{
+  const surface=document.querySelector('#gradebook-surface'),bar=surface.querySelector('.markbook-toolbar'),top=surface.querySelector('.gradebook-focus-top'),panel=surface.querySelector('.gradebook-toolbar-flyout'),table=surface.querySelector('.gradebook-scroll');
+  return {toolbarHeight:bar.getBoundingClientRect().height,topHeight:top.getBoundingClientRect().height,tableTop:table.getBoundingClientRect().top,tableHeight:table.clientHeight,panelHidden:panel.hidden,visibleSections:[...panel.querySelectorAll('[data-gradebook-focus-section]')].filter(s=>!s.hidden).map(s=>s.dataset.gradebookFocusSection),panelPosition:getComputedStyle(panel).position,footerPolicy:!!surface.querySelector('.gradebook-save-bar .gradebook-policy-line')};
+ });
+ await evaluate(()=>{document.querySelector('#workspace').scrollTop=0;document.querySelector('.gradebook-scroll').scrollTop=0;});
+ const closedFlyout=await flyoutState();
+ assert.equal(closedFlyout.panelHidden,true);assert.deepEqual(closedFlyout.visibleSections,[]);
+ assert.ok(closedFlyout.toolbarHeight<=44,'Short desktop should use one compact toolbar: '+JSON.stringify(closedFlyout));
+ assert.ok(closedFlyout.footerPolicy);
+ assert.ok(await visible('#gradebook-quick-display'));
+ assert.equal(await visible('.gradebook-exchange'),false);
+ console.log('Compact toolbar measurement',JSON.stringify(closedFlyout));
+ await viewport(1280,720);
+ const oldFlyoutMark=await evaluate(sel=>document.querySelector(sel).value,firstYear);
+ await fill(firstYear,oldFlyoutMark==='15'?'16':'15');
+ const newFlyoutMark=await evaluate(sel=>{const cell=document.querySelector(sel);cell.dataset.testFlyoutIdentity='original';return cell.value;},firstYear);
+ const stableFlyout=await flyoutState(),flyoutPending=await text('#gradebook-save-status'),flyoutSelection=await text('#gradebook-selection');
+ for(const panel of ['assessment','layout','tools','help']){
+  await action('gradebook-focus-panel',panel);
+  const d=await flyoutState();
+  assert.equal(d.panelHidden,false);assert.deepEqual(d.visibleSections,[panel]);assert.equal(d.panelPosition,'absolute');
+  assert.equal(d.topHeight,stableFlyout.topHeight,'Opening options must not add a toolbar row');
+  assert.equal(d.tableHeight,stableFlyout.tableHeight,'Opening options must not reduce table height');
+  assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testFlyoutIdentity,firstYear),'original');
+  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),newFlyoutMark);
+  assert.equal(await text('#gradebook-save-status'),flyoutPending);assert.equal(await text('#gradebook-selection'),flyoutSelection);
+ }
+ await action('gradebook-close-panel');assert.equal((await flyoutState()).panelHidden,true);
+ assert.equal(await evaluate(()=>document.activeElement.dataset.id),'help');
+ await action('gradebook-focus-panel','tools');
+ await evaluate(sel=>document.querySelector(sel).dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})),firstYear);
+ assert.equal((await flyoutState()).panelHidden,true);
+ await action('gradebook-focus-panel','layout');
+ await action('gradebook-layout-toggle');
+ assert.ok(await visible('#gradebook-layout-panel'));
+ assert.equal((await flyoutState()).panelPosition,'absolute');
+ await action('gradebook-close-panel');
+ for(const [width,height] of [[390,844],[844,390],[1366,768]]){
+  await viewport(width,height);await action('gradebook-focus-panel','tools');
+  assert.ok(await visible('.gradebook-flyout-header'));
+  assert.ok(await evaluate(()=>{const p=document.querySelector('.gradebook-toolbar-flyout').getBoundingClientRect(),m=document.querySelector('#workspace').getBoundingClientRect();return p.left>=m.left-1&&p.right<=m.right+1;}));
+  await action('gradebook-close-panel');
+ }
+ await viewport(1366,768);await action('gradebook-focus-toggle');
+ await action('gradebook-focus-panel','tools');assert.equal((await flyoutState()).panelPosition,'absolute');
+ await action('gradebook-close-panel');await action('gradebook-focus-toggle');
+ await action('gradebook-undo');assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),oldFlyoutMark);
+ assert.match(await text('#gradebook-save-status'),/All changes saved/);
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
