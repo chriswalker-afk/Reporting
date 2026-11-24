@@ -148,9 +148,9 @@ export function renderClasses(w,s){
  '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil or tutor group')+
  filter('tutor-filter',s.tutorFilter,'All tutor groups',unique(r.roster,'tutorGroupId'))+filter('house-filter',s.houseFilter,'All Houses',unique(r.roster,'house'))+
  select('flag-filter',s.flag??'all',[['all','All flags'],...['EAL','SEN','HLP','Access arrangements','SOC'].map(t=>[t,t])],'Filter student tags')+
- select('track-filter',s.trackFilter??'all',[['all','Any attainment'],['on','On track'],['below','Below target'],['unknown','Unknown']],'Target status')+
+ select('track-filter',s.below?'below':s.trackFilter??'all',[['all','Any attainment'],['on','On track'],['below','Below target'],['unknown','Unknown']],'Target status')+
  select('support-filter',s.supportFilter??'all',[['all','Any support'],['soc','SOC'],['w1','Subject Wave 1'],['w2','Subject Wave 2'],['w3','Subject Wave 3'],['none','No visible active case']],'Intervention filter')+
- '<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Below target</label>'+btn('Clear','clear-register-filters','','btn-quiet')+'<span class="count">'+selected.length+' of '+r.students+' pupils</span></div>'+
+ btn('Clear','clear-register-filters','','btn-quiet')+'<span class="count">'+selected.length+' of '+r.students+' pupils</span></div>'+
  '<div class="column-toolbar" role="group" aria-label="Visible register column groups"><span class="field-label">Columns</span>'+GROUPS.map(g=>'<button class="column-toggle" type="button" data-action="toggle-columns" data-id="'+esc(g.id)+'" aria-pressed="'+groups.includes(g.id)+'">'+esc(g.label)+'</button>').join('')+btn('Reset columns','reset-columns','','btn-quiet')+'</div>'+
  table('roster',cols,selected,cell,s)+'</section>'+note('Select a mark summary for its assessment evidence. Click MTG, prediction or comments to edit where authorised. SOC is derived from visible active cases; AA denotes access arrangements. The full markbook follows in V2-05.');
 }
