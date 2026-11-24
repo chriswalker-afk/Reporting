@@ -1,5 +1,5 @@
 import {cellMark,previewRow,parseDelimited} from './markbook.mjs';
-import {gradeFor,weightedMean} from './analytics.mjs';
+import {gradeFor,attainmentAverage} from './analytics.mjs';
 export const entryKey=(assessmentId,enrolmentId)=>JSON.stringify([assessmentId,enrolmentId]);
 export const canEditStructured=(assessment,result)=>Boolean(result.editable&&!result.exclusionReason);
 export const canEnter=(assessment,result,itemId=assessment.mode==='total'?assessment.items[0]?.id:null)=>Boolean(canEditStructured(assessment,result)&&itemId!==null&&assessment.items.some(i=>i.id===itemId));
@@ -62,7 +62,7 @@ export function structuredPreview(assessment,result,entry=null){
 export function liveSummary(summary,previews,scheme){
  const rows=summary.results.map(r=>{const p=previews.get(r.assessmentId);return p?{...r,status:p.state,percent:p.percent}:r;});
  const scored=rows.filter(r=>r.status==='scored');
- const average=weightedMean(scored.map(r=>({value:r.percent,weight:r.weight})));
+ const average=attainmentAverage(rows,summary.calculation?.method);
  return {average,grade:gradeFor(average,scheme),scored:scored.length,eligible:rows.length};
 }
 export function blockEntries(overview,row,col,text,columns=gradebookColumns(overview)){

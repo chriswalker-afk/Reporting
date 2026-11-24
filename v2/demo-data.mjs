@@ -7,7 +7,7 @@ export function createDemoData(){
   const data={schemaVersion:SCHEMA_VERSION,synthetic:true,academicYear:'2026-27',asOf:'2026-11-24',
     staff:[],faculties:[],houses:[],tutorGroups:[],students:[],subjects:[],gradeSchemes:[],
     courses:[],classes:[],enrolments:[],units:[],assessments:[],results:[],targets:[],
-    notes:[],interventions:[],studyPlans:[],notices:[],deadlines:[],audit:[]};
+    notes:[],interventions:[],studyPlans:[],notices:[],deadlines:[],reportGrades:[],audit:[]};
   const add=(table,record)=>{data[table].push(record);return record;};
   const staff=(id,name,roles)=>add('staff',{id,name,roles});
   staff('sam','Sam Taylor (demo)',['teacher','faculty','tutor']);

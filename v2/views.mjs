@@ -4,6 +4,7 @@ import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,d
 import {EVENTS,safeLink} from './communications.mjs';
 import {GROUPS,DEFAULT_GROUPS,displayedRegisterColumns,registerLayout,registerFocusCounts,registerFocus,visibleRegisterRows} from './class-overview.mjs';
 import {classTabs,renderMarkbook,renderBookDetail,bookId} from './markbook-views.mjs';
+import {renderReportGrades,renderReportingDetail} from './reporting-views.mjs';
 import {renderAcademicAnalysis,renderAnalysisEvidence} from './analysis-views.mjs';
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,profileCounts} from './student-profiles.mjs';
@@ -185,6 +186,7 @@ export function renderClasses(w,s){
  const r=w.classRecord(s.classId),groups=s.columnGroups??DEFAULT_GROUPS,layout=registerLayout(groups),daily=layout==='daily',selected=visibleRegisterRows(r.roster,s,matchText,sortRows);
  const headingMarkup='<div class="class-heading">'+heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,'<div class="class-switcher">'+btn('All classes','go-classes','','btn-quiet','back')+previous+quick+next+'</div>','Classes')+'</div>';
  if(s.classTab==='markbook')return headingMarkup+classTabs('markbook')+renderMarkbook(w,s,r);
+ if(s.classTab==='report-grades')return headingMarkup+classTabs('report-grades')+renderReportGrades(w,s,r);
  if(ANALYSIS_TABS.includes(s.classTab))return headingMarkup+classTabs(s.classTab)+renderAcademicAnalysis(w,s,r);
  const cols=displayedRegisterColumns(groups),gap=v=>'<span class="'+(v!==null&&v<0?'negative':v!==null&&v>=0?'positive':'')+'">'+esc(gradeGap(v))+'</span>';
  const cell=(p,k)=>{
@@ -324,6 +326,7 @@ export function renderDetail(w,detail){
   section('School leadership',listRow('Explore the school-wide workspace','Avery Reed · check reporting, referral actions and school scope','demo-scenario','leadership','person'))+
   section('House identities','<div class="house-directory">'+HOUSES.map(h=>houseBadge(h,{large:true,label:true})).join('')+'</div>')+
   note('Use Reset demo data in the footer to restore the original fictional examples. No live integration, real account or real pupil data is involved.'));
+ if(['calculation-policy','report-grade'].includes(kind)){const d=renderReportingDetail(w,detail);return drawer(d.title,d.sub,d.body);}
  if(kind==='analysis-evidence'){const d=renderAnalysisEvidence(w,id);return drawer(d.title,d.sub,d.body);}
  if(['unit-form','assessment-new','assessment-copy','assessment-edit','assessment-settings','delete-assessment','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
   const d=renderBookDetail(w,detail);return drawer(d.title,d.sub,d.body,d.footer??'');

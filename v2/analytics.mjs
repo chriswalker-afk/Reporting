@@ -1,4 +1,5 @@
 import {indexData,resultKey,finite,isDate} from './model.mjs';
+import {calculationFor,DEFAULT_METHOD} from './calculation-policy.mjs';
 
 export function gradeFor(percent,scheme){
   if(!finite(percent)||percent<0||percent>100||!scheme?.bands?.length)return null;
@@ -22,6 +23,13 @@ export function weightedMean(entries){
   // A weighted mean must be within the range of its contributing values.
   // Clamping round-off here keeps perfect scores at exactly 100, including fractional weights.
   return Math.max(Math.min(...values),Math.min(Math.max(...values),entries.reduce((s,x)=>s+x.value*x.weight,0)/total));
+}
+// Only complete, included results supplied by the evidence selector contribute.
+export function attainmentAverage(rows,method=DEFAULT_METHOD){
+ const scored=rows.filter(r=>r.status==='scored');
+ if(!scored.length)return null;
+ if(method==='latest')return [...scored].sort((a,b)=>a.date.localeCompare(b.date)||a.assessmentId.localeCompare(b.assessmentId)).at(-1).percent;
+ return weightedMean(scored.map(r=>({value:r.percent,weight:method==='equal-percentage'?1:method==='weighted-marks'?r.maxMarks*r.weight:r.weight})));
 }
 // Linear interpolation at (n-1)*p (Hyndman-Fan type 7); documented, no rounding.
 export function quantile(values,p){
@@ -88,7 +96,8 @@ export function createAnalytics(data){
       .filter(a=>a.status==='published'&&a.includeInSummary&&selection(options)(a)).sort(order);
     const rows=eligible.map(a=>({...resultFor(a.id,e.id),id:a.id,title:a.title,date:a.date,unitId:a.unitId,weight:a.weight}));
     const scored=rows.filter(r=>r.status==='scored');
-    const average=weightedMean(scored.map(r=>({value:r.percent,weight:r.weight})));
+    const course=courseFor(e),calculation=calculationFor(course,ix.faculties.get(ix.subjects.get(course.subjectId)?.facultyId));
+    const average=attainmentAverage(rows,calculation.method);
     const grade=gradeFor(average,scheme),t=ix.targetsByEnrolment.get(enrolmentId);
     const minimumGrade=t?.minimumGrade??null,predictedGrade=t?.predictedGrade??null;
     const gapToTarget=gradeDistance(grade,minimumGrade,scheme);
@@ -97,7 +106,7 @@ export function createAnalytics(data){
     const best=[...scored].sort((a,b)=>b.percent-a.percent||order(a,b))[0]??null;
     const weakest=[...scored].sort((a,b)=>a.percent-b.percent||order(a,b))[0]??null;
     return {studentId:e.studentId,enrolmentId,classId:e.classId,courseId:courseFor(e).id,
-      average,grade,minimumGrade,predictedGrade,gapToTarget,gapToPrediction,
+      average,grade,calculation,minimumGrade,predictedGrade,gapToTarget,gapToPrediction,
       predictedGapToTarget:gradeDistance(predictedGrade,minimumGrade,scheme),
       onTrack:gapToTarget===null?null:gapToTarget>=0,
       nextGrade:distanceToNextGrade(average,scheme),latest,best,weakest,

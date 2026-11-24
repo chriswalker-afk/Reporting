@@ -1,5 +1,5 @@
 import {indexData,isDate} from './model.mjs';
-import {createAnalytics,gradeFor,weightedMean} from './analytics.mjs';
+import {createAnalytics,gradeFor,attainmentAverage} from './analytics.mjs';
 
 const need=(ok,msg)=>{if(!ok)throw Error(msg);};
 const order=(a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id);
@@ -38,7 +38,7 @@ export function createAcademicAnalysis(data,access,scope,classId){
   need(enrolments.some(e=>e.id===id),'Student outside selected class and scope');
   const o=filters(input),s=engine.studentSummary(id,o),scored=s.results.filter(r=>r.status==='scored');
   const cumulative=scored.map((r,i)=>{
-   const percent=weightedMean(scored.slice(0,i+1).map(x=>({value:x.percent,weight:x.weight})));
+   const percent=attainmentAverage(scored.slice(0,i+1),s.calculation.method);
    return {assessmentId:r.id,title:r.title,date:r.date,percent,grade:gradeFor(percent,scheme),result:r.percent};
   });
   const targetBoundary=scheme.bands.find(x=>x.grade===s.minimumGrade)?.min??null;
