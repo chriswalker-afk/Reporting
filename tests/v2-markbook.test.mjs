@@ -1,0 +1,178 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createStore,STORAGE_KEY} from '../v2/store.mjs';
+import {createWorkspace} from '../v2/workspace.mjs';
+import {createDemoData} from '../v2/demo-data.mjs';
+import {parseDelimited,importPreview,csvTemplate,previewRow,cellMark} from '../v2/markbook.mjs';
+import {parseItemLines,definitionInput} from '../v2/markbook-controller.mjs';
+import {renderPage,renderDetail} from '../v2/views.mjs';
+import {bookId} from '../v2/markbook-views.mjs';
+
+const create=(options={})=>createStore({clock:()=> '2026-11-24T08:00:00.000Z',...options});
+const cls='11-maths-1',other='11-maths-2',e='P121@11-maths',a1='11-maths-A1',a3='11-maths-A3';
+const w=(s,id='sam',scope='faculty')=>createWorkspace(s,id,scope);
+const b=(s,id='sam',scope='faculty',classId=cls)=>w(s,id,scope).markbook(classId);
+const def=(s,overrides={})=>({title:'New fictional assessment',date:'2026-11-24',unitId:'11-maths-U1',classIds:[cls],mode:'total',weight:1,items:[{label:'Total',maxMarks:20,topic:null,ao:null}],bands:b(s).defaultBands,...overrides});
+const state={page:'classes',classId:cls,classTab:'markbook',query:'',flag:'all',below:false,sorts:{}};
+const entry=(enrolmentId,status,marks)=>({enrolmentId,status,marks});
+test('markbook is a unit-organised projection of the existing calculation engine',()=>{
+ const s=create(),book=b(s),overview=book.overview('11-maths-U1'),row=overview.rows.find(r=>r.enrolmentId===e);
+ assert.equal(overview.assessments.length,2);
+ assert.equal(row.summary.average,s.analytics().unitSummary(e,'11-maths-U1').average);
+ assert.equal(row.results[a1].percent,s.analytics().resultFor(a1,e).percent);
+ assert.ok(book.assessments.some(a=>a.status==='draft'));
+ assert.match(renderPage(w(s),state),/data-action="new-assessment"/);
+ assert.match(renderPage(w(s),state),/data-action="open-markbook"/);
+ assert.match(renderPage(w(s),state),/Assessment tracker/);
+ assert.match(renderDetail(w(s),{kind:'mark-grid',id:bookId(cls,a3)}),/id="mark-grid-form"/);
+ assert.match(renderDetail(w(s),{kind:'mark-grid',id:bookId(cls,a3)}),/Q1/);
+});
+test('class teachers create their own assessments; only faculty leads create common definitions',()=>{
+ const s=create(),d=def(s);
+ assert.throws(()=>s.saveAssessment('avery',cls,null,d),/assigned teachers|faculty leadership/);
+ assert.throws(()=>s.saveAssessment('jordan',other,null,{...d,classIds:[cls,other]}),/Invalid class assignments/);
+ const single=s.saveAssessment('jordan',other,null,{...d,classIds:[other]});
+ assert.equal(s.snapshot().assessments.find(x=>x.id===single.id).status,'draft');
+ const common=s.saveAssessment('sam',cls,null,{...d,classIds:[cls,other]});
+ assert.ok(b(s).assessments.some(x=>x.id===common.id));
+ assert.ok(b(s,'sam','faculty',other).assessments.some(x=>x.id===common.id));
+ assert.equal(s.snapshot().results.filter(r=>r.assessmentId===common.id).length,0);
+ assert.throws(()=>s.saveAssessment('jordan',other,common.id,{...d,classIds:[other]}),/authorised/);
+ assert.throws(()=>s.publishAssessment('jordan',common.id,{confirmed:true}),/authorised/);
+ assert.throws(()=>s.publishAssessment('sam',common.id),/Confirm/);
+ s.publishAssessment('sam',common.id,{confirmed:true});
+ assert.equal(s.snapshot().assessments.find(x=>x.id===common.id).status,'published');
+});
+test('new units are shared course records controlled by faculty leaders',()=>{
+ const s=create();
+ assert.throws(()=>s.addUnit('jordan',other,'Fictional revision'),/faculty leadership/);
+ const u=s.addUnit('sam',cls,'Fictional revision');
+ assert.ok(b(s).units.some(x=>x.id===u.id));
+ assert.ok(b(s,'sam','faculty',other).units.some(x=>x.id===u.id));
+ assert.throws(()=>s.addUnit('sam',cls,'fictional revision'),/already exists/);
+ const saved=s.saveAssessment('sam',cls,null,def(s,{unitId:u.id}));
+ assert.ok(b(s).overview(u.id).assessments.some(a=>a.id===saved.id));
+});
+test('template reuse copies configuration without marks or publication/exclusion state',()=>{
+ const s=create(),template=b(s).template(a3);
+ const saved=s.saveAssessment('sam',cls,null,def(s,{title:'Reuse questions',mode:template.mode,items:template.items,bands:template.bands}));
+ const record=b(s).detail(saved.id);
+ assert.equal(record.assessment.mode,'questions');assert.equal(record.assessment.status,'draft');
+ assert.equal(record.assessment.includeInSummary,true);
+ assert.deepEqual(record.assessment.items.map(i=>i.label),template.items.map(i=>i.label));
+ assert.ok(record.rows.every(r=>r.status==='missing'));
+ assert.match(renderDetail(w(s),{kind:'assessment-copy',id:bookId(cls,a3)}),/No results, publication status or exclusions are copied/);
+});
+test('custom boundaries are isolated; published changes require confirmation and a reason',()=>{
+ const s=create(),base=b(s).defaultBands,bands=base.map((x,i)=>({...x,min:i===base.length-1?95:x.min}));
+ const id=s.saveAssessment('sam',cls,null,def(s,{bands})).id;
+ const custom=b(s).detail(id);
+ assert.deepEqual(custom.bands,bands);
+ assert.deepEqual(b(s).detail(a1).bands,base);
+ s.saveResultBatch('sam',id,[entry(e,'present',{item1:19})],{confirmed:true});
+ assert.equal(b(s).detail(id).rows.find(r=>r.enrolmentId===e).grade,'9');
+ const before=s.analytics().studentSummary(e).average;
+ s.publishAssessment('sam',id,{confirmed:true});
+ const after=s.analytics().studentSummary(e).average;
+ assert.notEqual(after,before);
+ const revised=def(s,{title:'New fictional assessment',weight:3,bands});
+ assert.throws(()=>s.saveAssessment('sam',cls,id,revised),/Confirm changes/);
+ s.saveAssessment('sam',cls,id,{...revised,confirmed:true,reason:'Demo weighting review'});
+ assert.equal(b(s).detail(id).assessment.weight,3);
+ assert.notEqual(s.analytics().studentSummary(e).average,after);
+ assert.equal(s.snapshot().audit.at(-1).reason,'Demo weighting review');
+});
+test('validation rejects invalid definitions and locks marked structures',()=>{
+ const s=create();
+ for(const input of [
+  def(s,{unitId:'12-maths-U1'}),def(s,{weight:0}),def(s,{mode:'questions'}),
+  def(s,{items:[{label:'Total',maxMarks:-1}]}),def(s,{bands:b(s).defaultBands.map(x=>({...x,min:0}))}),
+  def(s,{classIds:[cls,'12-maths-1']})
+ ])assert.throws(()=>s.saveAssessment('sam',cls,null,input));
+ const old=b(s).detail(a3);
+ const original={...old.assessment,bands:old.bands,confirmed:true,reason:'Demo revision'};
+ assert.throws(()=>s.saveAssessment('sam',cls,a3,{...original,items:old.assessment.items.map((i,n)=>n?i:{...i,maxMarks:i.maxMarks+1})}),/structure is locked/);
+ assert.throws(()=>s.saveAssessment('sam',cls,a3,{...original,classIds:[cls]}),/assignments are locked/);
+ assert.equal(s.revision(),0);
+});
+test('atomic batch save accepts zero and partial marks, rejects invalid and unauthorised rows without partial commits',()=>{
+ const s=create(),d=b(s).detail(a3),second=d.rows.find(r=>r.enrolmentId!==e).enrolmentId;
+ const original=s.snapshot(),rev=s.revision();
+ assert.throws(()=>s.saveResultBatch('sam',a3,[entry(e,'present',{q1:0}),entry(second,'present',{q1:99})],{confirmed:true,confirmClear:true}),/Invalid mark/);
+ assert.deepEqual(s.snapshot(),original);
+ assert.throws(()=>s.saveResultBatch('sam',a3,[entry('P122@11-maths','present',{q1:1})],{confirmed:true}),/teaching staff/);
+ assert.throws(()=>s.saveResultBatch('sam',a3,[entry(e,'present',{q1:0})],{confirmed:true}),/Confirm clearing/);
+ assert.throws(()=>s.saveResultBatch('sam',a3,[entry(e,'present',{q1:0})],{confirmed:true,confirmClear:true,expectedRevision:rev+1}),/changed since/);
+ s.saveResultBatch('sam',a3,[entry(e,'present',{q1:0}),entry(second,'present',{q1:6,q2:10,q3:14})],{confirmed:true,confirmClear:true,expectedRevision:rev});
+ assert.equal(s.revision(),rev+1);
+ assert.equal(s.analytics().resultFor(a3,e).status,'incomplete');
+ assert.equal(s.analytics().resultFor(a3,e).marks.q1,0);
+ assert.equal(s.analytics().resultFor(a3,second).percent,100);
+ assert.equal(s.snapshot().audit.at(-1).after.length,2);
+});
+test('a full batch updates class, student and home selectors, and exclusion preserves recorded marks',()=>{
+ const s=create(),id=s.saveAssessment('sam',cls,null,def(s)).id;
+ const before=s.analytics().studentSummary(e).average;
+ s.saveResultBatch('sam',id,[entry(e,'present',{item1:0})],{confirmed:true});
+ assert.equal(s.analytics().studentSummary(e).average,before);
+ assert.equal(b(s).detail(id).rows.find(r=>r.enrolmentId===e).percent,0);
+ s.publishAssessment('sam',id,{confirmed:true});
+ const result=s.analytics().studentSummary(e),workspace=w(s);
+ assert.equal(workspace.classRecord(cls).roster.find(p=>p.enrolmentId===e).average,result.average);
+ assert.equal(workspace.studentDetail('P121').subjects.find(p=>p.enrolmentId===e).average,result.average);
+ assert.equal(workspace.home().cohort.courses.find(c=>c.courseId==='11-maths').mean,s.analytics().cohortSummary(workspace.access.scopeEnrolments('faculty')).courses.find(c=>c.courseId==='11-maths').mean);
+ assert.throws(()=>s.setStudentExclusion('sam',id,e,{excluded:true,reason:'Demo',confirmed:false}),/confirmation/);
+ s.setStudentExclusion('sam',id,e,{excluded:true,reason:'Demo',confirmed:true});
+ assert.equal(s.analytics().resultFor(id,e).recordedPercent,0);assert.equal(s.analytics().studentSummary(e).average,before);
+ s.setStudentExclusion('sam',id,e,{excluded:false,reason:'Demo review',confirmed:true});
+ assert.throws(()=>s.setAssessmentInclusion('sam',id,{included:false,reason:'Demo',confirmed:true,phrase:''}),/Type EXCLUDE/);
+ s.setAssessmentInclusion('sam',id,{included:false,reason:'Diagnostic',confirmed:true,phrase:'EXCLUDE'});
+ assert.equal(s.analytics().studentSummary(e).average,before);
+ assert.equal(s.analytics().assessmentAnalysis(id).statistics.n,1);
+ assert.match(renderDetail(w(s),{kind:'assessment-exclusion',id:bookId(cls,id)}),/Potential pupils affected/);
+});
+test('strict CSV / Excel parsing, keyed preview, blanks leave unchanged and clear is explicit',()=>{
+ const s=create(),d=b(s).detail(a3),r=d.rows.find(r=>r.enrolmentId===e);
+ assert.deepEqual(parseDelimited('\uFEFF"Student ID","q1"\r\n"P121","0"'),[['Student ID','q1'],['P121','0']]);
+ assert.deepEqual(parseDelimited('"a,b","a""b"\r\n1,2'),[['a,b','a"b'],['1','2']]);
+ assert.throws(()=>parseDelimited('"unclosed'),/Unclosed/);
+ assert.throws(()=>parseDelimited('"a"x,b'),/Unexpected/);
+ assert.throws(()=>cellMark('1e2',d.assessment.items[0]),/number/);
+ const changes=importPreview('Student ID\tq1\tq2\nP121\t0\t',d.assessment,d.rows);
+ assert.equal(changes[0].marks.q1,0);assert.equal(changes[0].marks.q2,r.marks.q2);
+ assert.equal(s.revision(),0);
+ assert.throws(()=>importPreview('Student ID,q1\nP999,2',d.assessment,d.rows),/Unknown/);
+ assert.throws(()=>importPreview('Student ID,q1\nP121,1\nP121,2',d.assessment,d.rows),/Duplicate/);
+ assert.throws(()=>importPreview('Student ID,q1\nP121,9',d.assessment,d.rows),/between/);
+ assert.throws(()=>importPreview('Student ID,foo\nP121,1',d.assessment,d.rows),/Unknown item/);
+ const clear=importPreview('Student ID,q1\nP121,CLEAR',d.assessment,d.rows);
+ assert.equal(Object.hasOwn(clear[0].marks,'q1'),false);
+ assert.match(csvTemplate(d.assessment,d.rows),/"Student ID","Status","q1","q2","q3"/);
+ assert.deepEqual(parseItemLines('Q1 | 6 | Algebra | AO1'),[{label:'Q1',maxMarks:6,topic:'Algebra',ao:'AO1'}]);
+ assert.throws(()=>parseItemLines('Q1 | x'),/Invalid item/);
+ const p=previewRow(d.assessment,d.bands,'present',{q1:0,q2:0,q3:0});
+ assert.equal(p.percent,0);assert.equal(p.state,'scored');
+});
+test('read-only and partial cohorts cannot expose draft results or edit marks',()=>{
+ const s=create(),sl=w(s,'avery','school'),book=sl.markbook(cls);
+ assert.ok(book.assessments.every(a=>a.status==='published'));
+ assert.throws(()=>book.detail('11-maths-A5'),/outside/);
+ const html=renderDetail(sl,{kind:'mark-grid',id:bookId(cls,a3)});
+ assert.match(html,/Read-only view/);assert.doesNotMatch(html,/class="input mark-cell"/);
+ assert.doesNotMatch(html,/data-action="edit-assessment"/);
+ const tutor=createWorkspace(s,'jordan','tutor'),c=tutor.classRows().find(c=>c.partial&&c.subject.id==='science');
+ assert.ok(c);const tb=tutor.markbook(c.id);
+ assert.equal(tb.overview('').rows.length,c.students);
+ assert.ok(tb.overview('').rows.every(r=>tutor.access.isTutor(r.studentId)));
+ assert.ok(tb.assessments.every(a=>a.status==='published'));
+});
+test('batch edits and custom definitions persist across reload',()=>{
+ const map=new Map(),storage={getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,v)};
+ const s=create({storage}),id=s.saveAssessment('sam',cls,null,def(s,{weight:2})).id;
+ s.saveResultBatch('sam',id,[entry(e,'present',{item1:12})],{confirmed:true});
+ s.publishAssessment('sam',id,{confirmed:true});
+ const reloaded=create({storage});
+ assert.equal(b(reloaded).detail(id).assessment.weight,2);
+ assert.equal(b(reloaded).detail(id).rows.find(r=>r.enrolmentId===e).percent,60);
+ assert.equal(reloaded.snapshot().audit.length,3);
+});
