@@ -1,0 +1,67 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createStore} from '../v2/store.mjs';
+import {createWorkspace} from '../v2/workspace.mjs';
+import {gradebookColumns,draftFromResult,editDraftItem,entryKey} from '../v2/gradebook-entry.mjs';
+import {createEditHistory,selectedRectangle,copyRectangle,planRangeEdit,exchangeColumns,exportGradebook,planKeyedImport} from '../v2/gradebook-bulk.mjs';
+import {parseDelimited} from '../v2/markbook.mjs';
+const cls='11-maths-1',qla='11-maths-A3',a1='11-maths-A1';
+const overview=(s,staff='sam',scope='faculty')=>createWorkspace(s,staff,scope).markbook(cls).overview('');
+const csv=rows=>rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+test('history groups changes, restores invalid drafts, discards redo on a new edit and resets',()=>{
+ const h=createEditHistory(2),empty=new Map(),one=new Map([['r1',{raw:'4'}]]),two=new Map([...one,['r2',{raw:'invalid'}]]);
+ assert.equal(h.record(empty,one),true);assert.equal(h.record(one,two),true);
+ assert.equal(h.record(two,new Map(two)),false);
+ assert.deepEqual(h.undo(),one);assert.deepEqual(h.undo(),empty);
+ assert.equal(h.canUndo(),false);assert.deepEqual(h.redo(),one);
+ const next=new Map([['r1',{raw:'0'}]]);h.record(one,next);assert.equal(h.canRedo(),false);
+ assert.deepEqual(h.undo(),one);h.reset();assert.equal(h.canUndo(),false);assert.equal(h.canRedo(),false);
+});
+test('copy, fill and clear operate on one rectangular editable selection',()=>{
+ const s=createStore(),o=overview(s),cols=gradebookColumns(o,[qla]),col=cols.findIndex(c=>c.assessment.id===qla&&c.item?.id==='q1');
+ const rows=selectedRectangle(o,cols,{row:0,col},{row:1,col:col+1});
+ const values=c=>c.row===0?(c.col===col?'0':'10'):'1';
+ assert.equal(copyRectangle(rows,values),'0\t10\r\n1\t1');
+ assert.deepEqual(planRangeEdit(rows,'fill',values),[{row:1,col,raw:'0'},{row:1,col:col+1,raw:'10'}]);
+ assert.equal(planRangeEdit(rows,'clear',values).length,4);
+ assert.throws(()=>planRangeEdit(rows,'fill',()=>99),/between/);
+ assert.throws(()=>selectedRectangle(o,cols,{row:0,col},{row:0,col:col+3}),/calculated or read-only/);
+ assert.throws(()=>copyRectangle(rows,()=>'=1+1'),/Enter a number/);
+});
+test('saved gradebook CSV includes collapsed items, IDs and status; reordered partial imports use IDs',()=>{
+ const s=createStore(),o=overview(s),exported=parseDelimited(exportGradebook(o),',');
+ assert.equal(exported.length,o.rows.length+1);
+ assert.equal(exported[0][0],'Enrolment ID');
+ const headers=exchangeColumns(o),q1=headers.find(c=>c.a.id===qla&&c.item?.id==='q1').header,q2=headers.find(c=>c.a.id===qla&&c.item?.id==='q2').header;
+ assert.ok(exported[0].includes(q1));assert.ok(exported[0].includes(q2));
+ assert.throws(()=>planKeyedImport(o,exportGradebook(o)),/No changed results/);
+ const [p1,p2]=o.rows;
+ const raw=csv([['Enrolment ID',q1,q2],[p2.enrolmentId,0,10],[p1.enrolmentId,6,'']]);
+ const changes=planKeyedImport(o,raw);
+ assert.equal(changes.find(c=>c.entry.enrolmentId===p2.enrolmentId).entry.marks.q1,0);
+ assert.equal(changes.find(c=>c.entry.enrolmentId===p1.enrolmentId).entry.marks.q2,p1.results[qla].marks.q2);
+ s.saveGradebookBatch('sam',cls,changes.map(c=>c.entry),{confirmed:true,confirmClear:true});
+ assert.equal(s.analytics().resultFor(qla,p2.enrolmentId).marks.q1,0);
+});
+test('import rejects duplicates, mismatched pupils, unknown headers, invalid marks, conflicts and read-only changes atomically',()=>{
+ const s=createStore(),o=overview(s),p=o.rows[0],headers=exchangeColumns(o),mark=headers.find(c=>c.a.id===qla&&c.item?.id==='q1').header,status=headers.find(c=>c.a.id===qla&&!c.item).header;
+ const input=(...rows)=>csv([['Enrolment ID',mark],...rows]);
+ assert.throws(()=>planKeyedImport(o,input([p.enrolmentId,0],[p.enrolmentId,1])),/Duplicate Enrolment/);
+ assert.throws(()=>planKeyedImport(o,input(['unknown',0])),/Unknown or out-of-scope/);
+ assert.throws(()=>planKeyedImport(o,csv([['Enrolment ID','Student ID',mark],[p.enrolmentId,'other',0]])),/Student ID does not match/);
+ assert.throws(()=>planKeyedImport(o,csv([['Enrolment ID','obsolete'],[p.enrolmentId,0]])),/Unknown or changed/);
+ assert.throws(()=>planKeyedImport(o,input([p.enrolmentId,99])),/between/);
+ assert.throws(()=>planKeyedImport(o,csv([['Enrolment ID',mark,status],[p.enrolmentId,1,'absent']])),/conflicts/);
+ assert.throws(()=>planKeyedImport(overview(s,'avery','school'),input([p.enrolmentId,0])),/read-only/);
+ assert.equal(s.revision(),0);
+ const clear=planKeyedImport(o,input([p.enrolmentId,'CLEAR']));
+ assert.equal(Object.hasOwn(clear[0].entry.marks,'q1'),false);assert.ok(clear[0].clears);
+});
+test('keyed import respects other staged item changes and explicit status',()=>{
+ const s=createStore(),o=overview(s),p=o.rows[0],a=o.assessments.find(x=>x.id===qla),r=p.results[qla],headers=exchangeColumns(o),q2=headers.find(c=>c.a.id===qla&&c.item?.id==='q2').header,status=headers.find(c=>c.a.id===qla&&!c.item).header;
+ const draft=editDraftItem(a,draftFromResult(a,r),'q1','0');
+ const changes=planKeyedImport(o,csv([['Enrolment ID',q2],[p.enrolmentId,10]]),(a,r)=>draft);
+ assert.equal(changes[0].entry.marks.q1,0);assert.equal(changes[0].entry.marks.q2,10);
+ const absent=planKeyedImport(o,csv([['Enrolment ID',status],[p.enrolmentId,'absent']]));
+ assert.equal(absent[0].entry.status,'absent');assert.deepEqual(absent[0].entry.marks,{});
+});
