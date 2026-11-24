@@ -126,3 +126,25 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
 .highlight-list .inline-link{font-size:11px;overflow-wrap:anywhere}
 @media(max-width:900px){.analysis-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.analysis-field .select{max-width:100%}.analysis-field .input{max-width:145px}.analysis-bar{grid-template-columns:minmax(65px,1fr) minmax(40px,1fr) auto}.highlight-list{grid-template-columns:1fr}}
+
+.frequency-chart{position:relative;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));padding:22px 10px 4px 0;min-height:155px}
+.frequency-bin{display:flex;flex-direction:column;align-items:stretch;border:0;border-radius:0;background:transparent;padding:0;min-width:0;color:var(--text)}
+.frequency-column{height:105px;position:relative;border-bottom:1px solid var(--muted)}
+.frequency-fill{position:absolute;inset:auto 0 0;background:#267f7c;border-inline:1px solid white}
+.frequency-count{position:absolute;left:0;right:0;font-size:10px;line-height:15px;text-align:center;font-variant-numeric:tabular-nums}
+.frequency-label{font-size:10px;text-align:left;transform:translateX(-2px);padding-top:4px}
+.frequency-bin:hover .frequency-fill{background:#125c60}
+.frequency-bin:hover{background:#eff6f5}
+.frequency-end{font-size:10px;position:absolute;right:0;bottom:4px}
+@media print{
+ body{background:white!important}
+ .sidebar,.topbar,.demo-footer,.tabs,.analysis-controls button,.analysis-subtoolbar .btn,.analysis-context .btn,.page-heading .page-actions,.help,.tooltip,.toast,dialog{display:none!important}
+ .app-shell,.app-main,.workspace{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:0!important;padding:0!important}
+ .workspace-inner{max-width:none!important}
+ .analysis-grid{display:block}
+ .analysis-panel,.metric{break-inside:avoid;margin-bottom:10px;box-shadow:none!important}
+ .analysis-table{max-height:none!important;overflow:visible!important}
+ .data-table th,.data-table td{position:static!important;white-space:normal!important}
+ .analysis-bar,.frequency-fill,.boxplot,.trend-chart{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .academic-analysis:before{content:"JIS Hub — Fictional demonstration data";font-size:11px;font-weight:700}
+}
