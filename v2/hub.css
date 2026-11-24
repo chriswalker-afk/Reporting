@@ -210,3 +210,52 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
 .case-history-meta span{font-size:10px;color:var(--muted)}
 .case-history-event p{margin:4px 0}
 @media(max-width:600px){.case-steps{gap:3px}.case-step{padding:6px 4px;gap:4px}.case-step>span{width:19px;height:19px;font-size:11px}.case-step strong{font-size:10px}.case-strategies{grid-template-columns:1fr}.case-context .inline-link{margin-left:0}}
+
+/* V2-09 integration polish: keep controls and scroll regions usable at narrow widths. */
+.app-main,.workspace,.workspace-inner,.surface,.panel-body,.home-grid>*,.home-lower>*{min-width:0}
+.table-scroll{max-width:100%;overscroll-behavior-inline:contain}
+.table-scroll:focus-visible{outline-offset:-3px}
+.tabs{scrollbar-width:thin;flex-shrink:0}
+.tab:focus-visible{outline-offset:-3px}
+.drawer-body{overscroll-behavior:contain}
+.drawer-section .content,.comment-record,.case-history-event{overflow-wrap:anywhere}
+.drawer-section .content p,.case-history-event p,.comment-record p{white-space:pre-wrap}
+.case-list-actions .btn{white-space:normal;text-align:left}
+.data-table .sticky-first{max-width:200px}
+.data-table .cell-sub{white-space:normal}
+.form-stack select{max-width:100%}
+.form-stack label,.form-stack fieldset{min-width:0}
+.toast{max-width:calc(100vw - 24px);overflow-wrap:anywhere}
+@media(max-width:760px){
+ .topbar{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);align-items:center;gap:6px;padding:7px 10px}
+ .topbar>.mobile-toggle{grid-column:1;grid-row:1}
+ .topbar .search-launch{grid-column:2/4;grid-row:1;min-width:0;width:100%}
+ .topbar-spacer{display:none}
+ .topbar-field{grid-column:1/3;grid-row:2;min-width:0}
+ .topbar-field .select{width:100%;max-width:none}
+ .staff-field{grid-column:3;grid-row:2;min-width:0}
+ .staff-field>div{width:100%;min-width:0}
+ .staff-field .select{width:100%;max-width:none}
+ .staff-field .roles{max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .page-heading{flex-wrap:wrap}
+ .page-heading .page-actions{max-width:100%;flex-wrap:wrap}
+ .toolbar .select,.toolbar .input{max-width:100%}
+ .btn,.tab{min-height:34px}
+ .entry-table .mark-cell{width:58px}
+ .detail-dialog .drawer-footer{padding:8px 12px;gap:5px}
+ .detail-dialog .dialog-head{padding:10px 12px}
+ .profile-navigation .analysis-field{max-width:100%}
+}
+@media(max-width:390px){
+ .topbar-field label{display:none}
+ .demo-footer{gap:6px;flex-wrap:wrap}
+ .metrics .metric-value{font-size:21px}
+ .profile-topic{grid-template-columns:minmax(70px,1fr) minmax(30px,.7fr) auto}
+ .profile-topic>span:last-child{grid-column:1/-1}
+}
+@media print{
+ .floating-tooltip,.skip-link,.toast,.demo-footer{display:none!important}
+ .workspace{height:auto!important;max-height:none!important;overflow:visible!important}
+ .table-scroll{max-height:none!important;overflow:visible!important}
+ .data-table{white-space:normal}
+}
