@@ -129,7 +129,7 @@ export function changeStudyPlan(data,access,staffId,caseId,id,action,input){
   else{plan.reviewDate=date(input.reviewDate,data.asOf,true);plan.completedDate=null;}
   plan.evaluation=evaluation;plan.updatedDate=data.asOf;
   (plan.history??=[]).push({actorStaffId:staffId,date:data.asOf,outcome:input.outcome,text:evaluation});
-  record(c,data,staffId,action,'Study plan review ('+input.outcome+'): '+evaluation,{studyPlanId:plan.id,outcome:input.outcome});
+  record(c,data,staffId,action,'Study plan review ('+input.outcome+'): '+evaluation,{studyPlanId:plan.id,outcome:input.outcome,studyPlan:{target:plan.target,actions:[...plan.actions],reviewDate:plan.reviewDate,ownerStaffId:plan.ownerStaffId}});
  }
  return {before,after:{case:c,plan}};
 }
