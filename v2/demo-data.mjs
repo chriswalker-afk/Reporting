@@ -116,7 +116,7 @@ export function createDemoData(){
     const e=enrolment(p,c),classRecord=data.classes.find(x=>x.id===e.classId),owner=classRecord.teacherIds[0];
     const record=add('interventions',{id,enrolmentId:e.id,ownerStaffId:owner,state,wave,
       reason:'Demo academic support: consolidate prerequisite knowledge.',
-      strategies:['Targeted practice','Review of worked examples'],
+      strategies:['Targeted practice','Review of worked examples'],wave1Plan:'Demo: model worked examples and check independent practice weekly.',
       openedDate:'2026-11-02',updatedDate:'2026-11-20',reviewDate,evaluation:state==='closed'?'Improved confidence in the practice tasks.':null,
       facultyPlan:wave>=2&&state!=='wave2_requested'?'Weekly subject support and a progress review.':null,
       houseRequest:wave>=2&&state!=='wave2_requested'?'Agree a study routine with the tutor.':null,
