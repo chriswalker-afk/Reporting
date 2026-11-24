@@ -73,7 +73,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   dirty=false;revision=getStore().revision();stagedImport=null;activeDetail=null;buffer=new Map();summary=null;
   if(getDetail()?.kind==='mark-grid'){activeDetail=detail();for(const row of rows())updateRow(row,activeDetail);refreshSummary();}
  }
- function focusCell(input){if(!input)return false;input.focus();input.select();return true;}
+ function focusCell(input){if(!input)return false;input.focus();input.select();onFocus(input);return true;}
  function focusRequested(){
   if(getDetail()?.kind!=='mark-grid')return;
   const [,,id]=unpackBookId(getDetail().id);if(!id)return;
