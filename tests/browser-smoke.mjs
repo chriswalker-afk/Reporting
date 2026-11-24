@@ -71,11 +71,21 @@ try{
   return res.result.value;
  };
  const q=selector=>evaluate(sel=>Boolean(document.querySelector(sel)),selector);
+ // Drive the real visible gradebook panel, not a hidden element's click handler.
+ const revealGradebookControl=async selector=>evaluate(sel=>{
+  const el=document.querySelector(sel),section=el?.closest('[data-gradebook-focus-section]');
+  if(section&&getComputedStyle(section).display==='none'){
+   const button=document.querySelector('[data-action="gradebook-focus-panel"][data-id="'+CSS.escape(section.dataset.gradebookFocusSection)+'"]');
+   if(!button)throw Error('Missing gradebook panel for '+sel);
+   button.click();
+  }
+ },selector);
  const click=async(selector)=>{
+  await revealGradebookControl(selector);
   await evaluate(sel=>{const el=document.querySelector(sel);if(!el)throw Error('Missing control: '+sel);if(el.disabled)throw Error('Disabled control: '+sel);el.focus();el.click();},selector);
  };
  const action=(name,id,within='')=>click(within+'[data-action="'+name+'"]'+(id===undefined?'':'[data-id='+JSON.stringify(id)+']'));
- const fill=async(selector,value)=>evaluate((sel,val)=>{const el=document.querySelector(sel);if(!el)throw Error('Missing input: '+sel);el.focus();if(el.type==='checkbox')el.checked=Boolean(val);else el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));},selector,value);
+ const fill=async(selector,value)=>{await revealGradebookControl(selector);return evaluate((sel,val)=>{const el=document.querySelector(sel);if(!el)throw Error('Missing input: '+sel);el.focus();if(el.type==='checkbox')el.checked=Boolean(val);else el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));},selector,value);};
  const text=sel=>evaluate(s=>document.querySelector(s)?.textContent??'',sel);
  const heading=()=>text('#workspace h1');
  const detail=()=>text('#detail-title');
@@ -698,7 +708,7 @@ try{
  await fill(firstYear,'9');
  await evaluate(sel=>{document.querySelector(sel).dataset.testDisclosureIdentity='original';},firstYear);
  const disclosurePending=await text('#gradebook-save-status');
- await toggleDisclosure('gradebook-help');
+ await action('gradebook-focus-panel','help');
  assert.equal(await disclosureOpen('gradebook-help'),true);
  assert.match(await text('.gradebook-instructions'),/Ctrl \/ Cmd\+S saves/);
  await toggleDisclosure('page-context');
@@ -708,7 +718,7 @@ try{
  assert.equal(await disclosureOpen('gradebook-help'),true);
  assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testDisclosureIdentity,firstYear),'original');
  assert.equal(await text('#gradebook-save-status'),disclosurePending);
- await toggleDisclosure('gradebook-help');await toggleDisclosure('page-context');
+ await action('gradebook-focus-panel','help');await toggleDisclosure('page-context');
  await action('gradebook-undo');
  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'0');
  await viewport(1366,768);
@@ -1096,6 +1106,47 @@ try{
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'expanded');
  assert.ok(await visible('#scope'));assert.ok(await visible('#staff'));assert.ok(await visible('#workspace-density'));
  await action('reset-workspace-display');
+ // PR37: normal gradebook is a primary working area, not a pile of permanent toolbars.
+ await viewport(1366,768);
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded compact gradebook');
+ await open('v2/#classes/11-maths-1/markbook');
+ const gradebookDimensions=()=>evaluate(()=>{
+  const table=document.querySelector('.gradebook-scroll'),row=document.querySelector('.gradebook-table tbody tr'),head=document.querySelector('.gradebook-table thead'),bounds=table.getBoundingClientRect(),first=row.getBoundingClientRect();
+  return {height:table.clientHeight,viewport:innerHeight,firstRowTop:first.top,firstRowBottom:first.bottom,headerHeight:head.getBoundingClientRect().height,tableBottom:bounds.bottom,fullRows:Math.floor((Math.min(bounds.bottom,innerHeight)-first.top)/row.getBoundingClientRect().height)};
+ });
+ for(const [width,height] of [[1366,768],[1280,720],[1024,768]]){
+  await viewport(width,height);
+  assert.equal(await isFocused(),false);
+  assert.equal(await visible('.gradebook-bulk-tools'),false);
+  assert.equal(await visible('.gradebook-layout-bar'),false);
+  assert.equal(await visible('.gradebook-assessment-options'),false);
+  assert.equal(await visible('.gradebook-instructions'),false);
+  assert.ok(await visible('.gradebook-focus-panel-buttons'));
+  assert.ok(await visible('[data-action="gradebook-save"]'));
+  const d=await gradebookDimensions();
+  assert.ok(d.firstRowBottom<=d.viewport,'First pupil must be visible in normal view: '+JSON.stringify(d));
+  assert.ok(d.height>=height*.4,'Table should receive at least 40% of the school desktop viewport: '+JSON.stringify(d));
+  assert.ok(d.fullRows>=5,'Normal mode must display at least five full pupil rows: '+JSON.stringify(d));
+  console.log('Normal gradebook',width,height,JSON.stringify(d));
+ }
+ await viewport(1366,768);
+ const streamlinedSavedMark=await evaluate(sel=>document.querySelector(sel).value,firstYear);
+ await fill(firstYear,streamlinedSavedMark==='17'?'18':'17');
+ const streamlinedDraft=await evaluate(sel=>document.querySelector(sel).value,firstYear);
+ await evaluate(sel=>{document.querySelector(sel).dataset.testStreamlinedIdentity='original';},firstYear);
+ for(const panel of ['assessment','layout','tools','help']){
+  await action('gradebook-focus-panel',panel);
+  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.gradebookFocusPanel),panel);
+  assert.ok(await visible('[data-gradebook-focus-section="'+panel+'"]'));
+  assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testStreamlinedIdentity,firstYear),'original');
+  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),streamlinedDraft);
+ }
+ await evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})));
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.gradebookFocusPanel),'');
+ assert.equal(await isFocused(),false);
+ await action('gradebook-undo');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),streamlinedSavedMark);
+ assert.match(await text('#gradebook-save-status'),/All changes saved/);
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
