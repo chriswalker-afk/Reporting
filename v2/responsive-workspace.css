@@ -111,7 +111,7 @@
   .demo-footer{font-size:10px}
  }
  @media(max-height:500px){
-  :root{--workspace-table-min:140px}
+  :root{--workspace-table-min:165px}
   .topbar{padding-block:4px;gap:4px}
   .topbar .staff-field .roles{display:none}
   .demo-footer{padding-block:3px;font-size:10px}
