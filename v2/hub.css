@@ -55,3 +55,31 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
 .comment-meta{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
 .comment-record p{margin:6px 0;overflow-wrap:anywhere}
 @media(max-width:760px){.roster-table{max-height:55dvh}.column-toolbar .btn{margin-left:0}.register-filters .input{width:100%}.register-filters .select{max-width:145px}}
+
+/* V2-05 assessment tracker */
+.markbook-toolbar{gap:8px;flex-wrap:wrap}
+.markbook-toolbar .select{max-width:min(260px,100%)}
+.reuse-control{display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap}
+.markbook-summary{max-height:calc(100dvh - 235px);min-height:170px}
+.assessment-heading{min-width:165px;white-space:normal}
+.assessment-heading .tags{margin-top:5px}
+.scope-inline{margin:8px 12px}
+.detail-dialog.wide-markbook{width:min(1250px,100vw)}
+.markbook-detail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.entry-table{max-height:52dvh;border:1px solid var(--border);border-radius:7px}
+.entry-table .data-table td{padding:5px 6px}
+.entry-table .data-table th{white-space:normal;min-width:66px}
+.entry-table .data-table .sticky-first{min-width:135px;white-space:nowrap}
+.mark-cell{width:68px;height:31px;text-align:right;padding:3px 6px;font-variant-numeric:tabular-nums}
+.mark-cell[aria-invalid=true]{border:2px solid var(--danger);background:var(--danger-bg)}
+.inactive-mark-row .mark-cell{background:#f0f3f5;color:var(--muted)}
+.entry-status{height:31px;font-size:11px}
+.mark-save-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#f5f8f9;border:1px solid var(--border);border-radius:7px;padding:8px 10px}
+.mark-save-bar .btn{margin-left:auto}
+.boundary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(75px,1fr));gap:8px}
+.boundary-grid .input{min-width:0;text-align:right}
+.import-panel{margin-top:15px}
+.import-panel summary{cursor:pointer;font-weight:700;padding:10px 12px;background:#f7f9fa}
+.import-preview-list{max-height:150px;overflow:auto;border:1px solid var(--border);padding:8px;margin:8px 0}
+.import-preview-list p{padding:4px 0;border-bottom:1px solid var(--line)}
+@media(max-width:760px){.markbook-summary{max-height:54dvh}.entry-table{max-height:50dvh}.markbook-toolbar .select{max-width:100%}.mark-save-bar .btn{margin-left:0}}

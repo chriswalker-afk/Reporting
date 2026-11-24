@@ -1,6 +1,7 @@
 import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,displayDate,gradeGap,matchText,sortRows,routeHash} from './workspace.mjs';
 import {EVENTS,safeLink} from './communications.mjs';
 import {GROUPS,DEFAULT_GROUPS,registerColumns,filterRegister} from './class-overview.mjs';
+import {classTabs,renderMarkbook,renderBookDetail} from './markbook-views.mjs';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={
  home:'M3 10 12 3l9 7v10h-6v-7H9v7H3z',notice:'M4 11V8l15-5v14L4 13z M7 14l2 6h4l-2-5 M19 8h2',
@@ -54,7 +55,7 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Class overview</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Assessment tracker</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
  return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
@@ -120,6 +121,8 @@ export function renderClasses(w,s){
   '<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Classes with pupils below target</label>'+btn('Clear filters','clear-register-filters','','btn-quiet')+'<span class="count">'+rows.length+' classes</span></div>'+table('classes',classColumns,rows,classCell,s)+'</section>'+note('Means and coverage use the selected pupil scope. Select a class to open its Student Information tracker.');
  }
  const r=w.classRecord(s.classId),selected=filterRegister(r.roster,s,matchText),groups=s.columnGroups??DEFAULT_GROUPS;
+ const headingMarkup=heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,quick+previous+next+btn('All classes','go-classes','','','back'),'Classes');
+ if(s.classTab==='markbook')return headingMarkup+classTabs('markbook')+renderMarkbook(w,s,r);
  const cols=registerColumns(groups),gap=v=>'<span class="'+(v!==null&&v<0?'negative':v!==null&&v>=0?'positive':'')+'">'+esc(gradeGap(v))+'</span>';
  const cell=(p,k)=>{
   if(k==='name')return link(p.name,'open-student',p.studentId);
@@ -141,9 +144,9 @@ export function renderClasses(w,s){
   if(k==='track')return tag(p.track,p.onTrack===null?'':p.onTrack?'tag-success':'tag-warning');
   return esc(p[k]??'—');
  };
- return heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,quick+previous+next+btn('All classes','go-classes','','','back'),'Classes')+
+ return headingMarkup+
  '<div class="metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>'+
- '<div class="tabs" aria-label="Class views"><button class="tab" aria-pressed="true">Student information</button>'+['Assessment tracker','Student analysis','Class analysis','Faculty analysis'].map(t=>'<button class="tab" disabled title="Available in a later development pass">'+esc(t)+'</button>').join('')+'</div>'+
+ classTabs('information')+
  (r.partial?'<div class="info-box">This register is restricted to pupils in your selected scope. '+help('partial','partial class')+'</div>':'')+
  '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil or tutor group')+
  filter('tutor-filter',s.tutorFilter,'All tutor groups',unique(r.roster,'tutorGroupId'))+filter('house-filter',s.houseFilter,'All Houses',unique(r.roster,'house'))+
@@ -189,6 +192,9 @@ const close=()=>'<button type="button" class="btn btn-icon" data-action="close-d
 const drawer=(title,sub,body,footer='')=>'<div class="dialog-head"><div><h2 id="detail-title">'+esc(title)+'</h2><p class="subtitle">'+esc(sub)+'</p></div>'+close()+'</div><div class="drawer-body">'+body+'</div><div class="drawer-footer">'+footer+btn('Close','close-detail')+'</div>';
 export function renderDetail(w,detail){
  const {kind,id}=detail;
+ if(['unit-form','assessment-new','assessment-copy','assessment-edit','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
+  const d=renderBookDetail(w,detail);return drawer(d.title,d.sub,d.body,d.footer??'');
+ }
  if(kind==='student'){
   const d=w.studentDetail(id),p=d.student;
   const academics=d.subjects.length?'<div class="table-scroll"><table class="data-table"><thead><tr><th>Subject / class</th><th>Average</th><th>Grade</th><th>MTG</th><th>Pred.</th></tr></thead><tbody>'+d.subjects.map(r=>'<tr><td>'+link(r.classInfo.subject.name,'open-class',r.classId)+'<span class="cell-sub">'+esc(r.classInfo.code)+'</span></td><td>'+pct(r.average)+'</td><td>'+esc(r.grade??'—')+'</td><td>'+esc(r.minimumGrade??'—')+'</td><td>'+(r.editable?link(r.predictedGrade??'Set','edit-prediction',r.enrolmentId):esc(r.predictedGrade??'—'))+'</td></tr>').join('')+'</tbody></table></div>':empty('No academic results in your scope');

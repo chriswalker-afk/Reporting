@@ -1,5 +1,6 @@
 import {finite} from './model.mjs';
 import {projectRegisterRow,sortValue} from './class-overview.mjs';
+import {createMarkbook} from './markbook.mjs';
 export const NAV=[
   ['home','Home','home'],['notices','Notices','notice'],['classes','Classes','class'],
   ['students','Students','students'],['intervention','Intervention','support']
@@ -131,6 +132,12 @@ export function createWorkspace(store,staffId,requestedScope){
   const classIdsFor=ids=>new Set(data.enrolments.filter(e=>ids.has(e.id)).map(e=>e.classId));
   const scopedClassIds=classIdsFor(scopeIds),accessibleClassIds=classIdsFor(accessibleIds);
   const classCache=new Map();
+  const markbooks=new Map();
+  function markbook(id){
+    if(!scopedClassIds.has(id))throw Error('Class outside current scope');
+    if(!markbooks.has(id))markbooks.set(id,createMarkbook(data,access,id,scope));
+    return markbooks.get(id);
+  }
   function classRecord(id){
     if(!scopedClassIds.has(id))throw new Error('Class is not in the selected scope');
     if(classCache.has(id))return classCache.get(id);
@@ -210,6 +217,6 @@ export function createWorkspace(store,staffId,requestedScope){
     return get({faculty:'faculties',house:'houses',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
-    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,subjectDetail,noteDetail,
+    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,subjectDetail,noteDetail,markbook,
     caseRows,caseDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
 }

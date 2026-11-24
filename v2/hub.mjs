@@ -1,4 +1,6 @@
 import {createStore} from './store.mjs';
+import {bookId,unpackBookId} from './markbook-views.mjs';
+import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {GROUPS,DEFAULT_GROUPS} from './class-overview.mjs';
 import {createWorkspace,parseRoute,routeHash,HELP} from './workspace.mjs';
 import {sidebar,topbar,renderPage,renderDetail,renderSearchResults,esc,icon} from './views.mjs';
@@ -8,11 +10,12 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{}};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{},classTab:'information',unitId:''};
+const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
 function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
-let storageIssue='';
+let storageIssue='',suspendDetailRefresh=false;
 function boot(){
  try{store=createStore({storage:window.localStorage});}
  catch(error){storageIssue='Saved demo data could not be loaded. This session uses fresh fictional data; existing storage was not overwritten. '+String(error.message||error);store=createStore();}
@@ -37,21 +40,21 @@ function render({top=false,keepFocus=false}={}){
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  if(oldId){const next=byId(oldId);next?.focus({preventScroll:true});if(caret!==null&&next?.type==='search')try{next.setSelectionRange(caret,caret);}catch{}}
- if(detail&&detailDialog.open)try{refreshDetail();}catch{closeDetail();}
+ if(detail&&detailDialog.open&&!suspendDetailRefresh)try{refreshDetail();}catch{closeDetail();}
 }
 function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
 function clearFilters(){clearRegisterFilters();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
-function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false}={}){
- closeDetail(false);closeSearch(false);nav.dataset.open='false';
+function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information'}={}){
+ if(!closeDetail(false))return;closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
- state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;
+ state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;state.classTab=classTab;state.unitId='';
  const hash=routeHash(page,classId);if(location.hash!==hash)history.pushState(null,'',hash);
  render({top:true});main.focus({preventScroll:true});
 }
 function openClass(id,below=false){
  if(!w.accessibleClassIds.has(id)){notify('Class outside your accessible demo scope.');return;}
  if(!w.scopedClassIds.has(id))state.scope='accessible';
- navigate('classes',{classId:id,below});
+ navigate('classes',{classId:id,below,classTab:!below&&state.page==='classes'&&state.classId?state.classTab:'information'});
 }
 function focusToken(el){return el?{element:el,id:el.id,action:el.dataset?.action,record:el.dataset?.id}:null;}
 function restoreFocus(token){
@@ -64,9 +67,11 @@ function openDetail(kind,id){
  const next={kind,id};
  try{
   const markup=renderDetail(w,next);
+  if(!grid.canLeave())return;
+  detailDialog.classList.toggle('wide-markbook',kind==='mark-grid');
   if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
-  detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
+  grid.init();detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
  }catch(error){notify(String(error.message||error));}
 }
 function addBack(){
@@ -77,19 +82,22 @@ function addBack(){
 }
 function refreshDetail(){
  const scroll=detailDialog.querySelector('.drawer-body')?.scrollTop||0;
- detailDialog.innerHTML=renderDetail(w,detail);addBack();
+ detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
+ detailDialog.innerHTML=renderDetail(w,detail);addBack();grid.init();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=scroll;
 }
 function detailBack(){
  if(!detailStack.length){closeDetail();return;}
+ if(!grid.canLeave())return;
  const old=detailStack.pop();detail={kind:old.kind,id:old.id};refreshDetail();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=old.scroll;
  detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});
 }
 function closeDetail(restore=true){
+ if(!grid.canLeave())return false;
  detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
  if(restore)restoreFocus(drawerReturn);
- drawerReturn=null;
+ drawerReturn=null;detailDialog.classList.remove('wide-markbook');return true;
 }
 function openSearch(){
  if(searchDialog.open)return;
@@ -141,6 +149,27 @@ document.addEventListener('click',event=>{
   case 'close-search':closeSearch();break;
   case 'search-result':pickSearch(id);break;
   case 'open-class':openClass(id);break;
+  case 'class-tab':
+    state.classTab=id==='markbook'?'markbook':'information';render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
+  case 'new-unit':openDetail('unit-form',id);break;
+  case 'new-assessment':openDetail('assessment-new',id);break;
+  case 'reuse-assessment':{
+    const selected=byId('reuse-assessment')?.value;
+    if(!selected){notify('Choose an assessment to reuse.');break;}
+    openDetail('assessment-copy',bookId(unpackBookId(id)[0],selected));break;
+  }
+  case 'open-markbook':openDetail('mark-grid',id);break;
+  case 'edit-assessment':openDetail('assessment-edit',id);break;
+  case 'publish-assessment':openDetail('publish-assessment',id);break;
+  case 'student-exclusion':openDetail('student-exclusion',id);break;
+  case 'assessment-exclusion':openDetail('assessment-exclusion',id);break;
+  case 'reset-boundaries':{
+    const b=w.markbook(unpackBookId(detail.id)[0]);detailDialog.querySelectorAll('[name="boundary"]').forEach((el,i)=>el.value=b.defaultBands[i].min);break;
+  }
+  case 'preview-mark-import':try{grid.previewImport();grid.error('');}catch(error){grid.error(error.message);notify(error.message);}break;
+  case 'apply-mark-import':try{grid.applyImport();grid.error('');}catch(error){grid.error(error.message);}break;
+  case 'copy-mark-template':grid.copyTemplate();break;
+  case 'download-mark-template':grid.downloadTemplate();break;
   case 'open-below':openClass(id,true);break;
   case 'go-classes':navigate('classes');break;
   case 'go-below':navigate('classes',{below:true});break;
@@ -198,13 +227,18 @@ document.addEventListener('click',event=>{
   case 'confirm-reset':try{store.reset({confirmed:true});resetDialog.close();notify('Fictional demo data restored.');}catch(error){notify(String(error.message||error));}break;
  }
 });
+document.addEventListener('paste',event=>grid.paste(event));
+window.addEventListener('beforeunload',event=>{if(grid.isDirty()){event.preventDefault();event.returnValue='';}});
 document.addEventListener('input',event=>{
+ if(grid.onInput(event.target))return;
  if(event.target.id==='global-query'){byId('search-results').innerHTML=renderSearchResults(w,event.target.value);return;}
  if(event.target.id==='page-query'){state.query=event.target.value;render({keepFocus:true});}
 });
 document.addEventListener('change',event=>{
  const el=event.target;
- if(el.id==='staff'){closeDetail(false);clearFilters();state.staffId=el.value;state.columnGroups=loadColumns(state.staffId);state.scope=null;state.classId=null;state.page='home';history.replaceState(null,'',routeHash('home'));render({top:true});byId('staff')?.focus({preventScroll:true});}
+ if(grid.onChange(el))return;
+ if(el.id==='markbook-unit'){state.unitId=el.value;render({keepFocus:true});return;}
+ if(el.id==='staff'){if(!closeDetail(false)){el.value=state.staffId;return;}clearFilters();state.staffId=el.value;state.columnGroups=loadColumns(state.staffId);state.scope=null;state.classId=null;state.page='home';history.replaceState(null,'',routeHash('home'));render({top:true});byId('staff')?.focus({preventScroll:true});}
  if(el.id==='scope'){state.scope=el.value;clearFilters();render({top:true});byId('scope')?.focus({preventScroll:true});}
  if(el.id==='quick-class'){if(el.value)openClass(el.value);else navigate('classes');}
  if(el.id==='flag-filter'){state.flag=el.value;render({keepFocus:true});}
@@ -216,6 +250,40 @@ document.addEventListener('change',event=>{
  if(el.id==='deadline-filter'){state.deadlineFilter=el.value;render({keepFocus:true});}
 });
 document.addEventListener('submit',event=>{
+ if(event.target.id==='mark-grid-form'){
+  event.preventDefault();try{grid.save(event.target);grid.error('');}catch(error){grid.error(error.message);}return;
+ }
+ if(['unit-form','assessment-form','assessment-guard-form'].includes(event.target.id)){
+  event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
+  suspendDetailRefresh=true;
+  try{
+   if(!record)throw Error('No selected assessment record');
+   const [classId,assessmentId,enrolmentId]=unpackBookId(record.id),book=w.markbook(classId);
+   if(record.kind==='unit-form'){
+    const saved=store.addUnit(state.staffId,classId,String(form.get('title')??''));
+    state.unitId=saved.id;closeDetail();render();notify('Curriculum unit added.');return;
+   }
+   if(['assessment-new','assessment-copy','assessment-edit'].includes(record.kind)){
+    const old=record.kind==='assessment-edit'?book.detail(assessmentId):null;
+    const input=definitionInput(form,book,old);
+    const saved=store.saveAssessment(state.staffId,classId,old?assessmentId:null,input);
+    state.unitId=input.unitId;render();
+    if(old&&detailStack.length)detailBack();else{closeDetail();openDetail('mark-grid',bookId(classId,saved.id));}
+    notify(old?'Assessment definition updated.':'Draft created. Enter marks or publish when ready.');return;
+   }
+   const d=book.detail(assessmentId),confirmed=form.has('confirmed'),reason=String(form.get('reason')??'');
+   if(record.kind==='publish-assessment')store.publishAssessment(state.staffId,assessmentId,{confirmed});
+   else if(record.kind==='assessment-exclusion')store.setAssessmentInclusion(state.staffId,assessmentId,{included:!d.assessment.includeInSummary,reason,confirmed,phrase:String(form.get('phrase')??'')});
+   else if(record.kind==='student-exclusion'){
+    const row=d.rows.find(r=>r.enrolmentId===enrolmentId);if(!row)throw Error('Student outside current register');
+    store.setStudentExclusion(state.staffId,assessmentId,enrolmentId,{excluded:!row.exclusionReason,reason,confirmed});
+   }else throw Error('Unknown assessment action');
+   if(detailStack.length)detailBack();else closeDetail();
+   notify('Assessment updated. All dependent summaries recalculated.');
+  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=error.message;}else notify(error.message);}
+  finally{suspendDetailRefresh=false;}
+  return;
+ }
  if(['comment-form','target-form'].includes(event.target.id)){
   event.preventDefault();const form=new FormData(event.target),record=detail&&{...detail};
   try{
@@ -272,6 +340,7 @@ document.addEventListener('submit',event=>{
  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=String(error.message||error);}else notify(String(error.message||error));}
 });
 document.addEventListener('keydown',event=>{
+ if(grid.keyboard(event))return;
  if(event.key==='Escape'&&helpAnchor){event.preventDefault();hideHelp();return;}
  if(searchDialog.open){
   const items=[...searchDialog.querySelectorAll('.search-result')],i=items.indexOf(document.activeElement);
@@ -291,5 +360,5 @@ window.addEventListener('resize',hideHelp);document.addEventListener('scroll',hi
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
 detailDialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
 for(const d of [searchDialog,detailDialog])d.addEventListener('click',event=>{if(event.target===d){const rect=d.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)d===detailDialog?closeDetail():closeSearch();}});
-window.addEventListener('popstate',()=>{const route=parseRoute(location.hash);closeDetail(false);clearFilters();Object.assign(state,route);if(route.classId&&!w.scopedClassIds.has(route.classId)&&w.accessibleClassIds.has(route.classId))state.scope='accessible';render({top:true});});
+window.addEventListener('popstate',()=>{const route=parseRoute(location.hash);if(!closeDetail(false)){history.pushState(null,'',routeHash(state.page,state.classId));return;}clearFilters();state.classTab='information';state.unitId='';Object.assign(state,route);if(route.classId&&!w.scopedClassIds.has(route.classId)&&w.accessibleClassIds.has(route.classId))state.scope='accessible';render({top:true});});
 boot();
