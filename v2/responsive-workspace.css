@@ -647,3 +647,35 @@
   .sidebar-scroll :focus-visible,.sidebar-scroll:focus-visible{outline-color:Highlight}
  }
 }
+
+
+/* PR36: independently collapsible global toolbar. Keep navigation, search
+   and the current preview identity/scope accessible in a slim header. */
+@media screen{
+ .topbar-compact-context{display:none;min-inline-size:0;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .topbar>.topbar-collapse-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;order:100;flex:none;margin-inline-start:auto;padding:4px 8px;min-height:32px;color:var(--accent-dark);white-space:nowrap;font-size:12px}
+ .topbar-collapse-toggle .icon{width:15px;height:15px}
+ #app[data-workspace-topbar="collapsed"] .topbar{display:flex;align-items:center;flex-wrap:nowrap;gap:5px;min-height:0;padding:3px var(--workspace-padding)}
+ #app[data-workspace-topbar="collapsed"] .topbar-field,
+ #app[data-workspace-topbar="collapsed"] .staff-field,
+ #app[data-workspace-topbar="collapsed"] .workspace-display-controls,
+ #app[data-workspace-topbar="collapsed"] .topbar-spacer,
+ #app[data-workspace-topbar="collapsed"] .search-launch span,
+ #app[data-workspace-topbar="collapsed"] .search-launch kbd{display:none}
+ #app[data-workspace-topbar="collapsed"] .topbar .search-launch{flex:0 0 29px;min-width:29px;width:29px;max-width:29px;min-height:29px;padding:4px;justify-content:center}
+ #app[data-workspace-topbar="collapsed"] .topbar .workspace-nav-toggle,
+ #app[data-workspace-topbar="collapsed"] .topbar .mobile-toggle{width:29px;min-height:29px;padding:4px}
+ #app[data-workspace-topbar="collapsed"] .topbar-compact-context{display:block;flex:1 1 0;order:3}
+ #app[data-workspace-topbar="collapsed"] .topbar-collapse-toggle{min-height:29px;padding-block:3px}
+ #app[data-workspace-topbar="collapsed"] .topbar-collapse-toggle .icon{transform:rotate(180deg)}
+ /* The gradebook's focus mode remains a separate, stronger display mode. */
+ #app[data-gradebook-focus="true"] .app-main>.topbar{display:none}
+ @media(max-width:760px){
+  .topbar{grid-template-columns:auto minmax(0,1fr) auto auto}
+  .topbar>.topbar-collapse-toggle{grid-column:4;grid-row:1;margin:0;width:32px;padding:4px}
+  .topbar-collapse-label{display:none}
+  .topbar>.staff-field{grid-column:3/5;grid-row:2;max-width:none}
+  #app[data-workspace-topbar="collapsed"] .topbar>.topbar-collapse-toggle{margin-inline-start:auto}
+  #app[data-workspace-topbar="collapsed"] .topbar .search-launch{margin:0}
+ }
+}
