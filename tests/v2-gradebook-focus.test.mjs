@@ -29,3 +29,16 @@ test('focus and standard modes share one table, one save bar, and unique accessi
  assert.doesNotMatch(renderPage(w,{...state,classTab:'information'}),/data-action="gradebook-focus-toggle"/);
  assert.equal(s.revision(),0);
 });
+
+test('secondary options are explicitly hidden initially, with one toolbar and inline calculation metadata',()=>{
+ const s=createStore(),w=createWorkspace(s,'sam','faculty'),html=renderPage(w,state);
+ assert.match(html,/class="gradebook-secondary-panels gradebook-toolbar-flyout" role="region" aria-label="Gradebook options panel" hidden/);
+ for(const panel of FOCUS_PANELS)assert.match(html,new RegExp('data-gradebook-focus-section="'+panel+'" hidden'));
+ const toolbarStart=html.indexOf('class="toolbar markbook-toolbar"'),flyoutStart=html.indexOf('class="gradebook-secondary-panels gradebook-toolbar-flyout"');
+ assert.ok(toolbarStart>=0&&toolbarStart<html.indexOf('id="gradebook-quick-display"')&&html.indexOf('id="gradebook-quick-display"')<flyoutStart);
+ assert.match(html,/data-action="gradebook-close-panel"/);
+ assert.equal(html.split('class="gradebook-policy-line').length-1,1);
+ assert.ok(html.indexOf('class="gradebook-policy-line')>html.indexOf('id="gradebook-save-status"'));
+ assert.ok(html.indexOf('class="gradebook-policy-line')>html.indexOf('class="gradebook-save-bar"'));
+ assert.equal(s.revision(),0);
+});
