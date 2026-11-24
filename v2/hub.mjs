@@ -357,12 +357,18 @@ document.addEventListener('click',event=>{
     }catch(error){notify(error.message);}break;
   }
   case 'go-notices':navigate('notices');break;
+  case 'go-priority-notices':navigate('notices',{noticeFilter:'priority'});break;
+  case 'show-priority-notices':state.noticeFilter='priority';state.query='';render();byId('notice-filter')?.focus();break;
   case 'go-acknowledgements':navigate('notices',{noticeFilter:'pending'});break;
   case 'go-schedule':navigate('notices');byId('schedule-panel')?.focus();break;
-  case 'focus-schedule':byId('schedule-panel')?.focus();break;
+  case 'focus-schedule':{state.deadlineFilter='open';state.query='';render();byId('schedule-panel')?.focus();break;}
   case 'focus-attention':{const panel=byId('attention-panel');panel?.focus({preventScroll:true});panel?.scrollIntoView({block:'nearest',behavior:'instant'});break;}
   case 'go-personal-actions':navigate('intervention',{caseFilter:'actions'});break;
-  case 'toggle-noticeboard':state.boardExpanded=!state.boardExpanded;render();document.querySelector('[data-action="toggle-noticeboard"]')?.focus();break;
+  case 'toggle-noticeboard':{
+   state.boardExpanded=!state.boardExpanded;
+   main.querySelector('.noticeboard-shell')?.classList.toggle('board-expanded',state.boardExpanded);
+   el.setAttribute('aria-expanded',String(state.boardExpanded));el.textContent=state.boardExpanded?'Return to compact board':'Expand board';el.focus({preventScroll:true});break;
+  }
   case 'show-active-notices':state.noticeFilter='active';render();break;
   case 'show-pending-notices':state.noticeFilter='pending';render();break;
   case 'show-archive':state.noticeFilter='archive';render();break;
