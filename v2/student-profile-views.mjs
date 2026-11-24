@@ -45,10 +45,11 @@ function assessments(w,p,detail){
  const selected=p.subjects.some(s=>s.enrolmentId===detail.subjectId)?detail.subjectId:p.subjects[0]?.enrolmentId;
  if(!selected)return empty('No accessible subject records');
  const d=w.profileSubject(p.student.id,selected),s=d.subject,r=d.summary;
+ const sequence=new Map(d.cumulative.map((r,i)=>[r.assessmentId,{index:i+1,percent:r.percent}]));
  const history=d.history.map(x=>[
   link(x.title,'profile-result',resultKey(p.student.id,selected,x.assessmentId))+'<span class="cell-sub">'+e(x.unitTitle)+'</span>',
   e(displayDate(x.date)),markEvidence(x),scoreEvidence(x),e(x.status==='excluded'?x.recordedGrade??'—':x.grade??'—'),
-  tag(resultLabel(x),x.status==='excluded'?'tag-warning':''),tag(x.summaryIncluded?'Included':'Diagnostic / excluded',x.summaryIncluded?'':'tag-warning'),e(x.weight)
+  tag(resultLabel(x),x.status==='excluded'?'tag-warning':''),tag(x.summaryIncluded?'Included':'Diagnostic / excluded',x.summaryIncluded?'':'tag-warning'),e(x.weight),e(sequence.get(x.assessmentId)?.index??'—'),e(pct(sequence.get(x.assessmentId)?.percent))
  ]);
  const topicRows=[...d.topics].sort((a,b)=>a.percent-b.percent||a.topic.localeCompare(b.topic));
  const topicBody=topicRows.length?'<div class="profile-topic-list">'+topicRows.map(t=>'<div class="profile-topic"><span>'+e(t.topic)+'</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:'+Math.max(0,Math.min(100,t.percent))+'%"></span></span><strong>'+e(pct(t.percent))+'</strong><span class="muted small">'+e(t.earned+'/'+t.available)+'</span></div>').join('')+'</div><p class="small muted">Evidence from complete, included assessments only; low marks may indicate a topic to revisit.</p>':empty('No eligible topic-tagged evidence');
@@ -56,8 +57,8 @@ function assessments(w,p,detail){
  btn('Open student analysis','profile-open-analysis',selected)+btn('Subject comments','subject-comments',selected)+'</div>'+
  '<div class="metrics profile-metrics">'+metric('Overall attainment',pct(r.average),'Grade '+(r.grade??'—'))+metric('Minimum target',r.minimumGrade??'—','Grade gap '+gradeGap(r.gapToTarget))+metric('Prediction',r.predictedGrade??'—','Grade gap '+gradeGap(r.gapToPrediction))+metric('Next grade',r.nextGrade?r.nextGrade.percentagePoints.toFixed(1)+' pp':'—',r.nextGrade?'To grade '+r.nextGrade.grade:'No next grade / no scored evidence')+'</div>'+
  '<div class="profile-analysis-grid">'+section('Attainment over time',trendChart(d),'analysisTrend')+section('Topic strengths and weaknesses',topicBody,'analysisTopics')+'</div>'+
- section('Published assessment history',table(['Assessment / unit','Date','Mark','%','Grade','Result','Summary status','Weight'],history,'Individual assessment history')+
- '<p class="small muted">Included records: '+e(coverage(r))+' scored. Click any assessment for the individual marks, including retained excluded marks. Drafts and future assessments are not shown.</p>','profileHistory');
+ section('Published assessment history',table(['Assessment / unit','Date','Mark','%','Grade','Result','Summary status','Weight','Trend #','Cumulative %'],history,'Individual assessment history')+
+ '<p class="small muted">Included records: '+e(coverage(r))+' scored. Trend # identifies the matching point in the graph. Click any assessment for the individual marks, including retained excluded marks. Drafts and future assessments are not shown.</p>','profileHistory');
 }
 function comments(p,detail){
  const selected=p.subjects.some(s=>s.enrolmentId===detail.commentSubject)?detail.commentSubject:'';
