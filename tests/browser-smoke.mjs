@@ -1079,9 +1079,19 @@ try{
  await open('v2/#home');
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'collapsed');
  await action('search');assert.ok(await q('#search-dialog[open]'));await action('close-search');
+ await until(()=>evaluate(()=>!document.querySelector('#search-dialog').open),'search closed before keyboard activation');
  await evaluate(()=>document.querySelector('[data-action="toggle-workspace-topbar"]').focus());
- await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
- await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+ assert.equal(await evaluate(()=>document.activeElement.dataset.action),'toggle-workspace-topbar');
+ // Space uses native button activation on keyup. CDP Enter requires the
+ // corresponding text to model a physical Enter press rather than a raw key.
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+ await until(()=>evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar==='expanded'),'Space expands the header');
+ await action('toggle-workspace-topbar');
+ assert.equal(await evaluate(()=>document.activeElement.dataset.action),'toggle-workspace-topbar');
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,nativeVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,nativeVirtualKeyCode:13});
+ await until(()=>evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar==='expanded'),'Enter expands the header');
  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceTopbar),'expanded');
  assert.ok(await visible('#scope'));assert.ok(await visible('#staff'));assert.ok(await visible('#workspace-density'));
  await action('reset-workspace-display');
