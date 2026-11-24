@@ -1,3 +1,4 @@
+import {expandButton,panelAttributes} from './expandable-details.mjs';
 import {houseBadge} from './branding.mjs';
 import {compactWave} from './intervention-views.mjs';
 import {studyStatusLabel} from './intervention-refinement.mjs';
@@ -11,8 +12,8 @@ const link=(label,action,id)=>'<button type="button" class="inline-link" data-ac
 const tag=(label,kind='')=>'<span class="tag '+kind+'">'+e(label)+'</span>';
 const help=(id,label)=>'<button type="button" class="help" data-help="'+e(id)+'" aria-label="'+e('About '+label)+'" aria-expanded="false">ⓘ</button>';
 const empty=(title,detail='')=>'<div class="empty"><strong>'+e(title)+'</strong>'+e(detail)+'</div>';
-const section=(title,body,tip='',actions='')=>'<section class="drawer-section profile-section"><div class="profile-section-head"><h3>'+e(title)+(tip?help(tip,title):'')+'</h3>'+actions+'</div><div class="content">'+body+'</div></section>';
-const table=(head,rows,label)=>rows.length?'<div class="table-scroll profile-table" role="region" tabindex="0" aria-label="'+e(label)+'"><table class="data-table"><thead><tr>'+head.map((h,i)=>'<th scope="col" '+(i===0?'class="sticky-first"':'')+'>'+e(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map((v,i)=>'<td '+(i===0?'class="sticky-first"':'')+'>'+v+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No records');
+const section=(title,body,tip='',actions='')=>'<section class="drawer-section profile-section"'+panelAttributes('profile',title)+'><div class="profile-section-head"><h3>'+e(title)+(tip?help(tip,title):'')+'</h3><div class="panel-expand-actions">'+actions+expandButton('profile',title)+'</div></div><div class="content">'+body+'</div></section>';
+const table=(head,rows,label)=>rows.length?'<div class="table-scroll profile-table" role="region" tabindex="0" aria-label="'+e(label)+'"><table class="data-table profile-responsive-table" role="table" aria-label="'+e(label)+'"><thead role="rowgroup"><tr role="row">'+head.map((h,i)=>'<th role="columnheader" scope="col" '+(i===0?'class="sticky-first"':'')+'>'+e(h)+'</th>').join('')+'</tr></thead><tbody role="rowgroup">'+rows.map(row=>'<tr role="row">'+row.map((v,i)=>'<td role="cell" '+(i===0?'class="sticky-first"':'')+'><span class="profile-mobile-label" aria-hidden="true">'+e(head[i])+'</span><div class="profile-cell-content">'+v+'</div></td>').join('')+'</tr>').join('')+'</tbody></table></div>':empty('No records');
 const select=(id,options,value,label)=>'<label class="analysis-field">'+e(label)+'<select class="select" id="'+e(id)+'" aria-label="'+e(label)+'">'+options.map(([k,l])=>'<option value="'+e(k)+'" '+(k===value?'selected':'')+'>'+e(l)+'</option>').join('')+'</select></label>';
 const gap=v=>'<span class="'+(v==null?'muted':v<0?'negative':'positive')+'">'+e(gradeGap(v))+'</span>';
 const coverage=s=>s.coverage.scored+'/'+s.coverage.eligible;
@@ -109,7 +110,7 @@ export function profilePeers(w,detail){
 export function renderStudentProfile(w,detail){
  const p=w.studentProfile(detail.id),student=p.student,peers=profilePeers(w,detail),i=peers.findIndex(r=>r.id===student.id);
  const tab=PROFILE_TABS.some(([id])=>id===detail.tab)?detail.tab:'overview';
- const identity='<div class="profile-identity"><div class="profile-identity-main">'+houseBadge(student,{large:true})+'<div><strong>'+e('Year '+student.year+' · '+student.tutorGroupName+' · '+student.house+' House')+'</strong><p class="small muted">Demo pupil ID: '+e(student.id)+'</p><div class="tags">'+student.tags.map(t=>tag(t)).join('')+(p.activeCases.length?tag('SOC','tag-warning'):'')+'</div></div></div><div class="profile-identity-staff">'+facts([['Tutor',staffList(student.tutors)],['Head of House',staffList(student.houseHeads)]])+'</div></div>';
+ const identity='<div class="profile-identity"><div class="profile-identity-main">'+houseBadge(student,{large:true})+'<div><strong>'+e('Year '+student.year+' · '+student.tutorGroupName+' · '+student.house+' House')+'</strong><p class="small muted">Demo pupil ID: '+e(student.id)+'</p><div class="tags">'+student.tags.map(t=>tag(t)).join('')+(p.activeCases.length?tag('SOC','tag-warning'):'')+'</div></div></div><details class="profile-identity-staff"><summary>Tutor &amp; House contacts</summary>'+facts([['Tutor',staffList(student.tutors)],['Head of House',staffList(student.houseHeads)]])+'</details></div>';
  const nav='<div class="profile-controls profile-navigation">'+(i>0?btn('‹ Previous','profile-switch',peers[i-1].id):'<button type="button" class="btn" disabled>‹ Previous</button>')+
  select('profile-pupil',peers.map(r=>[r.id,r.name]),student.id,'Pupil')+(i>=0&&i<peers.length-1?btn('Next ›','profile-switch',peers[i+1].id):'<button type="button" class="btn" disabled>Next ›</button>')+
  '<span class="small muted">'+e((detail.peerLabel?detail.peerLabel+' · ':'')+(i>=0?(i+1)+' of '+peers.length:''))+'</span></div>';

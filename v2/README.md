@@ -320,3 +320,16 @@ All marks use the existing validation, live calculation, exclusion and permissio
 Tests cover the temporary projection, unchanged personal preferences, item and status controls, read-only access, responsive card content and full-year browser workflows across phone and tablet sizes.
 
 Next: PR32 — Expandable analysis, student profiles and detail drawers.
+
+
+## Expandable analysis, profiles and detail drawers (PR32)
+
+Analysis panels and student-profile sections provide an Expand / Restore control. Expanding a panel uses the full grid width, increases the available chart or evidence-table height and retains all current filters, accessible evidence links and underlying calculations. One panel per view is expanded at a time. The choice is session-local to the current staff/scope/class/tab or pupil detail; Escape restores the expanded panel.
+
+Every detail drawer provides Full screen / Restore alongside Close. The existing modal grows to fill the browser viewport; its DOM, editable form fields, validation messages, mark-grid buffers and scroll offsets remain in place (within the new scroll bounds). Full screen persists while following links inside the same detail stack and resets when the drawer closes. Escape first restores an expanded panel, then the full-screen drawer, then uses the ordinary guarded close action. Close and Back continue to honour unsaved-data confirmation and existing access checks.
+
+Student profiles retain the pupil name, house, tutor group and flags, with expandable Tutor & House contacts. At narrow widths, profile tables use the same cells arranged in labelled stacked rows rather than forcing horizontal scrolling. All assessment, attainment, target and intervention information and authorised links remain available. Explicit table roles retain accessible table semantics. Profile tabs scroll horizontally when needed, and analytics grids become single-column layouts. Print remains tabular; expansion controls are excluded.
+
+Tests cover distinct panel identifiers, original evidence actions, responsive profile fields and drawer display state. Browser regressions cover expanded charts, evidence drilldown, dirty form preservation, mobile/tablet/desktop resizing, guarded close and profile expansion. The prototype continues to use fictional data and the existing scope and permission checks.
+
+Next: PR33 — Home and noticeboard responsive refinement; PR34 — comprehensive responsive and accessibility audit.

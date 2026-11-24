@@ -881,6 +881,77 @@ try{
  await viewport(1366,768);assert.equal(await visible('[data-register-name="cases"] .register-cards'),false);
  await action('register-display','cases:cards');assert.ok(await visible('[data-register-name="cases"] .register-cards'));
  await action('register-display','cases:auto');
+ // PR32: expanded analytical panels retain filters and working evidence links.
+ await open('v2/#classes/11-maths-1/class-analysis');
+ await viewport(1440,900);
+ const panelSelector=key=>'[data-expandable-panel='+JSON.stringify(key)+']';
+ const hist=panelSelector('analysis:Percentage distribution'),gradePanel=panelSelector('analysis:Grade distribution');
+ const histSize=()=>evaluate(sel=>document.querySelector(sel+' .frequency-column').clientHeight,hist);
+ const beforeHistogram=await histSize();
+ await evaluate(sel=>{document.querySelector(sel).dataset.testExpansionIdentity='original';},hist);
+ await click(hist+' [data-action="expand-panel"]');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,hist),'true');
+ assert.ok(await histSize()>beforeHistogram);
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testExpansionIdentity,hist),'original');
+ await click(hist+' .frequency-bin');
+ assert.ok(await q('#detail-dialog[open]'));
+ await close();
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,hist),'true');
+ await click(gradePanel+' [data-action="expand-panel"]');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,hist),'false');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,gradePanel),'true');
+ await evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})));
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,gradePanel),'false');
+ // Drawer expansion preserves dirty form controls and existing discard guard.
+ await action('class-tab','information');
+ await action('edit-prediction','P121@11-maths','.roster-table ');
+ const predictionBefore=await evaluate(()=>document.querySelector('#prediction').value),predictionDraft=predictionBefore==='8'?'7':'8';
+ await fill('#prediction',predictionDraft);
+ await evaluate(()=>document.querySelector('#prediction').dataset.testDrawerIdentity='original');
+ await action('drawer-expand',undefined,'#detail-dialog ');
+ assert.equal(await evaluate(()=>document.querySelector('#detail-dialog').dataset.drawerExpanded),'true');
+ assert.ok(await evaluate(()=>Math.abs(document.querySelector('#detail-dialog').getBoundingClientRect().width-innerWidth)<=1));
+ for(const [width,height] of [[320,568],[390,844],[844,390],[768,1024],[1440,900]]){
+  await viewport(width,height);
+  assert.equal(await evaluate(()=>document.querySelector('#prediction').value),predictionDraft);
+  assert.equal(await evaluate(()=>document.querySelector('#prediction').dataset.testDrawerIdentity),'original');
+  assert.ok(await visible('#detail-dialog [data-action="close-detail"]'));
+ }
+ // Escape first restores the size, not the dirty form.
+ await evaluate(()=>document.querySelector('#detail-dialog').dispatchEvent(new Event('cancel',{cancelable:true})));
+ assert.equal(await evaluate(()=>document.querySelector('#detail-dialog').dataset.drawerExpanded),'false');
+ assert.equal(await evaluate(()=>document.querySelector('#prediction').value),predictionDraft);
+ dialogs.push({contains:'Discard unsaved form',accept:false});await close();
+ assert.ok(await q('#prediction-form'));
+ dialogs.push({contains:'Discard unsaved form',accept:true});await close();
+ assert.ok(!(await q('#detail-dialog[open]')));
+ // Responsive profile tables remain one accessible set of cells, with labels.
+ await action('open-student','P121','.roster-table ');
+ assert.match(await detail(),/Demo Student 121/);
+ assert.ok(await q('.profile-identity-main .house-badge-large'));
+ await action('drawer-expand',undefined,'#detail-dialog ');
+ await click('.profile-identity-staff summary');
+ assert.ok(await visible('.profile-identity-staff .drawer-summary'));
+ await action('profile-tab','assessments','#detail-dialog ');
+ const profileTrend=panelSelector('profile:Attainment over time');
+ await click(profileTrend+' [data-action="expand-panel"]');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,profileTrend),'true');
+ assert.equal(await evaluate(()=>document.querySelector('#detail-dialog').dataset.drawerExpanded),'true');
+ await viewport(390,844);
+ assert.ok(await visible('.profile-mobile-label'));
+ assert.ok(await evaluate(()=>[...document.querySelectorAll('.profile-responsive-table')].every(t=>t.getBoundingClientRect().width<=document.querySelector('.drawer-body').clientWidth+1)));
+ assert.ok(await visible('.profile-identity-main .tags'));
+ await action('profile-tab','overview','#detail-dialog ');
+ assert.ok(await visible('.profile-mobile-label'));
+ await action('profile-tab','support','#detail-dialog ');
+ assert.match(await text('#detail-dialog'),/Active interventions/);
+ await viewport(1440,900);
+ assert.equal(await visible('.profile-mobile-label'),false);
+ await close();
+ assert.ok(!(await q('#detail-dialog[open]')));
+ await action('open-student','P121','.roster-table ');
+ assert.equal(await evaluate(()=>document.querySelector('#detail-dialog').dataset.drawerExpanded),'false');
+ await close();
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');

@@ -316,7 +316,7 @@ export function renderPage(w,s){return '<div class="workspace-inner" data-worksp
 const facts=entries=>'<dl class="drawer-summary">'+entries.map(([key,value])=>'<div class="fact"><dt>'+esc(key)+'</dt><dd>'+esc(value??'—')+'</dd></div>').join('')+'</dl>';
 const section=(name,body)=>'<section class="drawer-section"><h3>'+esc(name)+'</h3><div class="content">'+body+'</div></section>';
 const close=()=>'<button type="button" class="btn btn-icon" data-action="close-detail" aria-label="Close detail">'+icon('close')+'</button>';
-const drawer=(title,sub,body,footer='')=>'<div class="dialog-head"><div><h2 id="detail-title">'+esc(title)+'</h2><p class="subtitle">'+esc(sub)+'</p></div>'+close()+'</div><div class="drawer-body">'+body+'</div><div class="drawer-footer">'+footer+btn('Close','close-detail')+'</div>';
+const drawer=(title,sub,body,footer='')=>'<div class="dialog-head"><div><h2 id="detail-title">'+esc(title)+'</h2><p class="subtitle">'+esc(sub)+'</p></div>'+'<div class="drawer-head-actions"><button type="button" class="btn drawer-expand" data-action="drawer-expand" aria-pressed="false" aria-label="Expand detail drawer to full screen">Full screen</button>'+close()+'</div></div><div class="drawer-body">'+body+'</div><div class="drawer-footer">'+footer+btn('Close','close-detail')+'</div>';
 export function renderDetail(w,detail){
  const {kind,id}=detail;
  if(kind==='demo-guide')return drawer('Demonstration guide','Version 2 · Fictional school records',
