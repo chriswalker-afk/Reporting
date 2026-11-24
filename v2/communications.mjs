@@ -34,7 +34,7 @@ export function communicationPolicy(data,staffId){
   const canEditNotice=n=>Boolean(n&&(access.has('leadership')||n.authorStaffId===staffId&&canPublish(n.audience)));
   const recipient=a=>access.audienceMatches(a,{oversight:false});
   const canManageDeadline=()=>access.has('leadership');
-  const canViewNotice=n=>Boolean(n&&(canEditNotice(n)||noticeState(n,data.asOf)!=='scheduled'&&access.audienceMatches(n.audience)));
+  const canViewNotice=n=>Boolean(n&&(canEditNotice(n)||n.publishedDate<=data.asOf&&access.audienceMatches(n.audience)));
   const canViewDeadline=d=>Boolean(d&&(canManageDeadline()||!d.archived&&access.audienceMatches(d.audience)));
   const noticeAcknowledged=n=>(n.acknowledgements??[]).some(a=>a.staffId===staffId&&a.version===noticeVersion(n));
   const canAcknowledge=n=>Boolean(n&&noticeState(n,data.asOf)==='active'&&n.requiresAcknowledgement&&recipient(n.audience)&&!noticeAcknowledged(n));
