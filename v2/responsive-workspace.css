@@ -1,0 +1,122 @@
+/* Shared screen-only foundation. Page-specific compact headers, focus modes,
+   mobile entry views and expandable drawers build on these rules in later PRs. */
+@media screen {
+ :root{--workspace-padding:clamp(8px,1.4vw,22px);--workspace-gap:12px;--workspace-table-min:160px;--workspace-nav-width:190px;--workspace-rail-width:58px}
+ .app-shell{height:100vh;height:100dvh;grid-template-columns:var(--workspace-nav-width) minmax(0,1fr);grid-template-rows:minmax(0,1fr);min-width:0;min-height:0}
+ .app-main{min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr) auto}
+ .sidebar{min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+ .workspace{padding:var(--workspace-padding);min-width:0;min-height:0;overflow:auto;overflow-x:hidden}
+ .workspace-inner{width:100%;min-width:0;max-width:1800px}
+ .workspace-inner>.surface,.workspace-inner>div,.surface,.panel-head,.panel-body,.toolbar,.page-heading,.page-actions{min-width:0;max-width:100%}
+ .panel-head{flex-wrap:wrap}
+ .page-heading>div{min-width:0;max-width:100%}
+ .page-heading h1,.page-heading .subtitle,.dialog-head h2,.dialog-head .subtitle{overflow-wrap:anywhere}
+ .toolbar .select,.toolbar .input,.toolbar label,.form-stack .input,.form-stack .select,.form-stack textarea{min-width:0;max-width:100%}
+ .table-scroll{min-width:0;max-width:100%;overflow:auto}
+ .table-scroll:focus-visible{outline-offset:-3px}
+ .topbar{min-width:0;gap:8px;padding:8px var(--workspace-padding)}
+ .topbar .workspace-nav-toggle{display:inline-flex;flex:none}
+ .topbar .search-launch{min-width:100px;max-width:380px;flex:1 1 180px}
+ .topbar .search-launch span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .topbar .topbar-spacer{display:none}
+ .topbar-field,.staff-field{min-width:0;max-width:100%}
+ .staff-field>div{min-width:0}
+ .workspace-display-controls{display:flex;align-items:center;gap:4px;flex:none;min-width:0}
+ .workspace-display-controls .select{height:32px;max-width:110px;padding:3px 6px;font-size:12px}
+ .workspace-display-reset{height:30px;min-height:30px;width:30px}
+ .demo-footer{min-width:0;flex-wrap:wrap;padding:5px var(--workspace-padding);gap:6px;overflow-wrap:anywhere}
+ .demo-footer .footer-actions{min-width:0;gap:8px}
+ .navigation-backdrop{position:fixed;inset:0;background:#142d4266;z-index:19}
+ /* Rail keeps all navigation links and their accessible names; labels remain
+    available through title and screen readers. The desktop toggle restores them. */
+ .app-shell[data-workspace-navigation="rail"]{grid-template-columns:var(--workspace-rail-width) minmax(0,1fr)}
+ .app-shell[data-workspace-navigation="rail"] .sidebar{padding:12px 6px;align-items:stretch}
+ .app-shell[data-workspace-navigation="rail"] .brand{justify-content:center;margin:0 0 9px;padding-bottom:9px}
+ .app-shell[data-workspace-navigation="rail"] .jis-crest{width:34px;height:34px}
+ .app-shell[data-workspace-navigation="rail"] .brand-text,
+ .app-shell[data-workspace-navigation="rail"] .nav-label,
+ .app-shell[data-workspace-navigation="rail"] .nav-heading,
+ .app-shell[data-workspace-navigation="rail"] .sidebar-bottom{display:none}
+ .app-shell[data-workspace-navigation="rail"] .nav-link,
+ .app-shell[data-workspace-navigation="rail"] .future-link{justify-content:center;padding:8px;min-height:38px}
+ .app-shell[data-workspace-navigation="rail"] .nav-link .icon{width:20px;height:20px}
+ .app-shell[data-workspace-navigation="rail"] .sidebar-line{margin:9px 3px}
+ .app-shell[data-workspace-density="compact"]{--workspace-padding:10px;--workspace-gap:8px}
+ .app-shell[data-workspace-density="compact"] .topbar{min-height:46px;padding-block:5px}
+ .app-shell[data-workspace-density="compact"] .topbar .search-launch{min-height:32px;padding:5px 8px}
+ .app-shell[data-workspace-density="compact"] .topbar .search-launch kbd,
+ .app-shell[data-workspace-density="compact"] .staff-field .avatar{display:none}
+ .app-shell[data-workspace-density="compact"] .page-heading{gap:8px;margin-bottom:8px}
+ .app-shell[data-workspace-density="compact"] .page-heading h1{font-size:23px}
+ .app-shell[data-workspace-density="compact"] .tabs{margin-bottom:8px}
+ .app-shell[data-workspace-density="compact"] .tab{padding:7px 9px}
+ .app-shell[data-workspace-density="compact"] .panel-head{padding:7px 10px}
+ .app-shell[data-workspace-density="compact"] .toolbar{padding:6px 9px;gap:6px}
+ .app-shell[data-workspace-density="compact"] .demo-footer{font-size:10px;padding-block:3px}
+ /* Flexible work area: grow to fill the workspace, but keep a minimum usable
+    table area. If toolbars/forms are taller than a short viewport, the outer
+    workspace scrolls rather than trapping controls or squeezing rows to zero. */
+ .workspace-inner[data-workspace-fill="true"]{min-height:100%;display:flex;flex-direction:column;gap:0}
+ .workspace-inner[data-workspace-fill="true"]>.workspace-fill-panel{display:flex;flex-direction:column;flex:1 0 auto;min-height:0;min-width:0}
+ .workspace-fill-panel>*{flex-shrink:0}
+ .workspace-fill-panel>.workspace-fill-scroll{height:0;flex:1 0 var(--workspace-table-min);min-height:var(--workspace-table-min);max-height:none;overflow:auto}
+ .workspace-fill-panel.gradebook-surface>.gradebook-scroll,.workspace-fill-panel.report-grades>.report-grade-scroll{max-height:none;min-height:var(--workspace-table-min)}
+ .workspace-fill-panel.gradebook-surface .gradebook-save-bar{flex-wrap:wrap}
+ /* Shared drawer sizing stays viewport-aware, including short landscape
+    screens. The inner form is scrollable; header and close control remain. */
+ .detail-dialog[open]{max-height:100dvh;max-width:100vw}
+ .detail-dialog .dialog-head,.detail-dialog .drawer-footer{flex-shrink:0;min-width:0}
+ .detail-dialog .dialog-head>div{min-width:0;flex:1}
+ .detail-dialog .dialog-head .btn{flex-shrink:0}
+ .detail-dialog .drawer-body{min-width:0;min-height:0;overflow:auto}
+ .detail-dialog .drawer-footer .btn{max-width:100%;white-space:normal}
+ .search-dialog{max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}
+ .confirm-dialog{max-height:calc(100dvh - 16px);overflow:auto}
+ .toast{max-width:calc(100vw - 24px)}
+ @media(max-width:1080px){
+  :root{--workspace-nav-width:162px}
+  .topbar .search-launch{flex:1 1 120px}
+  .workspace-display-controls .field-label{display:none}
+ }
+ @media(max-width:760px){
+  .app-shell,.app-shell[data-workspace-navigation="rail"]{display:block}
+  .app-main{height:100%;width:100%}
+  .sidebar{display:none;position:fixed;inset:0 auto 0 0;width:min(264px,calc(100vw - 34px));max-width:100vw;z-index:20;padding:12px}
+  .sidebar[data-open="true"]{display:flex}
+  .sidebar .mobile-toggle{min-width:32px}
+  .topbar .workspace-nav-toggle{display:none}
+  .topbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;gap:5px;padding:5px 8px;min-height:0}
+  .topbar>.mobile-toggle{grid-column:1;grid-row:1}
+  .topbar .search-launch{grid-column:2;grid-row:1;width:100%;min-width:0;max-width:none}
+  .topbar .workspace-display-controls{grid-column:3;grid-row:1}
+  .topbar .workspace-display-controls .select{max-width:90px;font-size:11px}
+  .topbar-field{grid-column:1/3;grid-row:2;min-width:0}
+  .staff-field{grid-column:3;grid-row:2;width:100%;max-width:140px}
+  .topbar .staff-field .select{max-width:100%;width:100%}
+  .topbar .staff-field .roles{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .field-label{display:none}
+  .workspace{padding:8px;scrollbar-gutter:auto}
+  .workspace-inner{max-width:none}
+  .demo-footer{padding:4px 8px}
+  .detail-dialog .drawer-body{padding:10px}
+  .detail-dialog .dialog-head{gap:7px;padding:9px 10px}
+  .detail-dialog .drawer-footer{padding:7px 10px}
+  .search-dialog{margin:8px auto auto}
+ }
+ @media(max-width:360px){
+  .topbar .workspace-display-controls{gap:2px}
+  .workspace-display-reset{width:26px;min-height:28px;padding:4px}
+  .topbar .search-launch{padding:5px;gap:5px}
+  .demo-footer{font-size:10px}
+ }
+ @media(max-height:500px){
+  :root{--workspace-table-min:140px}
+  .topbar{padding-block:4px;gap:4px}
+  .topbar .staff-field .roles{display:none}
+  .demo-footer{padding-block:3px;font-size:10px}
+  .workspace{padding-block:6px}
+  .detail-dialog .dialog-head,.detail-dialog .drawer-footer{padding-block:6px}
+  .search-dialog{margin:8px auto auto}
+  .search-results{max-height:45dvh}
+ }
+}
