@@ -322,3 +322,100 @@
  .gradebook-surface[data-entry-view="single"] .gradebook-save-bar{position:sticky;bottom:0;z-index:7}
  .gradebook-single-table .pupil-identity-text{white-space:normal;overflow-wrap:anywhere}
 }
+
+
+/* PR32: expand existing analytical panels and modal detail workspaces. */
+@media screen{
+ .analysis-grid,.profile-analysis-grid{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}
+ .academic-analysis,.analysis-panel,.profile-section,.profile-tab-body,.profile-analysis-grid>.profile-section{min-width:0;max-width:100%}
+ .panel-expand-actions,.drawer-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap;flex-shrink:0}
+ .panel-expand{min-height:28px;padding:3px 8px;font-size:11px;white-space:nowrap}
+ .panel-expand[aria-expanded="true"],.drawer-expand[aria-pressed="true"]{background:#f0e1e9;color:var(--accent-dark);border-color:#b68a9e}
+ [data-expandable-panel][data-panel-expanded="true"]{grid-column:1/-1}
+ [data-expandable-panel][data-panel-expanded="true"] .trend-chart{max-height:min(65dvh,560px);height:auto}
+ [data-expandable-panel][data-panel-expanded="true"] .boxplot{max-height:170px}
+ [data-expandable-panel][data-panel-expanded="true"] .analysis-table .boxplot{max-height:85px}
+ [data-expandable-panel][data-panel-expanded="true"] .frequency-column{height:clamp(105px,32dvh,330px)}
+ [data-expandable-panel][data-panel-expanded="true"] .histogram-y{height:calc(clamp(105px,32dvh,330px) + 50px)}
+ [data-expandable-panel][data-panel-expanded="true"] .analysis-table,[data-expandable-panel][data-panel-expanded="true"] .profile-table{max-height:min(68dvh,820px)}
+ [data-expandable-panel][data-panel-expanded="true"] .bar-track{height:14px}
+ .analysis-panel .panel-head,.profile-section-head{flex-wrap:wrap;gap:5px}
+ .profile-section-head h3,.analysis-panel .panel-head h2{min-width:0;flex:1 1 120px;overflow-wrap:anywhere}
+ .profile-section-head .panel-expand-actions{padding:4px 7px}
+ .detail-dialog[data-drawer-expanded="true"]{width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100dvh;inset:0;margin:0;border-radius:0}
+ .detail-dialog .dialog-head{align-items:center}
+ .detail-dialog .dialog-head>.drawer-head-actions{flex:0 0 auto}
+ .detail-dialog .drawer-expand{font-size:12px;min-height:32px;padding:4px 8px}
+ .detail-dialog .dialog-head h2{margin:0;overflow-wrap:anywhere}
+ .detail-dialog .dialog-head .subtitle{margin:3px 0 0;overflow-wrap:anywhere}
+ .detail-dialog .drawer-body{min-width:0;max-width:100%;overflow:auto;flex:1 1 0}
+ .detail-dialog .drawer-footer{flex:0 0 auto}
+ .detail-dialog[data-drawer-expanded="true"] .drawer-body{padding:clamp(9px,1.5vw,22px)}
+ .detail-dialog[data-drawer-expanded="true"] .form-stack:not(#mark-grid-form){max-width:1100px;margin-inline:auto}
+ .detail-dialog[data-drawer-expanded="true"] .table-scroll{max-height:min(65dvh,850px)}
+ .detail-dialog[data-drawer-expanded="true"] .profile-table{max-height:min(65dvh,850px)}
+ .detail-dialog[data-drawer-expanded="true"] .entry-table{max-height:65dvh}
+ .detail-dialog .drawer-summary,.detail-dialog .fact,.detail-dialog .form-stack,.detail-dialog .form-stack label,.detail-dialog .form-stack fieldset{min-width:0;overflow-wrap:anywhere}
+ .profile-identity{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .profile-identity-main>div{min-width:0;overflow-wrap:anywhere}
+ .profile-identity-staff{min-width:0;align-self:start}
+ .profile-identity-staff summary{cursor:pointer;color:var(--accent-dark);font-size:12px;font-weight:650;padding:5px 0}
+ .profile-identity-staff[open] .drawer-summary{margin-top:5px}
+ .profile-top .profile-navigation .analysis-field{min-width:0}
+ .profile-top .profile-navigation .analysis-field .select{min-width:0;max-width:100%}
+ .profile-tabs{top:0;overflow-x:auto;flex-wrap:nowrap}
+ .profile-tabs .tab{white-space:nowrap;flex-shrink:0}
+ .profile-mobile-label{display:none}
+ .profile-cell-content{min-width:0;overflow-wrap:anywhere}
+ @media(max-width:980px){
+  .analysis-grid,.profile-analysis-grid{grid-template-columns:minmax(0,1fr)}
+ }
+ @media(max-width:760px){
+  .detail-dialog[open]{width:100vw;max-width:100vw}
+  .detail-dialog .dialog-head{gap:6px;padding:6px 8px}
+  .detail-dialog .dialog-head h2{font-size:16px}
+  .detail-dialog .dialog-head .subtitle{font-size:10px;line-height:1.3}
+  .detail-dialog .dialog-head .btn{min-height:32px}
+  .detail-dialog .drawer-expand{font-size:11px;padding:3px 6px}
+  .detail-dialog .drawer-body{padding:8px}
+  .detail-dialog .drawer-footer{padding:6px 8px}
+  .detail-dialog .drawer-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .detail-dialog .drawer-summary .fact{padding:7px}
+  .profile-top .profile-identity{grid-template-columns:minmax(0,1fr);gap:5px;padding:8px}
+  .profile-identity-main .house-badge-large{flex-shrink:0}
+  .profile-top .profile-navigation{gap:4px;flex-wrap:wrap}
+  .profile-top .profile-navigation .analysis-field{flex:1 1 100px}
+  .profile-top .profile-navigation>.small{flex-basis:100%}
+  .profile-metrics{gap:5px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profile-metrics .metric{padding:7px}
+  .profile-metrics .metric-value{font-size:19px}
+  .profile-section .content{padding:7px}
+  .profile-table,.detail-dialog[data-drawer-expanded="true"] .profile-table,[data-expandable-panel][data-panel-expanded="true"] .profile-table{max-height:none;overflow:visible;border:0}
+  .profile-table .profile-responsive-table,.profile-table[aria-label="Cross-subject attainment"] .profile-responsive-table{display:block;width:100%;min-width:0;white-space:normal}
+  .profile-responsive-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .profile-responsive-table tbody{display:grid;gap:7px}
+  .profile-responsive-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line);border-radius:7px;background:white;padding:7px;gap:5px}
+  .profile-table .profile-responsive-table td,.profile-table[aria-label="Cross-subject attainment"] .profile-responsive-table td{display:block;position:static;min-width:0;max-width:none;padding:4px;border:0;box-shadow:none;white-space:normal;vertical-align:top}
+  .profile-table .profile-responsive-table td:first-child{grid-column:1/-1;border-bottom:1px solid var(--line);padding-bottom:7px}
+  .profile-responsive-table .profile-mobile-label{display:block;font-size:10px;font-weight:650;color:var(--muted);margin-bottom:2px}
+  .profile-responsive-table .profile-row-actions,.profile-responsive-table .profile-subject-name{min-width:0;max-width:none}
+  .profile-responsive-table .inline-link,.profile-responsive-table .btn{white-space:normal;overflow-wrap:anywhere;text-align:left}
+  .profile-target-gap{flex-wrap:wrap}
+  .profile-controls .analysis-field{flex:1 1 140px;min-width:0}
+  .analysis-subtoolbar .analysis-field{flex:1 1 140px;min-width:0}
+  .analysis-subtoolbar .analysis-field select{width:100%;min-width:0}
+  .analysis-panel .panel-body{min-width:0;padding:7px}
+  .analysis-panel .analysis-table{max-width:100%;overflow:auto}
+  .analysis-panel .histogram-layout{min-width:0}
+  .analysis-panel .frequency-chart{padding-right:6px}
+  .analysis-panel .frequency-label,.analysis-panel .frequency-count{font-size:9px}
+ }
+ @media(max-height:500px){
+  .detail-dialog .dialog-head,.detail-dialog .drawer-footer{padding-block:4px}
+  .detail-dialog .dialog-head .subtitle{font-size:10px}
+  .profile-tabs{position:static}
+ }
+}
+@media print{
+ .panel-expand,.drawer-expand,.profile-mobile-label{display:none!important}
+}
