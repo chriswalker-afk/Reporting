@@ -35,5 +35,5 @@ export function filterRegister(rows,state,matchText){
 }
 export const sortValue=(row,key)=>{
  const ranks={grade:'gradeRank',minimumGrade:'minimumGradeRank',predictedGrade:'predictedGradeRank'};
- return ranks[key]&&Object.hasOwn(row,ranks[key])?row[ranks[key]]:key==='flags'?row.flags?.join(', '):row[key];
+ return ranks[key]&&Object.hasOwn(row,ranks[key])?row[ranks[key]]:key==='flags'?row.tags?.join(', '):key==='wave'?row.wave||Number(row.soc)*.5:row[key];
 };
