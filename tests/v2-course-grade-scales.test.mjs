@@ -42,7 +42,10 @@ test('course-specific target/prediction editors and markbook boundaries reject w
  ]){
   const c=d.classes.find(c=>c.courseId===courseId&&c.teacherIds.includes(staffId)),enrolment=d.enrolments.find(e=>e.classId===c.id);
   const w=createWorkspace(s,staffId,'faculty');
-  assert.deepEqual(w.classRecord(c.id).roster.find(r=>r.enrolmentId===enrolment.id).grades,order);
+  assert.deepEqual(w.subjectDetail(enrolment.id).summary.grades,order);
+  const rosterRow=w.classRecord(c.id).roster.find(r=>r.enrolmentId===enrolment.id);
+  assert.equal(rosterRow.minimumGradeRank,order.indexOf(rosterRow.minimumGrade));
+  assert.equal(rosterRow.gradeRank,rosterRow.grade===null?null:order.indexOf(rosterRow.grade));
   assert.deepEqual(w.markbook(c.id).defaultBands.map(b=>b.grade),order);
   for(const kind of ['prediction','target']){
    const html=renderDetail(w,{kind,id:enrolment.id});
