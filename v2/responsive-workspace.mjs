@@ -3,11 +3,11 @@ export const WORKSPACE_PREFS_KEY='jis-hub-v2-workspace-display-1';
 export const MOBILE_MAX=760;
 export const COMPACT_WIDTH=1280;
 export const COMPACT_HEIGHT=800;
-export const DEFAULT_WORKSPACE_PREFS=Object.freeze({density:'auto',navigation:'auto'});
+export const DEFAULT_WORKSPACE_PREFS=Object.freeze({density:'auto',navigation:'auto',topbarCollapsed:false});
 export function normalizeWorkspacePrefs(input){
  const p=input&&typeof input==='object'?input:{};
  return {density:['auto','standard','compact'].includes(p.density)?p.density:'auto',
-  navigation:['auto','full','rail'].includes(p.navigation)?p.navigation:'auto'};
+  navigation:['auto','full','rail'].includes(p.navigation)?p.navigation:'auto',topbarCollapsed:p.topbarCollapsed===true};
 }
 export const workspacePrefsKey=staffId=>WORKSPACE_PREFS_KEY+':'+String(staffId);
 export function loadWorkspacePrefs(storage,staffId){
@@ -39,6 +39,14 @@ export function createWorkspaceDisplay({app,main,sidebar,topbar,backdrop,getStaf
   if(layout.navigation!=='overlay')mobileOpen=false;
   app.dataset.workspaceDensity=layout.density;
   app.dataset.workspaceNavigation=layout.navigation;
+  app.dataset.workspaceTopbar=p.topbarCollapsed?'collapsed':'expanded';
+  const headerToggle=topbar.querySelector('[data-action="toggle-workspace-topbar"]');
+  if(headerToggle){
+   const label=p.topbarCollapsed?'Expand top bar':'Collapse top bar';
+   headerToggle.setAttribute('aria-expanded',String(!p.topbarCollapsed));headerToggle.setAttribute('aria-label',label);headerToggle.title=label;
+   const caption=headerToggle.querySelector('.topbar-collapse-label');if(caption)caption.textContent=p.topbarCollapsed?'Expand':'Collapse';
+  }
+  if(p.topbarCollapsed&&topbar.contains(active)&&active.closest('#topbar-scope-controls,#topbar-staff-controls,#topbar-display-controls'))headerToggle?.focus({preventScroll:true});
   sidebar.dataset.open=String(mobileOpen);
   const overlay=layout.navigation==='overlay'&&mobileOpen;
   content.inert=overlay;
@@ -74,6 +82,7 @@ export function createWorkspaceDisplay({app,main,sidebar,topbar,backdrop,getStaf
   if(layout?.navigation==='overlay'){toggleMenu();return;}
   update({navigation:layout?.navigation==='rail'?'full':'rail'});
  }
+ function toggleTopbar(){update({topbarCollapsed:!current().topbarCollapsed});topbar.querySelector('[data-action="toggle-workspace-topbar"]')?.focus({preventScroll:true});}
  function keyboard(event){
   if(!mobileOpen)return false;
   if(event.key==='Escape'){event.preventDefault();closeMenu();return true;}
@@ -88,6 +97,6 @@ export function createWorkspaceDisplay({app,main,sidebar,topbar,backdrop,getStaf
   if(event.key==='/'||((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k')){event.preventDefault();return true;}
   return false;
  }
- return {sync,closeMenu,toggleMenu,toggleNavigation,keyboard,setDensity:value=>update({density:value}),
+ return {sync,closeMenu,toggleMenu,toggleNavigation,toggleTopbar,keyboard,setDensity:value=>update({density:value}),
   reset:()=>update(DEFAULT_WORKSPACE_PREFS),isMenuOpen:()=>mobileOpen};
 }
