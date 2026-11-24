@@ -203,7 +203,7 @@ export function renderClasses(w,s){
  }
  const r=w.classRecord(s.classId),groups=s.columnGroups??DEFAULT_GROUPS,layout=registerLayout(groups),daily=layout==='daily',selected=visibleRegisterRows(r.roster,s,matchText,sortRows);
  const headingMarkup='<div class="class-heading">'+heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,'<div class="class-switcher">'+btn('All classes','go-classes','','btn-quiet','back')+previous+quick+next+'</div>','Classes')+'</div>';
- if(s.classTab==='markbook')return headingMarkup+classTabs('markbook')+renderMarkbook(w,s,r);
+ if(s.classTab==='markbook')return headingMarkup.replace('class="class-heading"','class="class-heading gradebook-class-heading"').replace('data-disclosure-default="standard"','data-disclosure-default="closed"')+classTabs('markbook')+renderMarkbook(w,s,r);
  if(s.classTab==='report-grades')return headingMarkup+classTabs('report-grades')+renderReportGrades(w,s,r);
  if(ANALYSIS_TABS.includes(s.classTab))return headingMarkup+classTabs(s.classTab)+renderAcademicAnalysis(w,s,r);
  const cols=displayedRegisterColumns(groups),gap=v=>'<span class="'+(v!==null&&v<0?'negative':v!==null&&v>=0?'positive':'')+'">'+esc(gradeGap(v))+'</span>';
