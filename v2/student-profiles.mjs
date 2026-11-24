@@ -13,7 +13,7 @@ export function directoryRow(p,subjects,cases){
  const active=cases.filter(c=>c.state!=='closed');
  return {...p,...studentCounts(subjects),cases:active.length,wave:active.length?Math.max(...active.map(c=>c.wave)):0,
   due:active.filter(c=>c.due).length,overdue:active.filter(c=>c.overdue).length,
-  flags:[...p.tags,...(active.length?['SOC']:[])]};
+  flags:[...p.tags,...(active.length?['SOC']:[])],directoryFlags:[...p.tags,...(active.length?['SOC']:[])].join(', ')};
 }
 export function filterStudents(rows,s,matchText){
  return rows.filter(p=>matchText(s.query,p.name,p.id,p.year,p.tutorGroupId,p.house,p.flags)&&
@@ -32,7 +32,7 @@ export function profileCounts(rows){
   soc:rows.filter(p=>p.cases>0).length,due:rows.filter(p=>p.due>0).length,unknown:rows.filter(p=>p.unknown>0).length};
 }
 export function createProfileEvidence(data,access){
- const ix=indexData(data),engine=createAnalytics(data),cache=new Map();
+ const ix=indexData(data),engine=createAnalytics(data),cache=new Map(),subjectCache=new Map();
  const getEnrolment=id=>{
   const e=ix.enrolments.get(id);
   if(!e||!access.canViewEnrolment(id))throw Error('Subject outside your accessible records');
@@ -47,9 +47,10 @@ export function createProfileEvidence(data,access){
  }
  function subject(enrolmentId){
   const e=getEnrolment(enrolmentId);
+  if(subjectCache.has(e.id))return subjectCache.get(e.id);
   if(!cache.has(e.classId))cache.set(e.classId,createAcademicAnalysis(data,access,'accessible',e.classId));
   const analysis=cache.get(e.classId).student(e.id);
-  return {...analysis,history:publishedFor(e).map(a=>assessmentRecord(e,a))};
+  const d={...analysis,history:publishedFor(e).map(a=>assessmentRecord(e,a))};subjectCache.set(e.id,d);return d;
  }
  function result(enrolmentId,assessmentId){
   const e=getEnrolment(enrolmentId),a=publishedFor(e).find(a=>a.id===assessmentId);
