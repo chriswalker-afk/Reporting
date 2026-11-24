@@ -59,7 +59,20 @@ export function matchesLayout(a,layout,asOf){
    layout.filter==='draft'&&a.status==='draft'||layout.filter==='diagnostic'&&!a.includeInSummary||layout.filter==='future'&&a.date>asOf);
 }
 // The full overview remains the data scope. Layout only projects columns; never change eligible evidence.
-export function projectGradebook(overview,units,layout,expanded=[],asOf='9999-12-31'){
+export function singleAssessmentSelection(overview,request={},asOf='9999-12-31'){
+ const list=orderedAssessments(overview.assessments,{order:'newest'});
+ const assessment=list.find(a=>a.id===request.assessmentId)??list.find(a=>a.status==='published'&&a.date<=asOf)??list[0]??null;
+ const item=assessment?.items.find(i=>i.id===request.itemId)??assessment?.items[0]??null;
+ return {assessment,item,list};
+}
+export function projectGradebook(overview,units,layout,expanded=[],asOf='9999-12-31',single=null){
+ if(single){
+  const selection=singleAssessmentSelection(overview,single,asOf),a=selection.assessment,item=selection.item;
+  // A temporary mark-entry projection; never rewrite the saved spreadsheet layout.
+  const p=normalizeLayout({...layout,display:'marks',summary:[]});
+  const columns=!a||!item?[]:a.mode==='total'?[{assessment:a,item,kind:'total'}]:[{assessment:a,item,kind:'item'},{assessment:a,item:null,kind:'summary'}];
+  return {layout:p,ordered:selection.list,visible:a?[a]:[],groups:[],columns,shownIds:new Set(a?[a.id]:[]),single:selection};
+ }
  const p=normalizeLayout(layout),ordered=orderedAssessments(overview.assessments,p),visible=ordered.filter(a=>matchesLayout(a,p,asOf)),visibleIds=new Set(visible.map(a=>a.id)),groups=new Map();
  if(p.group==='none'){
   return {layout:p,ordered,visible,groups:[],columns:gradebookColumns({...overview,assessments:visible},expanded),shownIds:visibleIds};

@@ -1,3 +1,4 @@
+import {renderResponsiveRegister} from './responsive-register.mjs';
 import {disclosure} from './workspace-disclosures.mjs';
 import {METHODS,methodLabel} from './calculation-policy.mjs';
 import {pct,displayDate} from './workspace.mjs';
@@ -17,15 +18,22 @@ const methodOptions=METHODS.map(m=>[m.id,m.label]);
 
 export function renderReportGrades(w,s,r){
  const book=w.reportGrades(r.id,s.reportPeriod),d=book.period,c=book.coverage;
- const table=d?'<div class="table-scroll workspace-fill-scroll report-grade-scroll"><table class="data-table report-grade-table"><thead><tr><th scope="col">Student</th><th scope="col">MTG</th><th scope="col">Calculated at cutoff</th><th scope="col">Prediction</th><th scope="col">Report grade</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead><tbody>'+
- book.rows.map(p=>{
+ const columns=[['student','Student'],['mtg','MTG'],['calculated','Calculated at cutoff'],['prediction','Prediction'],['reportGrade','Report grade'],['status','Status'],['action','Action']];
+ const cell=(p,key)=>{
   const ev=p.record?.status==='submitted'?p.record.evidence:p.evidence;
   const action=p.editable?(p.record?'Edit draft':'Enter grade'):p.canReopen?'View / reopen':p.record?'View record':'View evidence';
-  return '<tr><td>'+pupilIdentity('<button class="inline-link" type="button" data-action="open-student" data-id="'+e(p.studentId)+'">'+e(p.name)+'</button>',w.pupilHouse(p.studentId))+'</td><td>'+e(ev.minimumGrade??'—')+'</td>'+
-   '<td><strong>'+e(ev.calculatedGrade??'—')+'</strong><span class="cell-sub">'+e(pct(ev.average))+' · '+ev.scored+'/'+ev.eligible+' scored</span></td>'+
-   '<td>'+e(ev.predictedGrade??'—')+'</td><td class="report-grade-value">'+e(p.record?.grade??'—')+'</td><td><span class="tag '+(p.record?.status==='submitted'?'tag-success':p.record?'tag-warning':'')+'">'+status(p.record)+'</span></td>'+
-   '<td>'+btn(action,'report-grade-detail',bookId(r.id,d.id,p.enrolmentId),p.editable?'':'btn-quiet')+'</td></tr>';
- }).join('')+'</tbody></table></div>':'<div class="empty"><strong>No reporting periods for this class</strong>School leadership can create a Reports or SIMS grades deadline in Notices.</div>';
+  if(key==='student')return pupilIdentity('<button class="inline-link" type="button" data-action="open-student" data-id="'+e(p.studentId)+'">'+e(p.name)+'</button>',w.pupilHouse(p.studentId));
+  if(key==='mtg')return e(ev.minimumGrade??'—');
+  if(key==='calculated')return '<strong>'+e(ev.calculatedGrade??'—')+'</strong><span class="cell-sub">'+e(pct(ev.average))+' · '+ev.scored+'/'+ev.eligible+' scored</span>';
+  if(key==='prediction')return e(ev.predictedGrade??'—');
+  if(key==='reportGrade')return '<strong class="report-grade-value">'+e(p.record?.grade??'—')+'</strong>';
+  if(key==='status')return '<span class="tag '+(p.record?.status==='submitted'?'tag-success':p.record?'tag-warning':'')+'">'+status(p.record)+'</span>';
+  if(key==='action')return btn(action,'report-grade-detail',bookId(r.id,d.id,p.enrolmentId),p.editable?'':'btn-quiet');
+  return '';
+ };
+ const tableHtml=d?'<div class="table-scroll workspace-fill-scroll report-grade-scroll" role="region" tabindex="0" aria-label="Reporting grades table"><table class="data-table report-grade-table"><thead><tr>'+columns.map(([,label])=>'<th scope="col">'+e(label)+'</th>').join('')+'</tr></thead><tbody>'+
+ book.rows.map(p=>'<tr>'+columns.map(([key])=>'<td'+(key==='reportGrade'?' class="report-grade-value"':'')+'>'+cell(p,key)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':'<div class="empty"><strong>No reporting periods for this class</strong>School leadership can create a Reports or SIMS grades deadline in Notices.</div>';
+ const table=d?renderResponsiveRegister('reports',columns,book.rows,cell,tableHtml,s,{identity:'student',sortable:false}):tableHtml;
  return '<section class="surface workspace-fill-panel report-grades"><div class="panel-head"><h2>Reporting grades</h2>'+btn('Reporting schedule','go-schedule','','btn-quiet')+'</div>'+
  '<div class="toolbar report-grade-toolbar">'+(d?'<label>Reporting period '+select('report-period',book.periods.map(p=>[p.id,p.title+' · '+displayDate(p.dueDate)+(p.archived?' (archived)':'')]),d.id)+'</label>':'')+
  (d?'<span class="count">'+c.submitted+'/'+c.eligible+' submitted · '+c.draft+' drafts · '+c.missing+' not entered</span>':'')+'</div>'+
