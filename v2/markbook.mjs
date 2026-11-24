@@ -31,7 +31,14 @@ export function normalizeDefinition(data,access,classId,input,old=null){
  require(new Set(items.map(i=>i.id)).size===items.length,'Item identifiers must be unique');
  const locked=Boolean(old&&data.results.some(r=>r.assessmentId===old.id));
  if(locked){
-  require(old.mode===input.mode&&JSON.stringify(old.items)===JSON.stringify(items),'Item structure is locked once results exist. Reuse as a new assessment instead.');
+  const structure=x=>x.map(({id,label,topic,ao})=>({id,label,topic,ao:ao??null}));
+  require(old.mode===input.mode&&JSON.stringify(structure(old.items))===JSON.stringify(structure(items)),'Item structure is locked once results exist. Reuse as a new assessment instead.');
+  if(old.items.some((i,n)=>i.maxMarks!==items[n].maxMarks)){
+   require(input.confirmed===true&&isText(input.reason),'Confirm maximum mark corrections and provide a reason');
+   for(const r of data.results.filter(r=>r.assessmentId===old.id)){
+    for(const i of items)require(!Object.hasOwn(r.marks,i.id)||r.marks[i.id]<=i.maxMarks,'Revised maximum for '+i.label+' is below a recorded mark in an assigned class');
+   }
+  }
   require(old.classIds.length===input.classIds.length&&old.classIds.every(id=>input.classIds.includes(id)),'Class assignments are locked once results exist');
  }
  const tracker=ix.gradeSchemes.get(course.gradeSchemeId),bands=input.bands??tracker.bands;
