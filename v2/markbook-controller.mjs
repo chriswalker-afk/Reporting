@@ -79,8 +79,7 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
   const [,,id]=unpackBookId(getDetail().id);if(!id)return;
   const row=findRow(id);if(!row)return;
   const cells=[...row.querySelectorAll('.mark-cell')];
-  if(!focusCell(cells.find(n=>n.getAttribute('aria-invalid')==='true')??cells.find(n=>!n.value.trim())??cells[0]))row.focus();
-  row.scrollIntoView({block:'nearest',inline:'nearest'});
+  if(!focusCell(cells.find(n=>n.getAttribute('aria-invalid')==='true')??cells.find(n=>!n.value.trim())??cells[0])){row.focus();row.scrollIntoView({block:'nearest',inline:'nearest'});}
  }
  function onFocus(target){
   if(getDetail()?.kind!=='mark-grid'||!activeDetail||!target.matches?.('.mark-cell'))return;

@@ -160,7 +160,11 @@ const titles={grade:'Grade distribution',histogram:'Percentage distribution',tar
 export function renderAnalysisEvidence(w,id){
  const request=JSON.parse(id),a=w.academicAnalysis(request.classId),d=a.drilldown(request),rows=d.rows;
  const subtitle=(titles[d.kind]??'Evidence')+' · '+request.key;
- let header,body;
+ let header,body,summary='';
+ if(['topic','item','assessment-topic','ao'].includes(d.kind)&&rows.length){
+  const earned=rows.reduce((n,r)=>n+r.earned,0),available=rows.reduce((n,r)=>n+r.available,0),pupils=new Set(rows.map(r=>r.studentId)).size;
+  summary='<div class="evidence-summary"><strong>'+e(pct(available?100*earned/available:null))+'</strong><span>'+e(earned+'/'+available+' marks · '+pupils+' contributing pupil'+(pupils===1?'':'s'))+'</span></div>';
+ }
  if(d.kind==='topic'){
   header=['Student','Assessment','Date','Item','Marks','%'];
   body=rows.map(r=>[pupilIdentity(link(r.name,'open-student',r.studentId),w.pupilHouse(r.studentId)),link(r.title,'open-markbook',bookId(a.classId,r.assessmentId,r.enrolmentId)),e(displayDate(r.date)),e(r.item),e(r.earned+'/'+r.available),e(pct(100*r.earned/r.available))]);
@@ -174,5 +178,5 @@ export function renderAnalysisEvidence(w,id){
   header=['Student','Class','Average','Grade','MTG','Δ MTG','Scored'];
   body=rows.map(r=>[pupilIdentity(link(r.name,'open-student',r.studentId),w.pupilHouse(r.studentId)),e(r.classCode),e(pct(r.average)),e(r.grade??'—'),e(r.minimumGrade??'—'),gap(r.gapToTarget),e(coverage(r))]);
  }
- return {title:subtitle,sub:rows.length+' contributing '+(d.kind==='topic'?'item records':'pupil records')+' · Selected scope and filters',body:table(header,body,subtitle)+'<p class="stage-note">These are the actual records used in the selected chart or statistic, not a separate example dataset.</p>'};
+ return {title:subtitle,sub:rows.length+' contributing '+(d.kind==='topic'?'item records':'pupil records')+' · Selected scope and filters',body:summary+table(header,body,subtitle)+'<p class="stage-note">These are the actual records used in the selected chart or statistic, not a separate example dataset.</p>'};
 }
