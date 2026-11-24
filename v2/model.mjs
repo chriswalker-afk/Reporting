@@ -45,6 +45,7 @@ export function validateData(data) {
   const err=(where,message)=>errors.push(where+': '+message);
   if(!data||data.schemaVersion!==SCHEMA_VERSION||data.synthetic!==true)
     return ['Only schema version '+SCHEMA_VERSION+' explicitly synthetic demo data is supported.'];
+  if(!isDate(data.asOf)||!isText(data.academicYear))return ['Invalid demo reference date or academic year.'];
   for(const table of TABLES) {
     if(!Array.isArray(data[table])) err(table,'expected array');
     else {
