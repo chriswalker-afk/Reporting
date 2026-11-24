@@ -39,18 +39,18 @@ export function createAccess(data,staffId){
     const n=ix.notes.get(noteId),e=n&&ix.enrolments.get(n.enrolmentId);
     return Boolean(e&&(has('leadership')||teaches(e.classId)||leads(e.classId)||isTutor(e.studentId)||isHouse(e.studentId)));
   };
-  const scopeClasses=scope=>data.classes.filter(c=>{
+  const scopeClasses=(scope='accessible')=>data.classes.filter(c=>{
     if(scope==='teaching')return teaches(c.id);
     if(scope==='faculty')return leads(c.id);
     if(scope==='school')return has('house')||has('leadership');
-    return canViewClass(c.id);
+    return scope==='accessible'&&canViewClass(c.id);
   }).map(c=>c.id);
   const scopeStudents=(scope='accessible')=>data.students.filter(s=>{
     if(scope==='tutor')return isTutor(s.id);
     if(scope==='house')return isHouse(s.id);
     if(scope==='school')return has('leadership');
     if(scope==='faculty'||scope==='teaching')return (ix.enrolmentsByStudent.get(s.id)||[]).some(e=>scope==='faculty'?leads(e.classId):teaches(e.classId));
-    return canViewStudent(s.id);
+    return scope==='accessible'&&canViewStudent(s.id);
   }).map(s=>s.id);
   // Explicit scope membership; school-wide class browsing is not a school-wide pastoral role.
   const scopeEnrolments=(scope='accessible')=>data.enrolments.filter(e=>{
@@ -59,7 +59,7 @@ export function createAccess(data,staffId){
     if(scope==='school')return has('leadership');
     if(scope==='faculty')return leads(e.classId);
     if(scope==='teaching')return teaches(e.classId);
-    return canViewEnrolment(e.id);
+    return scope==='accessible'&&canViewEnrolment(e.id);
   }).map(e=>e.id);
   const audienceMatches=audience=>{
     if(!audience)return false;
