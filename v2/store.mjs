@@ -78,7 +78,7 @@ export function createReadModel(data,staffId){
 export function createStore({initialData=createDemoData(),storage=null,storageKey=STORAGE_KEY,clock=()=>new Date().toISOString()}={}){
   const baseline=assertData(clone(initialData));
   let current=clone(baseline),revision=0;
-  const persisted=storage?.getItem(storageKey);
+  let persisted=storage?.getItem(storageKey)??null;
   if(persisted!==null&&persisted!==undefined){
     const parsed=JSON.parse(persisted);
     current=assertData(parsed);
@@ -87,6 +87,13 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   const snapshot=()=>clone(current);
   const lookup=(data,t,id)=>data[t].find(r=>r.id===id);
   const must=(condition,message)=>{if(!condition)throw new Error(message);};
+  function persist(next){
+    if(!storage)return;
+    must((storage.getItem(storageKey)??null)===persisted,'Demo data changed in another tab. Reload this tab before saving.');
+    const serialized=JSON.stringify(next);
+    storage.setItem(storageKey,serialized);
+    persisted=serialized;
+  }
   function transaction(staffId,action,recordId,mutate){
     const draft=snapshot(),access=createAccess(draft,staffId);
     const {before,after,reason}=mutate(draft,access);
@@ -96,7 +103,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
     draft.audit.push({id,actorStaffId:staffId,action,recordId,timestamp:clock(),before:clone(before),after:clone(after),reason:reason??null});
     assertData(draft);
     // Storage failure must not silently commit a partial edit.
-    if(storage)storage.setItem(storageKey,JSON.stringify(draft));
+    persist(draft);
     current=draft;revision++;
     for(const listener of listeners)try{listener(snapshot(),revision);}catch(error){console.error('Demo store subscriber error',error);}
     return {changed:true,revision};
@@ -339,7 +346,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   function reset({confirmed=false}={}){
     must(confirmed===true,'Confirm reset of fictional demo data');
     const next=clone(baseline);
-    if(storage)storage.setItem(storageKey,JSON.stringify(next));
+    persist(next);
     current=next;revision++;
     for(const listener of listeners)try{listener(snapshot(),revision);}catch(error){console.error('Demo store subscriber error',error);}
   }
