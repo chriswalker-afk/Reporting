@@ -27,7 +27,7 @@ const icons={
  close:'M6 6l12 12 M18 6 6 18',menu:'M3 6h18 M3 12h18 M3 18h18',layout:'M3 4h18v16H3z M9 4v16 M13 8h4 M13 12h4',arrow:'M5 12h14 M14 7l5 5-5 5',
  back:'M19 12H5 M10 7l-5 5 5 5',clock:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20 M12 6v6l4 2',
  edit:'M4 20l4-1 12-12-4-4L4 15z M13 6l4 4',lock:'M5 10h14v11H5z M8 10V7a4 4 0 0 1 8 0v3',
- person:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2'
+ more:'M4 12h.01 M12 12h.01 M20 12h.01',person:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2'
 };
 export const icon=name=>'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="'+(icons[name]||icons.info)+'"/></svg>';
 const help=(id,label)=>'<button type="button" class="help" data-help="'+esc(id)+'" aria-label="'+esc('About '+(label||id))+'" aria-expanded="false">'+icon('info')+'</button>';
@@ -75,7 +75,7 @@ export function sidebar(page,w){
  const planned=FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" aria-label="'+esc(label+' (planned)')+'" title="'+esc(label+' — planned module')+'">'+icon(ic)+'<span class="nav-label">'+esc(label)+'</span></span>').join('');
  return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><img class="jis-crest" src="'+esc(assetUrl('jis-crest.webp'))+'" alt="Jerudong International School crest" width="44" height="44"><div class="brand-text"><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div>'+
  '<div class="sidebar-scroll" role="region" aria-label="Staff workspace navigation" tabindex="0"><div class="nav-heading">Staff workspace</div><nav class="nav-group" aria-label="Main navigation">'+primary+'</nav><hr class="sidebar-line">'+
- '<details class="sidebar-future"><summary title="Show or hide planned modules" aria-label="Planned modules">'+icon('tool')+'<span class="nav-label">Planned modules</span><span class="sidebar-future-chevron" aria-hidden="true"></span></summary><div class="nav-group sidebar-future-links">'+planned+'</div></details></div>'+
+ '<details class="sidebar-future"><summary title="Show or hide planned modules" aria-label="Planned modules">'+icon('more')+'<span class="nav-label">Planned modules</span><span class="sidebar-future-chevron" aria-hidden="true"></span></summary><div class="nav-group sidebar-future-links">'+planned+'</div></details></div>'+
  '<div class="sidebar-bottom"><strong>Version 2 · Complete demo</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
