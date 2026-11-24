@@ -23,7 +23,7 @@ export function editDraftItem(assessment,draft,itemId,value){
  const raw=String(value??''),next={status:draft.status,raw:{...draft.raw,[itemId]:raw}};
  if(assessment.mode==='total'&&/^a(?:bsent)?$/i.test(raw.trim()))return editDraftStatus(assessment,next,'absent');
  if(raw.trim())next.status='present';
- else if(!Object.values(next.raw).some(v=>v.trim())&&next.status!=='absent')next.status='missing';
+ else if(!Object.values(next.raw).some(v=>v.trim())&&(assessment.mode==='total'||next.status!=='absent'))next.status='missing';
  return next;
 }
 export function editDraftStatus(assessment,draft,status){
