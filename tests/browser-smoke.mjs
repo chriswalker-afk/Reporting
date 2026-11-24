@@ -37,11 +37,12 @@ async function until(fn,label,timeout=10000){
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const origin='http://127.0.0.1:'+server.address().port;
 const profile=await mkdtemp(join(tmpdir(),'jis-hub-browser-'));
-const child=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','ignore']});
+const child=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+let chromeLog='';child.stderr.on('data',chunk=>{chromeLog=(chromeLog+chunk.toString()).slice(-6000);});
 let socket,serial=0,dialogs=[],errors=[],page;
 const pending=new Map();
 try{
- const port=await until(async()=>Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]),'Chrome debugging port');
+ const port=await until(async()=>Number((await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0]),'Chrome debugging port',30000).catch(error=>{throw Error(error.message+'\n'+chromeLog);});
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  page=targets.find(t=>t.type==='page');assert.ok(page);
  socket=new WebSocket(page.webSocketDebuggerUrl);
