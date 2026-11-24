@@ -219,7 +219,7 @@ document.addEventListener('click',event=>{
   case 'go-schedule':navigate('notices');byId('schedule-panel')?.focus();break;
   case 'focus-schedule':byId('schedule-panel')?.focus();break;
   case 'focus-attention':byId('attention-panel')?.focus();break;
-  case 'go-personal-actions':state.scope='accessible';navigate('intervention',{caseFilter:'actions'});break;
+  case 'go-personal-actions':navigate('intervention',{caseFilter:'actions'});break;
   case 'show-active-notices':state.noticeFilter='active';render();break;
   case 'show-pending-notices':state.noticeFilter='pending';render();break;
   case 'show-archive':state.noticeFilter='archive';render();break;
@@ -315,7 +315,7 @@ document.addEventListener('change',event=>{
  const registerFilters={'tutor-filter':'tutorFilter','house-filter':'houseFilter','track-filter':'trackFilter','support-filter':'supportFilter','class-year':'classYear','class-faculty':'classFaculty'};
  if(registerFilters[el.id]){state[registerFilters[el.id]]=el.value;if(el.id==='track-filter')state.below=false;render({keepFocus:true});}
  if(el.id==='below-filter'){state.below=el.checked;render({keepFocus:true});}
- if(el.id==='case-filter'){state.caseFilter=el.value;render({keepFocus:true});}
+ if(el.id==='case-filter'){state.caseFilter=el.value;if(el.value==='actions'){state.caseClass=null;state.tutorFilter='all';state.houseFilter='all';}render({keepFocus:true});}
  if(el.id==='notice-filter'){state.noticeFilter=el.value;render({keepFocus:true});}
  if(el.id==='deadline-filter'){state.deadlineFilter=el.value;render({keepFocus:true});}
 });
