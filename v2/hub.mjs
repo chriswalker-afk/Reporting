@@ -12,6 +12,7 @@ import {createWorkspaceDisplay} from './responsive-workspace.mjs';
 import {createWorkspaceDisclosures} from './workspace-disclosures.mjs';
 import {createGradebookFocus,focusContext} from './gradebook-focus.mjs';
 import {REGISTER_NAMES,REGISTER_VIEWS} from './responsive-register.mjs';
+import {createExpandablePanels,createDrawerDisplay} from './expandable-details.mjs';
 import {loadLayout,saveLayout,normalizeLayout,updateLayout,revealLayout,moveAssessment,groupOf,matchesLayout,layoutKey} from './gradebook-layout.mjs';
 import {editorInput,changeBoundaryUnit,changeEditorRows,resetEditorBoundaries} from './assessment-editor.mjs';
 import {GROUPS,DEFAULT_GROUPS,FULL_GROUPS,registerFocusFilter,visibleRegisterRows} from './class-overview.mjs';
@@ -29,6 +30,9 @@ const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore
 const display=createWorkspaceDisplay({app:byId('app'),main,sidebar:nav,topbar:bar,backdrop:byId('navigation-backdrop'),getStaff:()=>state.staffId,notify});
 const disclosures=createWorkspaceDisclosures({root:main,getContext:()=>[state.staffId,state.page,state.page==='classes'?state.classId?'class:'+state.classTab:'index':''],getDensity:()=>byId('app').dataset.workspaceDensity});
 const gradebookFocus=createGradebookFocus({app:byId('app'),root:main,getContext:()=>focusContext(state),restoreDisclosures:()=>disclosures.sync()});
+const analysisPanels=createExpandablePanels({root:main,getContext:()=>[state.staffId,state.scope,state.page,state.classId,state.classTab]});
+const drawerPanels=createExpandablePanels({root:detailDialog,getContext:()=>[state.staffId,state.scope,detail?.kind,detail?.id,detail?.tab]});
+const drawerDisplay=createDrawerDisplay(detailDialog);
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
 function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
@@ -79,7 +83,7 @@ function render({top=false,keepFocus=false}={}){
  state.registerPresentation=registerPresentations.get(state.staffId)??{};
  nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);display.sync();
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
- disclosures.sync();gradebookFocus.sync();
+ disclosures.sync();gradebookFocus.sync();analysisPanels.sync();
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  gradebook.mount();
@@ -126,9 +130,9 @@ function openDetail(kind,id,options={}){
   detailDialog.classList.toggle('wide-markbook',kind==='mark-grid');
   detailDialog.classList.toggle('wide-profile',kind==='student');
   detailDialog.classList.toggle('wide-case',kind==='case');
-  if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
+  if(!detailDialog.open){drawerDisplay.reset();drawerPanels.reset();drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
-  grid.init();detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});grid.focusRequested();
+  drawerDisplay.sync();drawerPanels.sync();grid.init();detailDialog.querySelector('.dialog-head [data-action="detail-back"],.dialog-head [data-action="close-detail"]')?.focus({preventScroll:true});grid.focusRequested();
  }catch(error){notify(String(error.message||error));}
 }
 function addBack(){
@@ -143,7 +147,7 @@ function refreshDetail(markup=null){
  detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
  detailDialog.classList.toggle('wide-profile',detail.kind==='student');
  detailDialog.classList.toggle('wide-case',detail.kind==='case');
- detailDialog.innerHTML=markup??renderDetail(w,detail);addBack();grid.init();
+ detailDialog.innerHTML=markup??renderDetail(w,detail);addBack();drawerDisplay.sync();drawerPanels.sync();grid.init();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=scroll;
 }
 function detailBack(){
@@ -159,7 +163,7 @@ function closeDetail(restore=true){
  if(!canLeaveDetail())return false;
  hideHelp();detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
  if(restore)restoreFocus(drawerReturn);
- drawerReturn=null;detailDialog.classList.remove('wide-markbook','wide-profile','wide-case');return true;
+ drawerReturn=null;drawerDisplay.reset();drawerPanels.reset();detailDialog.classList.remove('wide-markbook','wide-profile','wide-case');return true;
 }
 function openStudent(id,tab='overview',subjectId=''){
  let peerIds,peerLabel='',classContext='';
@@ -243,10 +247,12 @@ document.addEventListener('click',event=>{
  if(disclosures.click(event))return;
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-entry-view'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel','gradebook-entry-view','drawer-expand','expand-panel'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
+  case 'drawer-expand':drawerDisplay.toggle();break;
+  case 'expand-panel':(detailDialog.contains(el)?drawerPanels:analysisPanels).toggle(el);break;
   case 'gradebook-entry-view':{
    if(!['single','spreadsheet'].includes(id)||!main.querySelector('#gradebook-surface'))break;
    const k=currentLayoutKey(),node=byId('gradebook-surface'),previous=gradebookEntryViews.get(k)??{};
@@ -677,6 +683,7 @@ document.addEventListener('keydown',event=>{
  }
  if(detailDialog.open||resetDialog.open)return;
  if(gradebookFocus.keyboard(event))return;
+ if(event.key==='Escape'&&analysisPanels.collapse()){event.preventDefault();return;}
  const typing=/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.target.isContentEditable;
  if((event.key==='/'&&!typing||event.key.toLowerCase()==='k'&&(event.ctrlKey||event.metaKey))){event.preventDefault();openSearch();}
 
@@ -687,7 +694,7 @@ document.addEventListener('focusout',event=>{if(helpAnchor&&!helpPinned&&event.t
 window.addEventListener('resize',()=>{hideHelp();display.sync();disclosures.sync();gradebookFocus.sync();});document.addEventListener('scroll',hideHelp,true);
 window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY||event.key===null)notify('Demo data changed in another tab. Reload before making further edits.');});
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
-detailDialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
+detailDialog.addEventListener('cancel',event=>{event.preventDefault();if(drawerPanels.collapse()||drawerDisplay.restore())return;closeDetail();});
 for(const d of [searchDialog,detailDialog])d.addEventListener('click',event=>{if(event.target===d){const rect=d.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)d===detailDialog?closeDetail():closeSearch();}});
 window.addEventListener('popstate',()=>{const route=parseRoute(location.hash);if(!gradebook.guard()||!closeDetail(false)){history.pushState(null,'',routeHash(state.page,state.classId,state.classTab));return;}closeSearch(false);display.closeMenu({restore:false});clearFilters();state.classTab=route.classTab??'information';state.unitId='';Object.assign(state,route);if(route.classId&&!w.scopedClassIds.has(route.classId)&&w.accessibleClassIds.has(route.classId))state.scope='accessible';render({top:true});});
 boot();
