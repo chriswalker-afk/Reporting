@@ -2,6 +2,7 @@ import {houseIdentity,houseName} from './branding.mjs';
 import {finite} from './model.mjs';
 import {projectRegisterRow,sortValue} from './class-overview.mjs';
 import {createMarkbook} from './markbook.mjs';
+import {calculationSettings,reportRegister} from './reporting-grades.mjs';
 import {createAcademicAnalysis} from './academic-analysis.mjs';
 import {directoryRow,studentCounts,orderedNotes,createProfileEvidence} from './student-profiles.mjs';
 import {CASE_ACTION_LABELS,pendingCaseActions} from './interventions.mjs';
@@ -98,7 +99,7 @@ export function parseRoute(hash){
   if(page==='classes'&&parts[1])try{classId=decodeURIComponent(parts[1]);}catch{}
   return {page,classId,...(classId&&CLASS_TABS.includes(parts[2])?{classTab:parts[2]}:{})};
 }
-export const CLASS_TABS=['information','markbook','student-analysis','class-analysis','faculty-analysis'];
+export const CLASS_TABS=['information','markbook','report-grades','student-analysis','class-analysis','faculty-analysis'];
 export const routeHash=(page,classId,tab)=>'#'+page+(page==='classes'&&classId?'/'+encodeURIComponent(classId)+(CLASS_TABS.includes(tab)&&tab!=='information'?'/'+tab:''):'');
 
 /** Permission-aware projection of the single V2 snapshot. No synthetic summary constants. */
@@ -181,6 +182,14 @@ export function createWorkspace(store,staffId,requestedScope){
     if(!scopedClassIds.has(id))throw Error('Class outside current scope');
     if(!markbooks.has(id))markbooks.set(id,createMarkbook(data,access,id,scope));
     return markbooks.get(id);
+  }
+  function reportGrades(id,periodId=null){
+    if(!scopedClassIds.has(id))throw Error('Class outside current scope');
+    return reportRegister(data,access,scope,id,periodId);
+  }
+  function calculationPolicy(id){
+    if(!scopedClassIds.has(id))throw Error('Class outside current scope');
+    return calculationSettings(data,access,id);
   }
   const analysisCache=new Map();
   function academicAnalysis(id){
@@ -337,6 +346,6 @@ export function createWorkspace(store,staffId,requestedScope){
     return get({faculty:'faculties',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
-    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,studentProfile,profileSubject,profileResult,profilePeers,subjectDetail,noteDetail,markbook,academicAnalysis,
+    home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,studentProfile,profileSubject,profileResult,profilePeers,subjectDetail,noteDetail,markbook,academicAnalysis,reportGrades,calculationPolicy,
     caseRows,caseDetail,caseStartOptions,caseStartDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel,pupilHouse:id=>access.canViewStudent(id)?studentInfo(id):null};
 }
