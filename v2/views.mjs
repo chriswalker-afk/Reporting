@@ -306,7 +306,7 @@ export function renderIntervention(w,s){
   if(k==='nextActions')return nextTask(c);
   if(k==='studyStatus')return c.studyStatus==='none'?'<span class="muted">No plan</span>':link(studyStatusLabel(c.studyStatus),'open-case-plan',c.id);
   return esc(c[k]);
- },s)+'</section>'+note('One shared case per pupil and subject. Wave counts and case filters follow the selected scope; My actions covers all assigned responsibilities. Safeguarding remains separate; no external submission or email is performed.');
+ },s)+'</section><p class="workspace-safety-note small muted">Academic support only · Safeguarding remains separate · No external submission or email</p>'+note('One shared case per pupil and subject. Wave counts and case filters follow the selected scope; My actions covers all assigned responsibilities.');
 }
 
 export function renderPage(w,s){return '<div class="workspace-inner" data-workspace-page="'+esc(s.page)+'" data-workspace-tab="'+esc(s.classTab??'')+'"'+(s.page==='classes'&&s.classId&&['markbook','report-grades'].includes(s.classTab)?' data-workspace-fill="true"':'')+'>'+({home:renderHome,notices:renderNotices,classes:renderClasses,students:renderStudents,intervention:renderIntervention}[s.page]||renderHome)(w,s)+'</div>';}
