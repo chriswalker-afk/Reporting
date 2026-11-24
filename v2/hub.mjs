@@ -7,7 +7,7 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,sorts:{}};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',sorts:{}};
 let storageIssue='';
 function boot(){
  try{store=createStore({storage:window.localStorage});}
@@ -34,11 +34,11 @@ function render({top=false,keepFocus=false}={}){
  if(oldId){const next=byId(oldId);next?.focus({preventScroll:true});if(caret!==null&&next?.type==='search')try{next.setSelectionRange(caret,caret);}catch{}}
  if(detail&&detailDialog.open)try{refreshDetail();}catch{closeDetail();}
 }
-function clearFilters(){state.query='';state.flag='all';state.below=false;state.caseFilter='active';state.caseClass=null;}
-function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,preserve=false}={}){
+function clearFilters(){state.query='';state.flag='all';state.below=false;state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
+function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false}={}){
  closeDetail(false);closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
- state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;
+ state.page=page;state.classId=classId;state.below=below;state.caseFilter=caseFilter;state.caseClass=caseClass;state.noticeFilter=noticeFilter;state.deadlineFilter=deadlineFilter;
  const hash=routeHash(page,classId);if(location.hash!==hash)history.pushState(null,'',hash);
  render({top:true});main.focus({preventScroll:true});
 }
@@ -140,6 +140,14 @@ document.addEventListener('click',event=>{
   case 'go-below':navigate('classes',{below:true});break;
   case 'go-students':navigate('students');break;
   case 'go-notices':navigate('notices');break;
+  case 'go-acknowledgements':navigate('notices',{noticeFilter:'pending'});break;
+  case 'go-schedule':navigate('notices');byId('schedule-panel')?.focus();break;
+  case 'focus-schedule':byId('schedule-panel')?.focus();break;
+  case 'focus-attention':byId('attention-panel')?.focus();break;
+  case 'go-personal-actions':state.scope='accessible';navigate('intervention',{caseFilter:'actions'});break;
+  case 'show-active-notices':state.noticeFilter='active';render();break;
+  case 'show-pending-notices':state.noticeFilter='pending';render();break;
+  case 'show-archive':state.noticeFilter='archive';render();break;
   case 'go-cases':navigate('intervention');break;
   case 'go-actions':navigate('intervention',{caseFilter:'actions'});break;
   case 'class-cases':navigate('intervention',{caseClass:id});break;
@@ -147,6 +155,19 @@ document.addEventListener('click',event=>{
   case 'open-student':openDetail('student',id);break;
   case 'open-case':openDetail('case',id);break;
   case 'open-notice':openDetail('notice',id);break;
+  case 'open-deadline':openDetail('deadline',id);break;
+  case 'new-notice':openDetail('notice-form','');break;
+  case 'edit-notice':openDetail('notice-form',id);break;
+  case 'new-deadline':openDetail('deadline-form','');break;
+  case 'edit-deadline':openDetail('deadline-form',id);break;
+  case 'archive-notice':openDetail('archive-notice',id);break;
+  case 'archive-deadline':openDetail('archive-deadline',id);break;
+  case 'ack-notice':
+    try{store.acknowledgeNotice(state.staffId,id);detailDialog.querySelector('.dialog-head button')?.focus();notify('Notice acknowledged. Your Home queue has been updated.');}
+    catch(error){notify(String(error.message||error));}break;
+  case 'toggle-deadline':
+    try{const completed=!w.deadlineDetail(id).completed;store.setDeadlineCompletion(state.staffId,id,completed);detailDialog.querySelector('.dialog-head button')?.focus();notify(completed?'Personal reminder completed.':'Personal reminder reopened.');}
+    catch(error){notify(String(error.message||error));}break;
   case 'edit-prediction':openDetail('prediction',id);break;
   case 'close-detail':closeDetail();break;
   case 'detail-back':detailBack();break;
@@ -173,8 +194,36 @@ document.addEventListener('change',event=>{
  if(el.id==='flag-filter'){state.flag=el.value;render({keepFocus:true});}
  if(el.id==='below-filter'){state.below=el.checked;render({keepFocus:true});}
  if(el.id==='case-filter'){state.caseFilter=el.value;render({keepFocus:true});}
+ if(el.id==='notice-filter'){state.noticeFilter=el.value;render({keepFocus:true});}
+ if(el.id==='deadline-filter'){state.deadlineFilter=el.value;render({keepFocus:true});}
 });
 document.addEventListener('submit',event=>{
+ if(['communication-form','archive-form'].includes(event.target.id)){
+  event.preventDefault();
+  const form=new FormData(event.target),record=detail&&{...detail};
+  try{
+   if(!record)throw Error('No selected communication record');
+   if(event.target.id==='archive-form'){
+    const confirmed=form.has('confirmed');
+    if(record.kind==='archive-notice')store.archiveNotice(state.staffId,record.id,{confirmed});
+    else if(record.kind==='archive-deadline')store.archiveDeadline(state.staffId,record.id,{confirmed});
+    else throw Error('Unknown archive record');
+    closeDetail();notify('Record archived. Active views and reminders updated.');return;
+   }
+   const get=name=>String(form.get(name)??''),common={title:get('title'),audience:JSON.parse(get('audience')),confirmed:form.has('confirmed')};
+   if(record.kind==='notice-form'){
+    store.saveNotice(state.staffId,record.id||null,{...common,kind:get('kind'),body:get('body'),priority:get('priority'),
+      publishedDate:get('publishedDate'),expiryDate:get('expiryDate')||null,pinned:form.has('pinned'),
+      requiresAcknowledgement:form.has('requiresAcknowledgement'),links:get('links').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)});
+    notify(record.id?'Notice updated.':'Notice published or scheduled.');
+   }else if(record.kind==='deadline-form'){
+    store.saveDeadline(state.staffId,record.id||null,{...common,event:get('event'),dueDate:get('dueDate'),details:get('details')});
+    notify('Reporting schedule updated for the relevant staff.');
+   }else throw Error('Unknown communication form');
+   if(detailStack.length)detailBack();else closeDetail();
+  }catch(error){const node=byId('form-error');if(node){node.hidden=false;node.textContent=String(error.message||error);}else notify(String(error.message||error));}
+  return;
+ }
  if(event.target.id!=='prediction-form')return;
  event.preventDefault();
  try{
