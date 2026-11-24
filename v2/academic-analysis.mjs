@@ -104,11 +104,16 @@ export function createAcademicAnalysis(data,access,scope,classId){
   }else if(kind==='faculty-course'){
    const c=faculty(o).years.find(c=>c.courseId===key);need(c,'Course outside comparison');rows=c.rows;
   }else rows=classOverview(o).rows;
-  if(kind==='grade'||kind==='assessment-grade')rows=rows.filter(r=>r.grade===key);
+  if(kind==='grade'||kind==='assessment-grade'){
+   const bands=kind==='grade'?scheme.bands:ix.gradeSchemes.get(ix.assessments.get(assessmentId).gradeSchemeId).bands;
+   need(bands.some(b=>b.grade===key),'Unknown grade');rows=rows.filter(r=>r.grade===key);
+  }
   else if(kind==='histogram'||kind==='assessment-histogram'){
    const lo=Number(key);need(Number.isInteger(lo)&&lo>=0&&lo<=90&&lo%10===0,'Invalid histogram bin');
    rows=rows.filter(r=>{const v=kind==='histogram'?r.average:r.percent;return v!==null&&v>=lo&&(v<lo+10||lo===90&&v===100);});
-  }else if(kind==='target')rows=rows.filter(r=>key==='below'?r.onTrack===false:key==='on'?r.onTrack===true:key==='unknown'?r.onTrack===null:false);
+  }else if(kind==='target'){
+   need(['below','on','unknown'].includes(key),'Unknown target status');rows=rows.filter(r=>key==='below'?r.onTrack===false:key==='on'?r.onTrack===true:r.onTrack===null);
+  }
   else if(kind==='assessment-status')rows=rows.filter(r=>r.status===key);
   else need(['faculty-class','faculty-course','common-class','all'].includes(kind),'Unknown analysis selection');
   return {kind,rows};
