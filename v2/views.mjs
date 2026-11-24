@@ -179,10 +179,10 @@ export function renderStudents(w,s){
  select('student-attainment',s.studentAttainment??'all',[['all','Any attainment'],['below','At least one subject below MTG'],['severe','At least two grades below MTG'],['on','All subjects on / above MTG'],['unknown','Unknown subject status']],'Attainment status')+
  select('student-support',s.studentSupport??'all',[['all','Any support'],['active','Active SOC'],['due','Reviews due'],['none','No active case']],'Support status')+
  btn('Clear','students-reset','','btn-quiet')+'<span class="count">'+rows.length+' of '+all.length+' pupils</span></div>'+
- table('students',[['name','Student'],['year','Year'],['tutorGroupId','Tutor group','tutor'],['house','House'],['tags','Flags','flags'],['subjects','Subjects','profileScope'],['below','Below MTG','profileTargets'],['unknown','Unknown','profileTargets'],['cases','Active cases','intervention'],['due','Reviews due','due']],rows,(p,k)=>{
+ table('students',[['name','Student'],['year','Year'],['tutorGroupId','Tutor group','tutor'],['house','House'],['directoryFlags','Flags','flags'],['subjects','Subjects','profileScope'],['below','Below MTG','profileTargets'],['unknown','Unknown','profileTargets'],['cases','Active cases','intervention'],['due','Reviews due','due']],rows,(p,k)=>{
   if(k==='name')return link(p.name,'open-student',p.id)+'<span class="cell-sub">'+esc(p.id)+'</span>';
   if(k==='tutorGroupId')return tag(p.tutorGroupId);
-  if(k==='tags')return tags({...p,tags:p.flags});
+  if(k==='directoryFlags')return tags({...p,tags:p.flags});
   if(k==='subjects')return esc(p.scored+'/'+p.subjects)+'<span class="cell-sub">Scored / visible</span>';
   if(k==='below')return p.below?link(String(p.below),'open-student',p.id)+(p.severe?' '+tag(p.severe+' ≥2 below','tag-warning'):''):'0';
   if(k==='unknown')return esc(p.unknown);
