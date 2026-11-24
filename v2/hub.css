@@ -699,3 +699,19 @@ h2{font-size:15px;font-weight:720;letter-spacing:-.02em}
 .assessment-item-scroll td{padding:4px}
 .assessment-item-scroll .btn{padding:4px 8px}
 .assessment-management{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+
+/* Expandable structured assessments. Item columns remain compact and the
+   computed total anchors the group; existing sticky table header is retained. */
+.gradebook-table .gradebook-item-heading{min-width:92px;max-width:126px;background:#f1e9ee;vertical-align:top;white-space:normal;border-bottom:2px solid #d5b4c3}
+.gradebook-item-heading .cell-sub{white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+.gradebook-item-heading strong{display:block;color:var(--ink);font-size:13px;overflow-wrap:anywhere}
+.gradebook-table td.gradebook-item-entry{min-width:84px;max-width:126px;background:#fcfafb;border-left:1px solid var(--line)}
+.gradebook-table td.gradebook-item-entry.gradebook-selected{background:#f4e6ee}
+.gradebook-table .gradebook-group-total{border-left:2px solid #c49eaf;background:#f7f0f4}
+.gradebook-expand{font-size:11px;font-weight:700;padding:3px 6px;min-height:24px;align-self:start;justify-self:start;white-space:normal}
+.gradebook-result-status{display:block;max-width:100%;width:100%;height:26px;font-size:10px;margin-top:2px;padding:2px 4px;background:white}
+.gradebook-result .tracker-cell{min-height:34px}
+.gradebook-result .tracker-invalid{color:var(--danger);background:var(--danger-bg)}
+.gradebook-readonly{font-variant-numeric:tabular-nums;text-align:center}
+.gradebook-table .gradebook-item-entry [data-entry-preview]:empty{min-height:0;padding:0}
+@media(max-width:760px){.gradebook-table .gradebook-item-heading{min-width:80px}.gradebook-table td.gradebook-item-entry{min-width:74px}.gradebook-result-status{font-size:10px}}
