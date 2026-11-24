@@ -37,7 +37,9 @@ export function createAccess(data,staffId){
   };
   const canViewNote=noteId=>{
     const n=ix.notes.get(noteId),e=n&&ix.enrolments.get(n.enrolmentId);
-    return Boolean(e&&(has('leadership')||teaches(e.classId)||leads(e.classId)||isTutor(e.studentId)||isHouse(e.studentId)));
+    if(!e)return false;
+    if(n.visibility==='pastoral')return has('leadership')||isTutor(e.studentId)||isHouse(e.studentId)||n.authorStaffId===staffId&&canViewEnrolment(e.id);
+    return has('leadership')||teaches(e.classId)||leads(e.classId)||isTutor(e.studentId)||isHouse(e.studentId);
   };
   const canAddSubjectNote=enrolmentId=>teaches(ix.enrolments.get(enrolmentId)?.classId);
   const canEditSubjectNote=noteId=>{
