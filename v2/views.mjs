@@ -8,7 +8,8 @@ import {renderAcademicAnalysis,renderAnalysisEvidence} from './analysis-views.mj
 import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,profileCounts} from './student-profiles.mjs';
 import {renderStudentProfile,renderProfileResult} from './student-profile-views.mjs';
-import {renderCase,renderCaseStart,renderCaseAction,caseActionId} from './intervention-views.mjs';
+import {renderCase,renderCaseStart,renderCaseAction,caseActionId,compactWave} from './intervention-views.mjs';
+import {CASE_FILTERS,caseCounts,matchesCaseFilter,casePriority,actionPriority,studyStatusLabel} from './intervention-refinement.mjs';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={
  home:'M3 10 12 3l9 7v10h-6v-7H9v7H3z',notice:'M4 11V8l15-5v14L4 13z M7 14l2 6h4l-2-5 M19 8h2',
@@ -249,38 +250,53 @@ export function renderStudents(w,s){
  },s)+'</section>'+note('Directory counts use the selected cohort and subject scope. Open a profile to see all records permitted by your combined responsibilities. No cross-subject average or automatic SOC classification is calculated.');
 }
 export function renderIntervention(w,s){
- const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),personal=w.allHome().actions;
- const filter=s.caseFilter??'active',actionMode=filter==='actions';
- const actionRows=personal.map(a=>({...w.caseDetail(a.caseId),actionType:a.type,actionDate:a.reviewDate}));
- const match=c=>matchText(s.query,c.studentName,c.classCode,c.house,c.student.tutorGroupId,c.reason,c.owner)&&
+ const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),personal=w.allHome().actions,counts=caseCounts(all,personal);
+ const filter=CASE_FILTERS.some(([id])=>id===s.caseFilter)?s.caseFilter:'active',actionMode=filter==='actions';
+ const actionRows=personal.map(a=>{const c=w.caseDetail(a.caseId);return {...c,actionType:a.type,actionDate:a.reviewDate,actionTask:c.tasks.find(t=>t.type===a.type)};});
+ const match=c=>matchText(s.query,c.studentName,c.classCode,c.house,c.student.tutorGroupId,c.reason,c.owner,c.tasks.map(t=>t.responsible))&&
   (!s.caseClass||c.classInfo.id===s.caseClass)&&(!s.tutorFilter||s.tutorFilter==='all'||c.student.tutorGroupId===s.tutorFilter)&&
   (!s.houseFilter||s.houseFilter==='all'||c.house===s.houseFilter);
- const rows=actionMode?actionRows.filter(match):all.filter(c=>match(c)&&
-  (filter==='all'||filter==='active'&&c.state!=='closed'||filter==='due'&&c.due||filter==='closed'&&c.state==='closed'||filter==='referrals'&&c.state.endsWith('_requested')||filter==='w'+c.wave&&c.state!=='closed'));
+ const rows=actionMode?actionRows.filter(match).sort(actionPriority):all.filter(c=>match(c)&&matchesCaseFilter(c,filter)).sort(casePriority);
  const filterBase=actionMode?actionRows:all;
  const unique=fn=>[...new Set(filterBase.map(fn))].sort((a,b)=>String(a).localeCompare(String(b),'en',{numeric:true}));
  const opts=(values,label)=>[['all',label],...values.map(v=>[v,v])];
- const canStart=w.caseStartOptions().some(o=>o.scoped);
- const columns=[['studentName','Student'],['classCode','Class'],['house','House'],['status','Stage'],[actionMode?'actionDate':'reviewDate','Review / action date'],['owner','Case owner'],[actionMode?'actionType':'nextActions','Action','caseQueue']];
+ const canStart=w.caseStartOptions().some(o=>o.scoped),filterLabel=CASE_FILTERS.find(([id])=>id===filter)[1];
+ const chip=(id,label)=>'<button type="button" class="register-chip" data-action="case-focus" data-id="'+id+'" aria-pressed="'+(id===filter)+'">'+esc(label)+' <strong>'+counts[id]+'</strong></button>';
+ const stage=(n,label)=>{const requested=active.filter(c=>c.state==='wave'+n+'_requested').length;return '<button type="button" class="case-stage-card" data-action="case-focus" data-id="w'+n+'" aria-pressed="'+(filter==='w'+n)+'"><span class="stage-number">'+n+'</span><span class="case-stage-name"><strong>'+esc(label)+'</strong><span>'+(n===1?'Classroom support':requested+' awaiting activation')+'</span></span><b>'+counts['w'+n]+'</b></button>';};
+ const columns=[['studentName','Student / subject'],['status','Wave'],['owner',actionMode?'Responsible for action':'Case owner',null,!actionMode],
+ [actionMode?'actionDate':'reviewDate',actionMode?'Action / review date':'Case review date'],[actionMode?'actionType':'nextActions',actionMode?'Your action':'Next responsibilities','caseResponsibilities',false],['studyStatus','Study plan','studyPlan',false]];
+ const nextTask=c=>{
+  if(c.state==='closed')return '<span class="muted">Closed · '+esc(displayDate(c.closedDate??c.updatedDate))+'</span>';
+  if(!c.tasks.length)return '<span class="muted">No outstanding responsibility recorded</span>';
+  const t=c.tasks[0],more=c.tasks.length-1;
+  return '<div class="case-next-task"><strong>'+esc(t.label)+'</strong><span class="cell-sub">'+esc(t.responsible)+'</span><span class="cell-sub">'+esc(t.dateLabel+' · '+displayDate(t.date))+'</span>'+
+   (t.status==='overdue'?tag('Overdue','tag-danger'):t.status==='due'?tag('Due today','tag-warning'):t.status==='awaiting'?tag('Awaiting response','tag-warning'):'')+
+   (more?'<span class="cell-sub">+'+more+' other '+(more===1?'responsibility':'responsibilities')+'</span>':'')+
+   (t.mine?btn(t.label,'case-action',caseActionId(c.id,t.type),'btn-quiet case-quick-action'):link('View case','open-case',c.id))+'</div>';
+ };
  return heading('Intervention',(actionMode?'All my responsibilities':SCOPE_LABELS[w.scope])+' · Shared academic support records',(canStart?btn('Start Wave 1','new-case','','btn-primary'):'')+help('caseWorkflow','Wave 1–3 workflow'),'Student support')+
- '<div class="metrics">'+metric('Active cases',active.length,new Set(active.map(c=>c.student.id)).size+' individual pupils','intervention','filter-active')+
- metric('Reviews due',active.filter(c=>c.due).length,active.filter(c=>c.overdue).length+' overdue','due','filter-due')+
- metric('My actions',personal.length,'Across all assigned responsibilities','caseQueue','go-personal-actions')+
- metric('Closed cases',all.length-active.length,'Retained in history','','filter-closed')+'</div>'+
- '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil, class, owner or House')+
- select('case-filter',filter,[['active','Active'],['actions','My actions (all responsibilities)'],['due','Reviews due'],['referrals','Pending referrals'],['w1','Wave 1'],['w2','Wave 2'],['w3','Wave 3'],['closed','Closed'],['all','All cases']],'Intervention status')+
+ '<div class="metrics intervention-metrics">'+metric('Active cases',active.length,new Set(active.map(c=>c.student.id)).size+' individual pupils','intervention','filter-active')+
+ metric('Reviews due',counts.due,active.filter(c=>c.overdue).length+' overdue · case review dates','due','filter-due')+
+ metric('My actions',personal.length,personal.filter(a=>a.reviewDate<w.asOf).length+' overdue · All responsibilities','caseQueue','go-personal-actions')+
+ metric('Closed cases',counts.closed,'Retained in history','','filter-closed')+'</div>'+
+ '<section class="surface case-pipeline"><div class="panel-head"><h2>Active wave progression '+help('caseWorkflow','wave progression')+'</h2><span class="small muted">Counts in selected scope</span></div><div class="case-stage-grid">'+stage(1,'Classroom')+stage(2,'Faculty & House')+stage(3,'Leadership')+'</div><p class="small muted case-pipeline-note">Each active case is counted once, at its current or requested wave. Select a wave to filter the records below.</p></section>'+
+ '<section class="surface intervention-register"><div class="panel-head"><div><h2>'+esc(actionMode?'My outstanding actions':'Intervention register')+'</h2><p class="small muted">'+rows.length+(actionMode?' actions':' cases')+' · '+esc(actionMode?'All my responsibilities':filterLabel)+'</p></div></div>'+
+ '<div class="case-focus-bar" role="group" aria-label="Intervention focus">'+chip('active','Active')+chip('actions','My actions')+chip('due','Reviews due')+chip('referrals','Referrals')+chip('house','House requests')+chip('study','Study reviews')+chip('closed','Closed')+'</div>'+
+ '<div class="toolbar register-filters case-filters">'+field('page-query',s.query,'Filter pupil, class, owner or House')+
+ select('case-filter',filter,CASE_FILTERS,'Intervention status')+
  select('tutor-filter',s.tutorFilter??'all',opts(unique(c=>c.student.tutorGroupId),'All tutor groups'),'Tutor group')+
  select('house-filter',s.houseFilter??'all',opts(unique(c=>c.house),'All Houses'),'House')+
- (s.caseClass?btn('Clear class filter','clear-case-class'):'')+btn('Clear filters','cases-reset','','btn-quiet')+
- '<span class="count">'+rows.length+(actionMode?' actions':' records')+'</span></div>'+
+ (s.caseClass?btn('Clear class filter','clear-case-class'):'')+btn('Clear filters','cases-reset','','btn-quiet')+'</div>'+
  table('cases',columns,rows,(c,k)=>{
-  if(k==='studentName')return pupilIdentity(link(c.studentName,'open-case',c.id)+'<span class="cell-sub">TG '+esc(c.student.tutorGroupId)+'</span>',c.student);
-  if(k==='status')return waveTag(c);
-  if(k==='reviewDate'||k==='actionDate')return esc(displayDate(c[k]))+(c.state!=='closed'&&c[k]<w.asOf?' '+tag('Overdue','tag-danger'):c.state!=='closed'&&c[k]===w.asOf?' '+tag('Due today','tag-warning'):'');
-  if(k==='actionType')return btn(ACTION_LABELS[c.actionType],'case-action',caseActionId(c.id,c.actionType),'btn-primary');
-  if(k==='nextActions')return c.pending.length?'<div class="case-list-actions">'+c.pending.map(a=>btn(ACTION_LABELS[a.type],'case-action',caseActionId(c.id,a.type),'btn-quiet')).join('')+'</div>':link('View case','open-case',c.id);
+  if(k==='studentName')return pupilIdentity(link(c.studentName,'open-case',c.id)+'<span class="cell-sub">'+esc(c.classCode+' · TG '+c.student.tutorGroupId)+'</span>',c.student);
+  if(k==='status')return compactWave(c);
+  if(k==='owner')return esc(actionMode?c.actionTask?.responsible??w.staff.name:c.owner)+(actionMode&&c.actionTask?'<span class="cell-sub">'+esc(c.actionTask.role)+'</span>':'');
+  if(k==='reviewDate'||k==='actionDate')return esc(displayDate(c[k]))+(c.state!=='closed'&&c[k]<w.asOf?' '+tag('Overdue','tag-danger'):c.state!=='closed'&&c[k]===w.asOf?' '+tag('Due today','tag-warning'):'')+(actionMode&&c.actionTask?'<span class="cell-sub">'+esc(c.actionTask.dateLabel)+'</span>':'');
+  if(k==='actionType')return btn(ACTION_LABELS[c.actionType],'case-action',caseActionId(c.id,c.actionType),'btn-primary case-quick-action')+'<span class="cell-sub">'+link('Full record','open-case',c.id)+'</span>';
+  if(k==='nextActions')return nextTask(c);
+  if(k==='studyStatus')return c.studyStatus==='none'?'<span class="muted">No plan</span>':link(studyStatusLabel(c.studyStatus),'open-case-plan',c.id);
   return esc(c[k]);
- },s)+'</section>'+note('One shared case per pupil and subject. My actions are personal handovers and due reviews, independent of the academic scope. Safeguarding remains separate; no external submission or email is performed.');
+ },s)+'</section>'+note('One shared case per pupil and subject. Wave counts and case filters follow the selected scope; My actions covers all assigned responsibilities. Safeguarding remains separate; no external submission or email is performed.');
 }
 
 export function renderPage(w,s){return '<div class="workspace-inner">'+({home:renderHome,notices:renderNotices,classes:renderClasses,students:renderStudents,intervention:renderIntervention}[s.page]||renderHome)(w,s)+'</div>';}

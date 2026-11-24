@@ -4,6 +4,7 @@ import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {filterStudents,PROFILE_TABS} from './student-profiles.mjs';
 import {profilePeers} from './student-profile-views.mjs';
 import {caseFormInput,unpackCaseAction} from './intervention-views.mjs';
+import {CASE_FILTERS} from './intervention-refinement.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {GROUPS,DEFAULT_GROUPS,FULL_GROUPS,registerFocusFilter,visibleRegisterRows} from './class-overview.mjs';
@@ -86,6 +87,7 @@ function openDetail(kind,id,options={}){
   if(!canLeaveDetail())return;
   detailDialog.classList.toggle('wide-markbook',kind==='mark-grid');
   detailDialog.classList.toggle('wide-profile',kind==='student');
+  detailDialog.classList.toggle('wide-case',kind==='case');
   if(!detailDialog.open){drawerReturn=focusToken(document.activeElement);detailStack=[];detail=next;detailDialog.innerHTML=markup;detailDialog.showModal();}
   else{if(detail)detailStack.push({...detail,scroll:detailDialog.querySelector('.drawer-body')?.scrollTop||0});detail=next;detailDialog.innerHTML=markup;addBack();}
   grid.init();detailDialog.querySelector('.dialog-head button')?.focus({preventScroll:true});grid.focusRequested();
@@ -102,6 +104,7 @@ function refreshDetail(markup=null){
  const scroll=detailDialog.querySelector('.drawer-body')?.scrollTop||0;
  detailDialog.classList.toggle('wide-markbook',detail.kind==='mark-grid');
  detailDialog.classList.toggle('wide-profile',detail.kind==='student');
+ detailDialog.classList.toggle('wide-case',detail.kind==='case');
  detailDialog.innerHTML=markup??renderDetail(w,detail);addBack();grid.init();
  const body=detailDialog.querySelector('.drawer-body');if(body)body.scrollTop=scroll;
 }
@@ -118,7 +121,7 @@ function closeDetail(restore=true){
  if(!canLeaveDetail())return false;
  hideHelp();detail=null;detailStack=[];if(detailDialog.open)detailDialog.close();
  if(restore)restoreFocus(drawerReturn);
- drawerReturn=null;detailDialog.classList.remove('wide-markbook','wide-profile');return true;
+ drawerReturn=null;detailDialog.classList.remove('wide-markbook','wide-profile','wide-case');return true;
 }
 function openStudent(id,tab='overview',subjectId=''){
  let peerIds,peerLabel='',classContext='';
@@ -290,6 +293,15 @@ document.addEventListener('click',event=>{
   case 'students-soc':clearStudentFilters();state.studentSupport='active';render();break;
   case 'students-due':clearStudentFilters();state.studentSupport='due';render();break;
   case 'open-case':openDetail('case',id);break;
+  case 'open-case-plan':openDetail('case',id);{
+    if(detail?.kind==='case'&&detail.id===id){const plan=byId('case-study-plan');plan?.focus({preventScroll:true});plan?.scrollIntoView({block:'start'});}
+  }break;
+  case 'case-focus':
+    if(CASE_FILTERS.some(([key])=>key===id)){
+      state.caseFilter=id;
+      if(id==='actions'){state.caseClass=null;state.tutorFilter='all';state.houseFilter='all';}
+      render();main.querySelector('[data-action="case-focus"][data-id="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});
+    }break;
   case 'new-case':openDetail('case-new',id,{revision:store.revision()});break;
   case 'case-action':openDetail('case-action',id,{revision:store.revision()});break;
   case 'cases-reset':clearRegisterFilters();state.caseClass=null;state.caseFilter='active';render();break;

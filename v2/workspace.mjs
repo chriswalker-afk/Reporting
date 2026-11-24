@@ -5,6 +5,8 @@ import {createMarkbook} from './markbook.mjs';
 import {createAcademicAnalysis} from './academic-analysis.mjs';
 import {directoryRow,studentCounts,orderedNotes,createProfileEvidence} from './student-profiles.mjs';
 import {CASE_ACTION_LABELS,pendingCaseActions} from './interventions.mjs';
+import {createAccess} from './access.mjs';
+import {caseResponsibilities,studyStatus} from './intervention-refinement.mjs';
 export const NAV=[
   ['home','Home','home'],['notices','Notices','notice'],['classes','Classes','class'],
   ['students','Students','students'],['intervention','Intervention','support']
@@ -64,6 +66,8 @@ export const HELP={
   caseWorkflow:'One active academic case per subject. Wave 1 is teacher-led; a referral records the reason and assigns the next responsible staff member. A requested wave is not an activated plan. Only the appropriate roles can perform each action. All changes retain their history.',
   studyPlan:'An individual academic study plan has a measurable target, specific actions, responsible staff member and separate review date. A completed plan can be deliberately reopened. Its review does not automatically close the intervention.',
   caseQueue:'Outstanding referrals, House requests and due case/study-plan reviews are calculated from the shared records and your assigned roles. A case can have more than one action.',
+  caseResponsibilities:'The case owner coordinates the record. Each outstanding handover, House request and review has its own responsible staff or eligible reviewers. House requests and referrals use the case review date (not a separate deadline); study plans have their own review date. Only authorised staff can complete an action.',
+  caseHistory:'Reviews show recorded evaluations and outcomes. Current attainment is calculated from the tracker; earlier marks are not treated as an intervention baseline unless recorded in the review evidence. A referral does not prove progress or lack of progress.',
   due:'Active cases with a review date on or before the fictional reference date. Overdue means strictly earlier than that date.',
 };
 export const pct=v=>finite(v)?v.toFixed(1)+'%':'—';
@@ -153,12 +157,20 @@ export function createWorkspace(store,staffId,requestedScope){
       tutors:people(get('tutorGroups',p.tutorGroupId).tutorIds),leadership:people(data.staff.filter(s=>s.roles.includes('leadership')).map(s=>s.id))};
   }
   const plansByCase=new Map(data.studyPlans.map(p=>[p.interventionId,p]));
+  const accessByStaff=new Map([[staffId,access]]),caseTasksCache=new Map();
+  function caseTasks(c){
+    if(!caseTasksCache.has(c.id)){
+      const eligible=type=>data.staff.filter(p=>{if(!accessByStaff.has(p.id))accessByStaff.set(p.id,createAccess(data,p.id));return accessByStaff.get(p.id).caseActions(c.id).includes(type);}).map(p=>({id:p.id,name:p.name}));
+      caseTasksCache.set(c.id,caseResponsibilities(c,plansByCase.get(c.id),data.asOf,eligible,pendingCaseActions(data,access,c),staffId));
+    }
+    return caseTasksCache.get(c.id);
+  }
   const enrichCase=c=>{
     const p=studentInfo(get('enrolments',c.enrolmentId).studentId),cls=enrolmentClass(c.enrolmentId);
     return {...c,student:p,classInfo:cls,studentName:p.name,classCode:cls.code,faculty:cls.faculty.name,house:p.house,
       status:WAVE_LABELS[c.state],owner:c.state==='wave2_requested'&&!c.wave2Referral?'Faculty lead (earlier record)':c.state==='wave3_requested'&&!c.wave3Referral?'Leadership (earlier record)':get('staff',c.ownerStaffId)?.name??'—',
       due:c.state!=='closed'&&c.reviewDate<=data.asOf,overdue:c.state!=='closed'&&c.reviewDate<data.asOf,
-      actions:access.caseActions(c.id),pending:pendingCaseActions(data,access,c)};
+      actions:access.caseActions(c.id),pending:pendingCaseActions(data,access,c),tasks:caseTasks(c),studyStatus:studyStatus(c,plansByCase.get(c.id),data.asOf)};
   };
   const caseRows=()=>scopedCases.map(enrichCase);
   const classIdsFor=ids=>new Set(data.enrolments.filter(e=>ids.has(e.id)).map(e=>e.classId));

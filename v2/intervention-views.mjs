@@ -1,6 +1,7 @@
 import {houseBadge} from './branding.mjs';
 import {pct,displayDate,gradeGap} from './workspace.mjs';
 import {STRATEGIES,WAVE2_TRIGGERS,WAVE3_TRIGGERS,CASE_ACTION_LABELS} from './interventions.mjs';
+import {wavePresentation,taskStatus,studyStatusLabel,reviewEvents} from './intervention-refinement.mjs';
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const btn=(label,action,id='',kind='')=>'<button type="button" class="btn '+kind+'" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
 const link=(label,action,id)=>'<button type="button" class="inline-link" data-action="'+e(action)+'" data-id="'+e(id)+'">'+e(label)+'</button>';
@@ -33,37 +34,69 @@ function evidence(s){
  '<p class="small muted">Calculated from the current assessment tracker. A low grade is evidence for discussion, not an automatic referral.</p>';
 }
 const stageStatus=c=>c.state==='closed'?'Closed':c.status;
+const waveStates={'active':'Active','requested':'Requested','recorded':'Recorded','not-reached':'Not reached'};
 const step=(n,label,c)=>{
- const pending=c.state==='wave'+n+'_requested',reached=c.wave>=n,active=c.state==='wave'+n;
- return '<div class="case-step '+(pending?'pending':active?'current':reached?'reached':'')+'"><span>'+n+'</span><div><strong>'+e(label)+'</strong><small>'+e(pending?'Requested':active?'Active':reached?'Recorded':'Not reached')+'</small></div></div>';
+ const state=wavePresentation(c,n);
+ return '<div class="case-step wave-'+state+'" data-wave-state="'+state+'"><span>'+n+'</span><div><strong>'+e(label)+'</strong><small>'+e(waveStates[state])+'</small></div></div>';
 };
+export function compactWave(c){
+ return '<div class="compact-wave" aria-label="'+e(c.status)+'"><span class="compact-wave-nodes" aria-hidden="true">'+[1,2,3].map(n=>'<i class="wave-'+wavePresentation(c,n)+'">'+n+'</i>').join('')+'</span><span class="cell-sub">'+e(c.status)+'</span></div>';
+}
 const referral=(r,actor,legacy)=>r?facts([['Trigger',e(r.trigger)],['Requested by',e(actor)],['Date',e(displayDate(r.date))]])+text(r.reason):text(legacy);
+const taskTag=t=>tag(taskStatus(t),t.status==='overdue'?'tag-danger':['due','awaiting'].includes(t.status)?'tag-warning':'');
+const detailSection=(title,body,tip='')=>'<details class="drawer-section case-history-disclosure"><summary>'+e(title)+'</summary><div class="content">'+body+(tip?'<p class="small muted">'+help(tip,title)+'</p>':'')+'</div></details>';
+const reviewLabel=h=>({continue:'Continue',revise:'Revised',resolved:'Resolved',achieved:'Target achieved'}[h.outcome]??'Recorded review');
+function eventMarkup(h){
+ return '<article class="case-history-event"><div class="case-history-meta"><strong>'+e(h.action?CASE_ACTION_LABELS[h.action]??h.action:'Recorded event')+'</strong><span>'+e(displayDate(h.date)+' · '+h.actor)+'</span></div>'+
+  (h.outcome?'<div class="case-event-outcome">'+tag(reviewLabel(h),['resolved','achieved'].includes(h.outcome)?'tag-success':'')+'</div>':'')+'<p>'+e(h.text)+'</p>'+
+  (h.plan?'<p class="small muted">Plan: '+e(h.plan)+'</p>':'')+
+  (h.studyPlan?'<p class="small muted">Study target: '+e(h.studyPlan.target)+'</p><ul class="study-actions">'+h.studyPlan.actions.map(a=>'<li>'+e(a)+'</li>').join('')+'</ul><p class="small muted">Review: '+e(displayDate(h.studyPlan.reviewDate))+'</p>':'')+
+  (h.reviewDate?'<p class="small muted">Next review: '+e(displayDate(h.reviewDate))+'</p>':'')+'</article>';
+}
+function responsibilityPanel(c){
+ const rows=c.tasks.map(t=>'<article class="case-task" data-case-task="'+e(t.type)+'"><div class="case-task-main"><strong>'+e(t.label)+'</strong>'+taskTag(t)+(t.mine?tag('My action','tag-teal'):'')+
+  '<span class="cell-sub">'+e(t.role+' · '+t.responsible)+'</span>'+
+  (!t.assigned&&t.reviewers.length?'<span class="cell-sub">Eligible reviewers; no specific assignee recorded</span>':'')+
+  (t.assigned&&t.reviewers.length>1?'<span class="cell-sub">Other authorised reviewers: '+e(t.reviewers.filter(p=>p.id!==t.assigned.id).map(p=>p.name).join(', '))+'</span>':'')+
+  '<span class="cell-sub">'+e(t.dateLabel+' · '+displayDate(t.date))+'</span></div>'+
+  (t.canAct?actionButton(c,t.type,t.mine?'btn-primary':'btn-quiet'):'<span class="small muted">With responsible staff</span>')+'</article>').join('');
+ return section('Next responsibilities',rows?'<div class="case-task-list">'+rows+'</div>':empty(c.state==='closed'?'Closed record':'No outstanding responsibilities recorded',c.state==='closed'?'No further action is required.':'Review the existing record.'),'caseResponsibilities');
+}
 export function renderCase(w,id){
  const c=w.caseDetail(id),p=c.studyPlan,active=c.state!=='closed',permitted=c.actions.filter(a=>a!=='view');
- const priority=c.pending.map(a=>a.type);
- const actionOrder=[...new Set([...priority,...permitted])].filter(a=>a!=='view');
- const primary=actionOrder[0];
- const actions=active&&actionOrder.length?'<div class="case-action-strip">'+actionOrder.map(a=>actionButton(c,a,a===primary?'btn-primary':'')).join('')+'</div>':'<p class="small muted">'+(active?'Read only for your current responsibilities.':'Closed record — retained for reference.')+'</p>';
- const plan=p?facts([['Owner',e(p.owner)],['Review date',e(displayDate(p.reviewDate))],['Status',p.completedDate?tag('Achieved','tag-success'):!active?tag('Case closed'):p.reviewDate<=w.asOf?tag('Review due','tag-warning'):tag('Active')]])+
- '<strong>Measurable target</strong>'+text(p.target)+'<ul class="study-actions">'+p.actions.map(a=>'<li>'+e(a)+'</li>').join('')+'</ul>'+
- (p.evaluation?'<strong>Latest evaluation</strong>'+text(p.evaluation):'')+
- ((p.history??[]).length?'<details><summary>Study plan review history ('+p.history.length+')</summary>'+p.history.slice().reverse().map(h=>'<p><strong>'+e(displayDate(h.date)+' · '+h.actor+' · '+h.outcome)+'</strong>\n'+e(h.text)+'</p>').join('')+'</details>':''):empty('No individual study plan',c.actions.includes('saveStudyPlan')?'Create one using the action above.':'No plan has been recorded.');
- const house=c.houseRequest?'<strong>Assigned House support</strong>'+text(c.houseRequest)+facts([['Responsible staff',e(c.houseOwner)],['Status',c.houseResponse?.complete?tag('Completed','tag-success'):tag('Outstanding','tag-warning')]])+
- (c.houseResponse?'<strong>Latest response</strong>'+text(c.houseResponse.response)+'<p class="small muted">'+e(c.houseResponder+' · '+displayDate(c.houseResponse.date))+'</p>':'<p class="muted">Awaiting House response.</p>'):'';
- const history=c.history.slice().reverse().map(h=>'<article class="case-history-event"><div class="case-history-meta"><strong>'+e(h.action?CASE_ACTION_LABELS[h.action]??h.action:'Recorded event')+'</strong><span>'+e(displayDate(h.date)+' · '+h.actor)+'</span></div><p>'+e(h.text)+'</p>'+(h.plan?'<p class="small muted">Plan: '+e(h.plan)+'</p>':'')+(h.studyPlan?'<p class="small muted">Study target: '+e(h.studyPlan.target)+'</p><ul class="study-actions">'+h.studyPlan.actions.map(a=>'<li>'+e(a)+'</li>').join('')+'</ul><p class="small muted">Review: '+e(displayDate(h.studyPlan.reviewDate))+'</p>':'')+(h.reviewDate?'<p class="small muted">Next review: '+e(displayDate(h.reviewDate))+'</p>':'')+'</article>').join('');
+ const taskActions=new Set(c.tasks.filter(t=>t.canAct).map(t=>t.type));
+ const other=permitted.filter(a=>!taskActions.has(a)&&!['saveStudyPlan','reviewStudyPlan'].includes(a));
+ const actions=active&&other.length?'<div class="case-action-strip"><span class="small muted">Other actions</span>'+other.map(a=>actionButton(c,a,a==='update'?'btn-quiet':'')).join('')+'</div>':'';
+ const plan=p?'<div class="study-plan-meta">'+facts([['Owner',e(p.owner)],['Review date',e(displayDate(p.reviewDate))],['Status',tag(studyStatusLabel(c.studyStatus),c.studyStatus==='achieved'?'tag-success':['due','overdue','handover'].includes(c.studyStatus)?'tag-warning':'')]])+'</div>'+
+ '<div class="study-target"><span class="small muted">Measurable target</span><strong>'+e(p.target)+'</strong></div><div class="study-action-list"><span class="small muted">Agreed actions</span><ol class="study-actions">'+p.actions.map(a=>'<li>'+e(a)+'</li>').join('')+'</ol><span class="small muted">Actions are agreed commitments; individual completion is not separately tracked.</span></div>'+
+ (p.evaluation?'<div class="study-evaluation"><strong>Latest evaluation</strong>'+text(p.evaluation)+'</div>':'')+
+ ((p.history??[]).length?'<details class="study-reviews"><summary>Study plan review history ('+p.history.length+')</summary>'+p.history.slice().reverse().map(h=>'<article class="case-history-event"><div class="case-history-meta"><strong>'+e(reviewLabel(h))+'</strong><span>'+e(displayDate(h.date)+' · '+h.actor)+'</span></div>'+text(h.text)+'</article>').join('')+'</details>':'<p class="small muted">No recorded study plan reviews yet.</p>'):
+ empty('No individual study plan',c.actions.includes('saveStudyPlan')?'Create a measurable target and agreed actions below.':'No plan has been recorded.');
+ const planActions=permitted.filter(a=>['saveStudyPlan','reviewStudyPlan'].includes(a)).map(a=>actionButton(c,a,a==='saveStudyPlan'&&!p?'btn-primary':'btn-quiet')).join('');
+ const house=c.houseRequest?'<div class="case-house-request"><strong>Assigned House support</strong>'+text(c.houseRequest)+facts([['Responsible staff',e(c.houseOwner)],['Status',c.houseResponse?.complete?tag('Completed','tag-success'):tag('Outstanding','tag-warning')]])+
+ (c.houseResponse?'<strong>Latest response</strong>'+text(c.houseResponse.response)+'<p class="small muted">'+e(c.houseResponder+' · '+displayDate(c.houseResponse.date))+'</p>':'<p class="muted">Awaiting House response.</p>')+'</div>':'';
+ const wave1='<strong>Initial concern</strong>'+text(c.reason)+'<div class="tags">'+(c.strategies??[]).map(s=>tag(s)).join('')+'</div><strong>Classroom plan</strong>'+text(c.wave1Plan??'No separate classroom plan recorded in this earlier demo case.');
+ const wave2='<strong>Referral evidence</strong>'+referral(c.wave2Referral,c.wave2Referrer,'Earlier demo referral; no separate reason recorded.')+'<strong>Faculty plan</strong>'+text(c.facultyPlan??'Awaiting faculty activation.')+house;
+ const wave3='<strong>Referral evidence</strong>'+referral(c.wave3Referral,c.wave3Referrer,'Earlier demo referral; no separate reason recorded.')+'<strong>Leadership plan</strong>'+text(c.leadershipPlan??'Awaiting leadership activation.');
+ const waveTitle=['','Wave 1 · Classroom intervention','Wave 2 · Faculty and House','Wave 3 · School leadership'];
+ const waveBody=['',wave1,wave2,wave3];
+ const earlier=Array.from({length:c.wave-1},(_,i)=>i+1).map(n=>detailSection(waveTitle[n],waveBody[n])).join('');
+ const reviews=reviewEvents(c.history),history=c.history.slice().reverse(),latestUpdate=history.find(h=>h.action==='update');
+ const reviewSummary=(c.evaluation?'<div class="case-latest-review"><strong>'+e(active?'Latest case evaluation':'Closure evaluation')+'</strong>'+text(c.evaluation)+(c.closedDate?'<p class="small muted">Closed '+e(displayDate(c.closedDate))+'</p>':'')+'</div>':'')+
+ (reviews.length?'<div class="case-timeline">'+reviews.slice(0,3).map(eventMarkup).join('')+'</div>':empty('No recorded reviews yet','Current marks are context, not a measured change since intervention began.'));
  return {title:c.studentName,sub:c.classInfo.name+' · '+c.id,body:
- '<div class="case-context">'+houseBadge(c.student,{label:true})+tag(stageStatus(c),active?'tag-warning':'tag-success')+(c.overdue?tag('Overdue','tag-danger'):c.due?tag('Due today','tag-warning'):'')+
- link('Student profile','open-student-support',c.student.id)+'</div><div class="case-steps">'+step(1,'Classroom',c)+step(2,'Faculty & House',c)+step(3,'Leadership',c)+'</div>'+
- facts([['Tutor group',e(c.student.tutorGroupId)],['House',houseBadge(c.student,{label:true})],['Case owner',e(c.owner)],['Review date',e(displayDate(c.reviewDate))],['Opened',e(displayDate(c.openedDate))],['Updated',e(displayDate(c.updatedDate))]])+
- actions+section('Academic context',evidence(c.summary),'studentAverage')+
- section('Wave 1 · Classroom intervention','<strong>Initial concern</strong>'+text(c.reason)+'<div class="tags">'+(c.strategies??[]).map(s=>tag(s)).join('')+'</div><strong>Classroom plan</strong>'+text(c.wave1Plan??'No separate classroom plan recorded in this earlier demo case.'),'caseWorkflow')+
- (c.wave>=2?section('Wave 2 · Faculty and House','<strong>Referral evidence</strong>'+referral(c.wave2Referral,c.wave2Referrer,'Earlier demo referral; no separate reason recorded.')+'<strong>Faculty plan</strong>'+text(c.facultyPlan??'Awaiting faculty activation.')+house):'')+
- (c.wave>=3?section('Wave 3 · School leadership','<strong>Referral evidence</strong>'+referral(c.wave3Referral,c.wave3Referrer,'Earlier demo referral; no separate reason recorded.')+'<strong>Leadership plan</strong>'+text(c.leadershipPlan??'Awaiting leadership activation.')):'')+
- section('Individual study plan',plan,'studyPlan')+
- section('Responsible staff',facts([['Class teacher',staff(c.participants.teachers)],['Faculty lead',staff(c.participants.faculty)],['Head of House',staff(c.participants.house)],['Tutor',staff(c.participants.tutors)]]))+
- (c.evaluation?section(active?'Latest review evaluation':'Closure evaluation',text(c.evaluation)+(c.closedDate?'<p class="small muted">Closed '+e(displayDate(c.closedDate))+'</p>':'')):'')+
- section('Case history',history||empty('No recorded history'))+
- '<p class="stage-note">Academic support only. This fictional prototype does not create SIMS behaviour points, send emails, or store safeguarding records.</p>',
+ '<div class="case-workspace"><div class="case-identity"><div class="case-identity-main">'+houseBadge(c.student,{large:true})+'<div><strong>'+e(c.classCode+' · TG '+c.student.tutorGroupId)+'</strong><p class="small muted">'+e(c.house+' House · '+c.id)+'</p><div class="tags">'+tag(stageStatus(c),active?'tag-warning':'tag-success')+(c.overdue?tag('Overdue','tag-danger'):c.due?tag('Due today','tag-warning'):'')+'</div></div></div>'+
+ '<div class="case-identity-info">'+facts([['Case owner',e(c.owner)],['Case review',e(displayDate(c.reviewDate))],['Opened',e(displayDate(c.openedDate))],['Updated',e(displayDate(c.updatedDate))]])+'</div>'+link('Student profile','open-student-support',c.student.id)+'</div>'+
+ '<div class="case-steps" aria-label="Recorded wave progression">'+step(1,'Classroom',c)+step(2,'Faculty & House',c)+step(3,'Leadership',c)+'</div>'+
+ responsibilityPanel(c)+actions+
+ '<div class="case-overview-grid">'+section(waveTitle[c.wave],waveBody[c.wave],'caseWorkflow')+section('Academic context',evidence(c.summary),'studentAverage')+'</div>'+
+ '<section id="case-study-plan" class="drawer-section case-plan-section" tabindex="-1"><h3>Individual study plan '+help('studyPlan','individual study plan')+'</h3><div class="content">'+plan+(planActions?'<div class="case-plan-actions">'+planActions+'</div>':'')+'</div></section>'+
+ section('Review evidence',reviewSummary,'caseHistory')+
+ (latestUpdate?section('Latest progress update',eventMarkup(latestUpdate)):'')+
+ (earlier?'<div class="case-earlier"><h3>Earlier waves</h3>'+earlier+'</div>':'')+
+ detailSection('Responsible staff',facts([['Class teacher',staff(c.participants.teachers)],['Faculty lead',staff(c.participants.faculty)],['Head of House',staff(c.participants.house)],['Tutor',staff(c.participants.tutors)],['School leadership',staff(c.participants.leadership)]]))+
+ detailSection('Case history ('+history.length+')',history.length?'<div class="case-timeline">'+history.map(eventMarkup).join('')+'</div>':empty('No recorded history'),'caseHistory')+
+ '<p class="stage-note">Academic support only. This fictional prototype does not create SIMS behaviour points, send emails, or store safeguarding records.</p></div>',
  footer:btn('Student profile','open-student-support',c.student.id,'btn-quiet')};
 }
 export function renderCaseStart(w,id){
