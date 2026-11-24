@@ -150,3 +150,5 @@ A real implementation would require school IT sponsorship, documented system own
 ## Attribution
 
 Initial exploratory prototype, November 2026. All names, tasks, scores and records are fictional; any similarities to real pupils or staff are coincidental.
+
+The V2 branding pass uses the supplied JIS crest and campus photo, local House badge artwork and the user-supplied House colours. See [visual identity notes](v2/README.md#jis-visual-identity).

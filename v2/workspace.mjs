@@ -1,3 +1,4 @@
+import {houseIdentity,houseName} from './branding.mjs';
 import {finite} from './model.mjs';
 import {projectRegisterRow,sortValue} from './class-overview.mjs';
 import {createMarkbook} from './markbook.mjs';
@@ -115,7 +116,7 @@ export function createWorkspace(store,staffId,requestedScope){
   const enrolmentClass=e=>classInfo(get('enrolments',e)?.classId);
   const studentInfo=id=>{
     const s=get('students',id);if(!s)return null;
-    return {id:s.id,name:s.name,year:s.year,tutorGroupId:s.tutorGroupId,house:get('houses',s.houseId).name,
+    return {id:s.id,name:s.name,year:s.year,tutorGroupId:s.tutorGroupId,houseId:s.houseId,houseKey:houseIdentity(s.houseId)?.key??null,house:houseName(get('houses',s.houseId)),
       tags:[...s.tags]};
   };
   const notesFor=eId=>data.notes.filter(n=>n.enrolmentId===eId&&n.visibility==='subject'&&access.canViewNote(n.id))
@@ -301,9 +302,9 @@ export function createWorkspace(store,staffId,requestedScope){
     if(directoryCache)return directoryCache;
     const notices=communications().activeNotices;
     return directoryCache=[
-      ...data.students.filter(p=>access.canViewStudent(p.id)).map(p=>({kind:'student',id:p.id,title:p.name,sub:'Year '+p.year+' · TG '+p.tutorGroupId+' · '+get('houses',p.houseId).name,terms:[p.id,p.tutorGroupId,p.tags]})),
+      ...data.students.filter(p=>access.canViewStudent(p.id)).map(p=>({kind:'student',id:p.id,title:p.name,sub:'Year '+p.year+' · TG '+p.tutorGroupId+' · '+houseName(get('houses',p.houseId)),houseId:p.houseId,terms:[p.id,p.tutorGroupId,p.tags,houseName(get('houses',p.houseId))]})),
       ...[...accessibleClassIds].map(id=>{const c=classInfo(id);return {kind:'class',id,title:c.code+' · '+c.name,sub:c.course.name+' · '+c.teachers,terms:[c.faculty.name,c.id]};}),
-      ...visibleCases.map(c=>{const r=enrichCase(c);return {kind:'case',id:c.id,title:r.student.name+' · '+r.status,sub:r.classInfo.code+' · '+r.student.tutorGroupId,terms:[c.id,r.faculty,c.reason]};}),
+      ...visibleCases.map(c=>{const r=enrichCase(c);return {kind:'case',id:c.id,title:r.student.name+' · '+r.status,sub:r.classInfo.code+' · '+r.student.tutorGroupId,houseId:r.student.houseId,terms:[c.id,r.faculty,c.reason]};}),
       ...notices.map(n=>({kind:'notice',id:n.id,title:n.title,sub:n.kind==='briefing'?'Briefing':'Staff notice',terms:[n.body]})),
       ...communications().deadlines.filter(d=>!d.archived).map(d=>({kind:'deadline',id:d.id,title:d.title,sub:'Reporting schedule · '+d.dueDate,terms:[d.event,audienceLabel(d.audience)]})),
       ...[...staffIds].map(id=>get('staff',id)).filter(Boolean).map(p=>({kind:'staff',id:p.id,title:p.name,sub:p.roles.map(r=>ROLE_LABELS[r]).join(' · '),terms:p.roles}))
@@ -316,9 +317,10 @@ export function createWorkspace(store,staffId,requestedScope){
   function audienceLabel(a){
     if(a.type==='all')return 'All staff';
     if(a.type==='year')return 'Year '+a.id;
-    return get({faculty:'faculties',house:'houses',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
+    if(a.type==='house')return houseName(get('houses',a.id));
+    return get({faculty:'faculties',tutorGroup:'tutorGroups'}[a.type],a.id)?.name??a.id;
   }
   return {staff:access.staff,staffOptions:data.staff,access,scope,scopeOptions:scopeOptions(access),asOf:data.asOf,academicYear:data.academicYear,
     home,allHome,scopeStudentIds,scopedClassIds,accessibleClassIds,classRows,classRecord,studentRows,studentDetail,studentProfile,profileSubject,profileResult,profilePeers,subjectDetail,noteDetail,markbook,academicAnalysis,
-    caseRows,caseDetail,caseStartOptions,caseStartDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel};
+    caseRows,caseDetail,caseStartOptions,caseStartDetail,noticeDetail,deadlineDetail,communications,staffDetail,search,audienceLabel,pupilHouse:id=>access.canViewStudent(id)?studentInfo(id):null};
 }

@@ -1,3 +1,4 @@
+import {houseBadge} from './branding.mjs';
 import {pct,displayDate,gradeGap} from './workspace.mjs';
 import {PROFILE_TABS} from './student-profiles.mjs';
 import {trendChart} from './analysis-views.mjs';
@@ -97,7 +98,7 @@ export function profilePeers(w,detail){
 export function renderStudentProfile(w,detail){
  const p=w.studentProfile(detail.id),student=p.student,peers=profilePeers(w,detail),i=peers.findIndex(r=>r.id===student.id);
  const tab=PROFILE_TABS.some(([id])=>id===detail.tab)?detail.tab:'overview';
- const identity='<div class="profile-identity"><div class="profile-identity-main"><span class="profile-avatar" aria-hidden="true">'+e(student.name.split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join(''))+'</span><div><strong>'+e('Year '+student.year+' · '+student.tutorGroupName+' · '+student.house)+'</strong><p class="small muted">Demo pupil ID: '+e(student.id)+'</p><div class="tags">'+student.tags.map(t=>tag(t)).join('')+(p.activeCases.length?tag('SOC','tag-warning'):'')+'</div></div></div><div class="profile-identity-staff">'+facts([['Tutor group',e(student.tutorGroupName)],['Tutor',staffList(student.tutors)],['Head of House',staffList(student.houseHeads)]])+'</div></div>';
+ const identity='<div class="profile-identity"><div class="profile-identity-main">'+houseBadge(student,{large:true})+'<div><strong>'+e('Year '+student.year+' · '+student.tutorGroupName+' · '+student.house+' House')+'</strong><p class="small muted">Demo pupil ID: '+e(student.id)+'</p><div class="tags">'+student.tags.map(t=>tag(t)).join('')+(p.activeCases.length?tag('SOC','tag-warning'):'')+'</div></div></div><div class="profile-identity-staff">'+facts([['Tutor group',e(student.tutorGroupName)],['Tutor',staffList(student.tutors)],['Head of House',staffList(student.houseHeads)]])+'</div></div>';
  const nav='<div class="profile-controls profile-navigation">'+(i>0?btn('‹ Previous','profile-switch',peers[i-1].id):'<button type="button" class="btn" disabled>‹ Previous</button>')+
  select('profile-pupil',peers.map(r=>[r.id,r.name]),student.id,'Pupil')+(i>=0&&i<peers.length-1?btn('Next ›','profile-switch',peers[i+1].id):'<button type="button" class="btn" disabled>Next ›</button>')+
  '<span class="small muted">'+e(i>=0?(i+1)+' of '+peers.length:'')+'</span></div>';
