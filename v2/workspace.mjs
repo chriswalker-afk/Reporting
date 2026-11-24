@@ -149,7 +149,7 @@ export function createWorkspace(store,staffId,requestedScope){
   const enrichCase=c=>{
     const p=studentInfo(get('enrolments',c.enrolmentId).studentId),cls=enrolmentClass(c.enrolmentId);
     return {...c,student:p,classInfo:cls,studentName:p.name,classCode:cls.code,faculty:cls.faculty.name,house:p.house,
-      status:WAVE_LABELS[c.state],owner:get('staff',c.ownerStaffId)?.name??'—',
+      status:WAVE_LABELS[c.state],owner:c.state==='wave2_requested'&&!c.wave2Referral?'Faculty lead (earlier record)':c.state==='wave3_requested'&&!c.wave3Referral?'Leadership (earlier record)':get('staff',c.ownerStaffId)?.name??'—',
       due:c.state!=='closed'&&c.reviewDate<=data.asOf,overdue:c.state!=='closed'&&c.reviewDate<data.asOf,
       actions:access.caseActions(c.id),pending:pendingCaseActions(data,access,c)};
   };
