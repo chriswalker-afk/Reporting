@@ -17,7 +17,11 @@ export function distanceToNextGrade(percent,scheme){
 export const mean=xs=>xs.length?xs.reduce((s,x)=>s+x,0)/xs.length:null;
 export function weightedMean(entries){
   const total=entries.reduce((s,x)=>s+x.weight,0);
-  return total>0?entries.reduce((s,x)=>s+x.value*x.weight,0)/total:null;
+  if(total<=0)return null;
+  const values=entries.filter(x=>x.weight>0).map(x=>x.value);
+  // A weighted mean must be within the range of its contributing values.
+  // Clamping round-off here keeps perfect scores at exactly 100, including fractional weights.
+  return Math.max(Math.min(...values),Math.min(Math.max(...values),entries.reduce((s,x)=>s+x.value*x.weight,0)/total));
 }
 // Linear interpolation at (n-1)*p (Hyndman-Fan type 7); documented, no rounding.
 export function quantile(values,p){
@@ -63,7 +67,7 @@ export function createAnalytics(data){
     const r=ix.resultsByPair.get(resultKey(assessmentId,enrolmentId)),maxMarks=maxFor(a);
     const marks=r?.marks??{},complete=r?.status==='present'&&a.items.every(i=>Object.hasOwn(marks,i.id));
     const rawMark=complete?a.items.reduce((s,i)=>s+marks[i.id],0):null;
-    const recordedPercent=rawMark===null?null:100*rawMark/maxMarks;
+    const recordedPercent=rawMark===null?null:rawMark===maxMarks?100:Math.min(100,100*rawMark/maxMarks);
     const status=r?.exclusionReason?'excluded':!r||r.status==='missing'?'missing':
       r.status==='absent'?'absent':complete?'scored':'incomplete';
     const percent=status==='scored'?recordedPercent:null;

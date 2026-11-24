@@ -9,7 +9,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,3 +28,8 @@ jobs:
           for file in v2/*.mjs tests/v2-*.test.mjs; do node --check "$file"; done
       - name: Run legacy and V2 foundation tests
         run: node --test tests/*.test.cjs tests/v2-*.test.mjs
+
+      - name: Validate browser smoke script
+        run: node --check tests/browser-smoke.mjs
+      - name: Browser integration and responsive smoke test
+        run: node tests/browser-smoke.mjs

@@ -124,10 +124,10 @@ export function createGridController({dialog,getDetail,getWorkspace,getStore,get
    const same=d.assessment.items.every(i=>r.marks[i.id]===old.marks[i.id]);
    if(!same||r.entryStatus!==old.entryStatus)entries.push({enrolmentId:r.enrolmentId,status:r.entryStatus,marks:r.marks});
   }
-  if(!entries.length){dirty=false;byId('mark-dirty').textContent='No unsaved changes';notify('No result changes to save.');return;}
+  if(!entries.length){dirty=false;byId('mark-dirty').textContent='No unsaved changes';notify('No result changes to save.');return false;}
   const options={confirmed:true,confirmClear:new FormData(form).has('confirmClear'),expectedRevision:revision};
   getStore().saveResultBatch(getStaff(),d.assessment.id,entries,options);
-  dirty=false;notify('Saved '+entries.length+' pupil result'+(entries.length===1?'':'s')+'. All relevant summaries updated.');
+  dirty=false;revision=getStore().revision();notify('Saved '+entries.length+' pupil result'+(entries.length===1?'':'s')+'. All relevant summaries updated.');return true;
  }
  function previewImport(){
   const d=detail(),current=rows().map(row=>readRow(row,d));

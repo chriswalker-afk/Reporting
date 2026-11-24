@@ -60,7 +60,7 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Interventions</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Complete demo</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
  return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
@@ -80,7 +80,7 @@ export function renderHome(w,s){
  const notices=comm.activeNotices.slice(0,3),reportingRows=w.access.has('leadership')?comm.deadlines.filter(d=>!d.archived&&(!d.recipient||!d.completed)):comm.openDeadlines,deadlines=reportingRows.slice(0,3);
  const scopeTitle=w.scope==='house'?'House academic overview':w.scope==='tutor'?'Tutee academic overview':w.scope==='faculty'?'Faculty class overview':w.scope==='school'?'School class overview':'Class overview';
  return heading('Welcome, '+w.staff.name.split(' ')[0],displayDate(w.asOf)+' · '+SCOPE_LABELS[w.scope],tag('Demo reference date')+help('date','reference date'),'Your workspace')+
- '<div class="metrics">'+metric('Pupils',c.students,c.enrolments+' subject enrolments','scope','go-students')+metric('Below minimum target',c.belowTarget.length,'View affected classes','target','go-below')+metric('Active interventions',c.interventions.active,c.interventions.students+' individual pupils','intervention','go-cases')+metric('Actions requiring attention',queue.length,actions.length+' intervention · '+comm.pendingAcknowledgements.length+' notice','personalActions','focus-attention')+'</div>'+
+ '<div class="metrics">'+metric('Pupils',c.students,c.enrolments+' subject enrolments','scope','go-students')+metric('Subjects below MTG',c.belowTarget.length,'View affected classes','belowSubjects','go-below')+metric('Active interventions',c.interventions.active,c.interventions.students+' individual pupils','intervention','go-cases')+metric('Actions requiring attention',queue.length,actions.length+' intervention · '+comm.pendingAcknowledgements.length+' notice','personalActions','focus-attention')+'</div>'+
  '<div class="home-grid">'+panel(scopeTitle,classTable,btn('View classes','go-classes','','btn-quiet','arrow'),'average')+
  '<div id="attention-panel" tabindex="-1">'+panel('Requires your attention','<div class="list">'+attention+'</div><div class="attention-footer">'+btn('Interventions ('+actions.length+')','go-personal-actions','','btn-quiet')+btn('Notices ('+comm.pendingAcknowledgements.length+')','go-acknowledgements','','btn-quiet')+'</div>','', 'personalActions')+'</div></div>'+
  '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>noticeRow(w,n)).join(''):empty('No active notices'))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+
@@ -151,9 +151,8 @@ export function renderClasses(w,s){
   if(k==='track')return tag(p.track,p.onTrack===null?'':p.onTrack?'tag-success':'tag-warning');
   return esc(p[k]??'—');
  };
- return headingMarkup+
+ return headingMarkup+classTabs('information')+
  '<div class="metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>'+
- classTabs('information')+
  (r.partial?'<div class="info-box">This register is restricted to pupils in your selected scope. '+help('partial','partial class')+'</div>':'')+
  '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil or tutor group')+
  filter('tutor-filter',s.tutorFilter,'All tutor groups',unique(r.roster,'tutorGroupId'))+filter('house-filter',s.houseFilter,'All Houses',unique(r.roster,'house'))+
@@ -162,7 +161,7 @@ export function renderClasses(w,s){
  select('support-filter',s.supportFilter??'all',[['all','Any support'],['soc','SOC'],['w1','Subject Wave 1'],['w2','Subject Wave 2'],['w3','Subject Wave 3'],['none','No visible active case']],'Intervention filter')+
  btn('Clear','clear-register-filters','','btn-quiet')+'<span class="count">'+selected.length+' of '+r.students+' pupils</span></div>'+
  '<div class="column-toolbar" role="group" aria-label="Visible register column groups"><span class="field-label">Columns</span>'+GROUPS.map(g=>'<button class="column-toggle" type="button" data-action="toggle-columns" data-id="'+esc(g.id)+'" aria-pressed="'+groups.includes(g.id)+'">'+esc(g.label)+'</button>').join('')+btn('Reset columns','reset-columns','','btn-quiet')+'</div>'+
- table('roster',cols,selected,cell,s)+'</section>'+note('Select a mark summary for its assessment evidence. Click MTG, prediction or comments to edit where authorised. SOC is derived from visible active cases; AA denotes access arrangements. The full markbook follows in V2-05.');
+ table('roster',cols,selected,cell,s)+'</section>'+note('Select a mark summary for its assessment evidence. Click MTG, prediction or comments to edit where authorised. SOC is derived from visible active cases; AA denotes access arrangements. Open Assessment tracker for marks and definitions.');
 }
 export function renderStudents(w,s){
  const all=w.studentRows(),rows=filterStudents(all,s,matchText),c=profileCounts(all);
@@ -235,6 +234,13 @@ const close=()=>'<button type="button" class="btn btn-icon" data-action="close-d
 const drawer=(title,sub,body,footer='')=>'<div class="dialog-head"><div><h2 id="detail-title">'+esc(title)+'</h2><p class="subtitle">'+esc(sub)+'</p></div>'+close()+'</div><div class="drawer-body">'+body+'</div><div class="drawer-footer">'+footer+btn('Close','close-detail')+'</div>';
 export function renderDetail(w,detail){
  const {kind,id}=detail;
+ if(kind==='demo-guide')return drawer('Demonstration guide','Version 2 · Fictional school records',
+  '<p class="info-box">Switch fictional staff roles to see how the same records connect across the school. These shortcuts do not reset or change the records.</p>'+
+  section('Faculty lead',listRow('Explore the Year 11 Mathematics tracker','Sam Taylor · enter a mark, open class analysis, inspect evidence','demo-scenario','faculty','class'))+
+  section('Tutor',listRow('Explore the tutor-group student directory','Jordan Evans · compare subjects and open a pupil profile','demo-scenario','tutor','students'))+
+  section('Head of House',listRow('Explore House interventions','Morgan Lee · review House cases and personal actions','demo-scenario','house','support'))+
+  section('School leadership',listRow('Explore the school-wide workspace','Avery Reed · check reporting, referral actions and school scope','demo-scenario','leadership','person'))+
+  note('Use Reset demo data in the footer to restore the original fictional examples. No live integration, real account or real pupil data is involved.'));
  if(kind==='analysis-evidence'){const d=renderAnalysisEvidence(w,id);return drawer(d.title,d.sub,d.body);}
  if(['unit-form','assessment-new','assessment-copy','assessment-edit','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
   const d=renderBookDetail(w,detail);return drawer(d.title,d.sub,d.body,d.footer??'');
