@@ -1,4 +1,5 @@
 import {createStore} from './store.mjs';
+import {ANALYSIS_TABS} from './academic-analysis.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {GROUPS,DEFAULT_GROUPS} from './class-overview.mjs';
@@ -10,7 +11,7 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{},classTab:'information',unitId:''};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],sorts:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:''};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
@@ -43,7 +44,8 @@ function render({top=false,keepFocus=false}={}){
  if(detail&&detailDialog.open&&!suspendDetailRefresh)try{refreshDetail();}catch{closeDetail();}
 }
 function clearRegisterFilters(){state.query='';state.flag='all';state.below=false;state.tutorFilter='all';state.houseFilter='all';state.trackFilter='all';state.supportFilter='all';state.classYear='all';state.classFaculty='all';}
-function clearFilters(){clearRegisterFilters();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
+function clearAnalysis(){state.analysisStudent='';state.analysisAssessment='';state.analysisCommon='';state.analysisUnit='';state.analysisFrom='';state.analysisTo='';}
+function clearFilters(){clearRegisterFilters();clearAnalysis();state.caseFilter='active';state.caseClass=null;state.noticeFilter='active';state.deadlineFilter='open';}
 function navigate(page,{classId=null,below=false,caseFilter='active',caseClass=null,noticeFilter='active',deadlineFilter='open',preserve=false,classTab='information'}={}){
  if(!closeDetail(false))return;closeSearch(false);nav.dataset.open='false';
  if(!preserve)clearFilters();
@@ -150,7 +152,10 @@ document.addEventListener('click',event=>{
   case 'search-result':pickSearch(id);break;
   case 'open-class':openClass(id);break;
   case 'class-tab':
-    state.classTab=id==='markbook'?'markbook':'information';render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
+    state.classTab=['markbook',...ANALYSIS_TABS].includes(id)?id:'information';render({top:true});main.querySelector('[data-action="class-tab"][data-id="'+id+'"]')?.focus();break;
+  case 'analysis-evidence':openDetail('analysis-evidence',id);break;
+  case 'analysis-select-assessment':state.analysisAssessment=id;state.classTab='class-analysis';render({top:true});byId('analysis-assessment')?.focus();break;
+  case 'analysis-reset':clearAnalysis();render({top:true});byId('analysis-unit')?.focus();break;
   case 'new-unit':openDetail('unit-form',id);break;
   case 'new-assessment':openDetail('assessment-new',id);break;
   case 'reuse-assessment':{
@@ -238,6 +243,12 @@ document.addEventListener('change',event=>{
  const el=event.target;
  if(grid.onChange(el))return;
  if(el.id==='markbook-unit'){state.unitId=el.value;render({keepFocus:true});return;}
+ const analysisFields={'analysis-student':'analysisStudent','analysis-assessment':'analysisAssessment','analysis-common':'analysisCommon','analysis-unit':'analysisUnit','analysis-from':'analysisFrom','analysis-to':'analysisTo'};
+ if(analysisFields[el.id]){
+  const key=analysisFields[el.id],value=el.value,old=state[key];state[key]=value;
+  try{w.academicAnalysis(state.classId).filters({from:state.analysisFrom,to:state.analysisTo,unitId:state.analysisUnit});}catch(error){state[key]=old;el.value=old||(key==='analysisTo'?w.asOf:'');notify(error.message);return;}
+  render({keepFocus:true});return;
+ }
  if(el.id==='staff'){if(!closeDetail(false)){el.value=state.staffId;return;}clearFilters();state.staffId=el.value;state.columnGroups=loadColumns(state.staffId);state.scope=null;state.classId=null;state.page='home';history.replaceState(null,'',routeHash('home'));render({top:true});byId('staff')?.focus({preventScroll:true});}
  if(el.id==='scope'){state.scope=el.value;clearFilters();render({top:true});byId('scope')?.focus({preventScroll:true});}
  if(el.id==='quick-class'){if(el.value)openClass(el.value);else navigate('classes');}
