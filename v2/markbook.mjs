@@ -119,7 +119,7 @@ export function importPreview(text,assessment,rows){
 }
 export function csvTemplate(a,rows){
  const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
- return [['Student ID','Status',...a.items.map(i=>i.id)],...rows.filter(r=>r.editable).map(r=>[r.studentId,r.entryStatus,...a.items.map(i=>r.marks[i.id]??'')])].map(row=>row.map(quote).join(',')).join('\r\n');
+ return [['Student ID','Status',...a.items.map(i=>i.id)],...rows.filter(r=>r.editable).map(r=>[r.studentId,r.entryStatus==='missing'?'':r.entryStatus,...a.items.map(i=>r.marks[i.id]??'')])].map(row=>row.map(quote).join(',')).join('\r\n');
 }
 export function createMarkbook(data,access,classId,scope){
  const ix=indexData(data),c=ix.classes.get(classId);
@@ -129,7 +129,7 @@ export function createMarkbook(data,access,classId,scope){
  const course=ix.courses.get(c.courseId),engine=createAnalytics(data),scheme=ix.gradeSchemes.get(course.gradeSchemeId);
  const units=data.units.filter(u=>u.courseId===course.id).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
  const visible=a=>a.status==='published'||a.classIds.some(id=>access.teaches(id)||access.leads(id));
- const assessments=data.assessments.filter(a=>a.classIds.includes(classId)&&visible(a)).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+ const assessments=data.assessments.filter(a=>a.classIds.includes(classId)&&(a.status==='published'||access.teaches(classId)||access.leads(classId))).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
  const assignmentOptions=permittedAssignments(data,access,classId);
  const templates=data.assessments.filter(a=>a.courseId===course.id&&a.classIds.some(id=>access.canViewClass(id))&&visible(a))
   .map(a=>({id:a.id,title:a.title,date:a.date,mode:a.mode,unitId:a.unitId}));
