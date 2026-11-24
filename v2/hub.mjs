@@ -8,6 +8,7 @@ import {CASE_FILTERS} from './intervention-refinement.mjs';
 import {bookId,unpackBookId} from './markbook-views.mjs';
 import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {createGradebookController} from './gradebook-controller.mjs';
+import {editorInput,changeBoundaryUnit,changeEditorRows,resetEditorBoundaries} from './assessment-editor.mjs';
 import {GROUPS,DEFAULT_GROUPS,FULL_GROUPS,registerFocusFilter,visibleRegisterRows} from './class-overview.mjs';
 import {createWorkspace,parseRoute,routeHash,HELP,sortRows,matchText} from './workspace.mjs';
 import {sidebar,topbar,renderPage,renderDetail,renderSearchResults,esc,icon} from './views.mjs';
@@ -245,12 +246,18 @@ document.addEventListener('click',event=>{
      navigate('classes',{classId,classTab:'class-analysis',analysisAssessment:assessmentId});
     }catch(error){notify(error.message);}break;
   }
+  case 'assessment-settings':openDetail('assessment-settings',id);break;
+  case 'duplicate-assessment':openDetail('assessment-copy',id);break;
+  case 'delete-assessment':openDetail('delete-assessment',id);break;
   case 'edit-assessment':openDetail('assessment-edit',id);break;
+  case 'add-assessment-item':case 'remove-assessment-item':{
+    try{changeEditorRows(byId('assessment-form'),action,el);formDirty=true;}catch(error){notify(error.message);}break;
+  }
   case 'publish-assessment':openDetail('publish-assessment',id);break;
   case 'student-exclusion':openDetail('student-exclusion',id);break;
   case 'assessment-exclusion':openDetail('assessment-exclusion',id);break;
   case 'reset-boundaries':{
-    const b=w.markbook(unpackBookId(detail.id)[0]);detailDialog.querySelectorAll('[name="boundary"]').forEach((el,i)=>el.value=b.defaultBands[i].min);formDirty=true;break;
+    try{const b=w.markbook(unpackBookId(detail.id)[0]);resetEditorBoundaries(byId('assessment-form'),b.defaultBands);formDirty=true;}catch(error){notify(error.message);}break;
   }
   case 'preview-mark-import':try{grid.previewImport();grid.error('');}catch(error){grid.error(error.message);notify(error.message);}break;
   case 'apply-mark-import':try{grid.applyImport();grid.error('');}catch(error){grid.error(error.message);}break;
@@ -377,6 +384,7 @@ document.addEventListener('focusin',event=>{gradebook.onFocus(event.target);grid
 window.addEventListener('beforeunload',event=>{if(gradebook.isDirty()||grid.isDirty()||formDirty){event.preventDefault();event.returnValue='';}});
 document.addEventListener('input',event=>{
  if(gradebook.onInput(event.target)||grid.onInput(event.target))return;
+ if(event.target.closest('form')?.id==='assessment-form')editorInput(byId('assessment-form'),event.target);
  if(detailDialog.contains(event.target)&&event.target.closest('form')&&event.target.closest('form').id!=='mark-grid-form')formDirty=true;
  if(event.target.id==='global-query'){byId('search-results').innerHTML=renderSearchResults(w,event.target.value);return;}
  if(event.target.id==='page-query'){state.query=event.target.value;render({keepFocus:true});}
@@ -384,6 +392,8 @@ document.addEventListener('input',event=>{
 document.addEventListener('change',event=>{
  const el=event.target;
  if(grid.onChange(el))return;
+ if(el.id==='boundary-unit'){try{changeBoundaryUnit(byId('assessment-form'));}catch(error){notify(error.message);}formDirty=true;return;}
+ if(el.id==='assessment-mode')editorInput(byId('assessment-form'),el);
  if(detailDialog.contains(el)&&el.closest('form')&&el.closest('form').id!=='mark-grid-form')formDirty=true;
  if(el.id==='profile-pupil'){switchProfile(el.value);return;}
  if(el.id==='profile-subject'){changeProfile({subjectId:el.value},'profile-subject');return;}
@@ -457,11 +467,15 @@ document.addEventListener('submit',event=>{
     const old=record.kind==='assessment-edit'?book.detail(assessmentId):null;
     const input=definitionInput(form,book,old);
     const saved=store.saveAssessment(state.staffId,classId,old?assessmentId:null,input);
-    formDirty=false;state.unitId=input.unitId;render();
-    if(old&&detailStack.length)detailBack();else{closeDetail();openDetail('mark-grid',bookId(classId,saved.id));}
-    notify(old?'Assessment definition updated.':'Draft created. Enter marks or publish when ready.');return;
+    formDirty=false;if(state.unitId&&state.unitId!==input.unitId)state.unitId=input.unitId;render();
+    if(old&&detailStack.length)detailBack();
+    else if(input.mode==='total'&&state.page==='classes'&&state.classTab==='markbook'){
+     closeDetail(false);main.querySelector('.gradebook-cell[data-assessment="'+CSS.escape(saved.id)+'"]')?.focus();
+    }else{closeDetail();openDetail('mark-grid',bookId(classId,saved.id));}
+    notify(old?'Assessment settings saved.':input.initialStatus==='draft'?'Draft created. Publish it when ready.':'Assessment created. Ready for mark entry.');return;
    }
    const d=book.detail(assessmentId),confirmed=form.has('confirmed'),reason=String(form.get('reason')??'');
+   if(record.kind==='delete-assessment'){store.deleteEmptyAssessment(state.staffId,assessmentId,{confirmed});formDirty=false;closeDetail();notify('Empty draft deleted.');return;}
    if(record.kind==='publish-assessment')store.publishAssessment(state.staffId,assessmentId,{confirmed});
    else if(record.kind==='assessment-exclusion')store.setAssessmentInclusion(state.staffId,assessmentId,{included:!d.assessment.includeInSummary,reason,confirmed,phrase:String(form.get('phrase')??'')});
    else if(record.kind==='student-exclusion'){
