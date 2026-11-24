@@ -194,7 +194,7 @@ export function renderStudents(w,s){
  },s)+'</section>'+note('Directory counts use the selected cohort and subject scope. Open a profile to see all records permitted by your combined responsibilities. No cross-subject average or automatic SOC classification is calculated.');
 }
 export function renderIntervention(w,s){
- const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),h=w.home(),personal=w.allHome().actions;
+ const all=w.caseRows(),active=all.filter(c=>c.state!=='closed'),personal=w.allHome().actions;
  const filter=s.caseFilter??'active',actionMode=filter==='actions';
  const actionRows=personal.map(a=>({...w.caseDetail(a.caseId),actionType:a.type,actionDate:a.reviewDate}));
  const match=c=>matchText(s.query,c.studentName,c.classCode,c.house,c.student.tutorGroupId,c.reason,c.owner)&&
