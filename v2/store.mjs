@@ -210,17 +210,18 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
     must(Array.isArray(entries)&&entries.length>0&&entries.length<=10000,'Enter a non-empty batch of gradebook results');
     must(new Set(entries.map(e=>resultKey(e.assessmentId,e.enrolmentId))).size===entries.length,'Duplicate result in gradebook batch');
     return transaction(staffId,'saveGradebookBatch',classId,(d,a)=>{
-      const before=[],after=[];
+      const before=[],after=[],assessments=new Map(d.assessments.map(x=>[x.id,x])),enrolments=new Map(d.enrolments.map(x=>[x.id,x])),results=new Map(d.results.map(x=>[resultKey(x.assessmentId,x.enrolmentId),x]));
       for(const entry of entries){
-        const assessment=lookup(d,'assessments',entry.assessmentId),enrolment=lookup(d,'enrolments',entry.enrolmentId);
+        const assessment=assessments.get(entry.assessmentId),enrolment=enrolments.get(entry.enrolmentId);
         must(assessment&&enrolment?.classId===classId&&a.canEditResult(entry.assessmentId,entry.enrolmentId),'Only assigned teaching staff may edit this class gradebook');
-        const old=resultRecord(d,entry.assessmentId,entry.enrolmentId),clean=resultInput(assessment,entry.status,entry.marks);
+        const pair=resultKey(entry.assessmentId,entry.enrolmentId),old=results.get(pair),clean=resultInput(assessment,entry.status,entry.marks);
         must(!old?.exclusionReason,'Edit excluded results in the assessment detail');
         const clears=old&&Object.keys(old.marks).some(id=>!Object.hasOwn(clean.marks,id));
         must(!clears||confirmClear===true,'Confirm clearing previously recorded marks');
         if(old&&old.status===clean.status&&JSON.stringify(old.marks)===JSON.stringify(clean.marks)||!old&&clean.status==='missing'&&!Object.keys(clean.marks).length)continue;
         before.push(old?clone(old):null);
-        const record=ensureResult(d,entry.assessmentId,entry.enrolmentId);
+        const record=old??{id:'R-'+pair,assessmentId:entry.assessmentId,enrolmentId:entry.enrolmentId,status:'missing',marks:{},exclusionReason:null};
+        if(!old){d.results.push(record);results.set(pair,record);}
         record.status=clean.status;record.marks=clean.marks;after.push(clone(record));
       }
       return {before,after};
@@ -232,7 +233,7 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       const old=resultRecord(d,assessmentId,enrolmentId),before=old?clone(old):null;
       must(['present','absent','missing'].includes(status),'Invalid result status');
       must(marks&&typeof marks==='object'&&!Array.isArray(marks),'Marks must be an object');
-      if(status!=='present'&&old&&Object.keys(old.marks).length)must(confirmClear===true,'Confirm before clearing entered marks');
+      if(old&&Object.keys(old.marks).some(id=>!Object.hasOwn(marks,id)))must(confirmClear===true,'Confirm before clearing entered marks');
       const r=ensureResult(d,assessmentId,enrolmentId);
       must(Object.values(marks).every(v=>typeof v==='number'&&Number.isFinite(v)),'Marks must be finite numbers');
       r.status=status;r.marks=clone(marks); // Exclusion setting is preserved; separate guarded operation.
