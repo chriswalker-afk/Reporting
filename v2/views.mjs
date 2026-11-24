@@ -325,7 +325,7 @@ export function renderDetail(w,detail){
   section('House identities','<div class="house-directory">'+HOUSES.map(h=>houseBadge(h,{large:true,label:true})).join('')+'</div>')+
   note('Use Reset demo data in the footer to restore the original fictional examples. No live integration, real account or real pupil data is involved.'));
  if(kind==='analysis-evidence'){const d=renderAnalysisEvidence(w,id);return drawer(d.title,d.sub,d.body);}
- if(['unit-form','assessment-new','assessment-copy','assessment-edit','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
+ if(['unit-form','assessment-new','assessment-copy','assessment-edit','assessment-settings','delete-assessment','mark-grid','student-exclusion','assessment-exclusion','publish-assessment'].includes(kind)){
   const d=renderBookDetail(w,detail);return drawer(d.title,d.sub,d.body,d.footer??'');
  }
  if(kind==='student'){const d=renderStudentProfile(w,detail);return drawer(d.title,d.sub,d.body);}
