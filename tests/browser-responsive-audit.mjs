@@ -159,10 +159,14 @@ try{
   if(result.outerOverflow>3)observe(label,[{type:'outer-horizontal-scroll',control:drawer?'detail drawer':await evaluate(()=>document.querySelector('.workspace-inner')?.dataset.workspacePage+':'+document.querySelector('.workspace-inner')?.dataset.workspaceTab),pixels:result.outerOverflow}]);
   if(drawer)drawerVisits++;else visits++;
  };
- await screen(1440,900);await open();
+ // Use a fresh document per batch: hundreds of rapid synthetic history writes
+ // in one document trigger Chromium's anti-abuse navigation rate limiter.
+ // The existing smoke suite and final dirty-gradebook test cover same-document resizing.
+ const fresh=async()=>{await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'audit batch unloaded');await open('v2/#home');};
+ await screen(1440,900);await fresh();
  // Exercise every main destination and all six class tabs at every size.
  for(const [width,height,label] of sizes){
-  await screen(width,height);
+  await screen(width,height);await fresh();console.log('Audit viewport:',label);
   for(const page of pages){await navigatePage(page);await inspect(label+' / '+page);}
   await navigatePage('classes');await activate('open-class','11-maths-1');
   for(const tab of CLASS_TABS){await activate('class-tab',tab);await inspect(label+' / '+tab);}
@@ -178,7 +182,7 @@ try{
  const staff=await evaluate(()=>[...document.querySelector('#staff').options].map(o=>o.value));
  let scopeCount=0;
  for(const id of staff){
-  await fill('#staff',id);
+  await fresh();await fill('#staff',id);
   const scopes=await evaluate(()=>[...document.querySelector('#scope').options].map(o=>o.value));
   for(const scope of scopes){
    await fill('#scope',scope);scopeCount++;console.log('Audit scope:',id,scope);
@@ -192,7 +196,7 @@ try{
    }
   }
  }
- await fill('#staff','sam');await fill('#scope','faculty');await screen(1366,768);
+ await fresh();await fill('#staff','sam');await fill('#scope','faculty');await screen(1366,768);
  // Check representative drawers/forms across narrow, short and zoom-reflow sizes.
  const drawerSizes=sizes.filter((_,i)=>[0,1,2,3,6,11].includes(i));
  const inspectDrawer=async name=>{
