@@ -15,6 +15,17 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
  function restoreScroll(position){
   if(position?.node===table()&&position.node){position.node.scrollTop=position.top;position.node.scrollLeft=position.left;}
  }
+ function fitPanel(){
+  const node=surface(),flyout=node?.querySelector('.gradebook-toolbar-flyout');
+  if(!flyout||flyout.hidden)return;
+  // Bound the floating panel to the visible workspace where possible. On
+  // very short screens the outer workspace can still scroll to reach it.
+  const top=flyout.getBoundingClientRect().top,bounds=root.getBoundingClientRect();
+  const footer=node.querySelector('.gradebook-save-bar')?.getBoundingClientRect().top;
+  const end=Number.isFinite(footer)&&footer-top>=112?Math.min(bounds.bottom,footer):bounds.bottom;
+  const scale=Number(root.dataset.pageZoom||100)/100;
+  flyout.style.setProperty('--gradebook-flyout-room',Math.max(100,(end-top-6)/scale)+'px');
+ }
  function sync(){
   const current=getContext(),node=surface();
   if(!node||!current||current!==context){active=false;panel='';context=current;outerScroll=0;}
@@ -37,6 +48,7 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   // The same exclusive tools panels drive the normal and full-screen views.
   // Open their inner disclosures only while the corresponding panel is shown.
   {const help=node.querySelector('[data-workspace-disclosure="gradebook-help"]');if(help)help.open=panel==='help';const tools=node.querySelector('[data-workspace-disclosure="single-tools"]');if(tools)tools.open=panel==='tools';}
+  fitPanel();
  }
  function setActive(value){
   if(!surface()||!getContext())return false;
@@ -70,5 +82,5 @@ export function createGradebookFocus({app,root,getContext,restoreDisclosures}){
   if(panel)closePanel();else setActive(false);
   return true;
  }
- return {sync,toggle:()=>setActive(!active),togglePanel,closePanel,outsidePointer,keyboard,isActive:()=>active};
+ return {sync,toggle:()=>setActive(!active),togglePanel,closePanel,outsidePointer,fitPanel,keyboard,isActive:()=>active};
 }
