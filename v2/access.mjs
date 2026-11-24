@@ -39,6 +39,11 @@ export function createAccess(data,staffId){
     const n=ix.notes.get(noteId),e=n&&ix.enrolments.get(n.enrolmentId);
     return Boolean(e&&(has('leadership')||teaches(e.classId)||leads(e.classId)||isTutor(e.studentId)||isHouse(e.studentId)));
   };
+  const canAddSubjectNote=enrolmentId=>teaches(ix.enrolments.get(enrolmentId)?.classId);
+  const canEditSubjectNote=noteId=>{
+    const n=ix.notes.get(noteId);
+    return Boolean(n&&n.visibility==='subject'&&n.authorStaffId===staffId&&canAddSubjectNote(n.enrolmentId));
+  };
   const scopeClasses=(scope='accessible')=>data.classes.filter(c=>{
     if(scope==='teaching')return teaches(c.id);
     if(scope==='faculty')return leads(c.id);
@@ -87,7 +92,7 @@ export function createAccess(data,staffId){
     return actions;
   };
   return {staff,has,facultyOf,teaches,leads,isTutor,isHouse,canViewClass,canViewEnrolment,canViewStudent,
-    canEditResult,canManageAssessment,canEditPrediction,canEditMinimumTarget,canViewCase,canViewNote,
+    canEditResult,canManageAssessment,canEditPrediction,canEditMinimumTarget,canViewCase,canViewNote,canAddSubjectNote,canEditSubjectNote,
     canStartWave1:enrolmentId=>teaches(ix.enrolments.get(enrolmentId)?.classId),
     scopeClasses,scopeStudents,scopeEnrolments,audienceMatches,caseActions,
     availableScopes:['teaching','faculty','tutor','house','school'].filter(scope=>scopeEnrolments(scope).length>0)};

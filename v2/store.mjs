@@ -159,6 +159,21 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
       r.minimumGrade=minimumGrade;return {before,after:r};
     });
   }
+  function saveSubjectNote(staffId,enrolmentId,id,text){
+    const recordId=id??nextId('notes','N');
+    return transaction(staffId,id?'editSubjectNote':'addSubjectNote',recordId,(d,a)=>{
+      must(a.canAddSubjectNote(enrolmentId),'Only the assigned teacher can add subject comments');
+      must(isText(text)&&text.trim().length<=2000,'Enter a comment of 1–2000 characters');
+      const old=id?lookup(d,'notes',id):null;
+      must(!id||old&&old.enrolmentId===enrolmentId&&a.canEditSubjectNote(id),'Only the assigned author can edit this subject comment');
+      if(old){
+        const before=clone(old);if(old.text===text.trim())return {before,after:old};
+        old.text=text.trim();old.updatedDate=d.asOf;return {before,after:old};
+      }
+      const record={id:recordId,enrolmentId,authorStaffId:staffId,date:d.asOf,visibility:'subject',text:text.trim()};
+      d.notes.push(record);return {before:null,after:record};
+    });
+  }
   function setDemoDate(staffId,date){
     must(isDate(date),'Invalid demo date');
     // Date is a shared preview setting, not a pupil record.
@@ -251,6 +266,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,setDemoDate,
+    saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,setDemoDate,
     saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }

@@ -31,3 +31,27 @@ dialog{color:var(--text);padding:0;border:1px solid var(--border);background:whi
 .form-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .drawer-section .content .btn{justify-self:start}
 @media(max-width:760px){.communication-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.form-columns{grid-template-columns:1fr}.communication-list{max-height:240px}}
+
+/* V2-04 dense, configurable class register */
+.register-filters{gap:7px;padding:8px 10px}
+.register-filters .input{width:185px}
+.register-filters .select{font-size:11px;height:32px;padding:4px 7px;max-width:160px}
+.register-filters .btn{min-height:30px;padding:4px 7px}
+.column-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid var(--line);background:#fafbfc}
+.column-toggle{border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:11px;color:var(--muted);background:white;font-weight:650}
+.column-toggle[aria-pressed=true]{border-color:#9fcac4;background:var(--accent-soft);color:var(--accent-dark)}
+.column-toggle:hover{border-color:var(--accent)}
+.column-toolbar .btn{margin-left:auto;min-height:27px;font-size:11px;padding:4px 7px}
+.roster-table{max-height:calc(100dvh - 345px);min-height:180px}
+.roster-table .data-table th{padding:6px 7px}
+.roster-table .data-table td{padding:7px}
+.roster-table .help{width:17px;height:18px}
+.roster-table .help .icon{width:13px;height:13px}
+.roster-table .data-table .sticky-first{min-width:132px}
+.roster-table .data-table .tag{font-size:10px;padding:2px 5px}
+.roster-table .tags{flex-wrap:nowrap;gap:3px}
+.comment-record{padding:8px 0;border-bottom:1px solid var(--line)}
+.comment-record:last-child{border-bottom:0}
+.comment-meta{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.comment-record p{margin:6px 0;overflow-wrap:anywhere}
+@media(max-width:760px){.roster-table{max-height:55dvh}.column-toolbar .btn{margin-left:0}.register-filters .input{width:100%}.register-filters .select{max-width:145px}}

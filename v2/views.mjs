@@ -1,5 +1,6 @@
 import {NAV,FUTURE,SCOPE_LABELS,ROLE_LABELS,WAVE_LABELS,ACTION_LABELS,HELP,pct,displayDate,gradeGap,matchText,sortRows,routeHash} from './workspace.mjs';
 import {EVENTS,safeLink} from './communications.mjs';
+import {GROUPS,DEFAULT_GROUPS,registerColumns,filterRegister} from './class-overview.mjs';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={
  home:'M3 10 12 3l9 7v10h-6v-7H9v7H3z',notice:'M4 11V8l15-5v14L4 13z M7 14l2 6h4l-2-5 M19 8h2',
@@ -38,10 +39,10 @@ const sortHeader=(column,table,state)=>{
 };
 const tableFirst={classes:'code',homeClasses:'code',roster:'name',students:'name',cases:'studentName'};
 function table(name,columns,rows,cell,state,{compact=false}={}){
- const sort=state.sorts[name],ordered=sort?sortRows(rows,sort.key,sort.direction):rows;
+ const sort=state.sorts[name],ordered=sort&&columns.some(c=>c[0]===sort.key)?sortRows(rows,sort.key,sort.direction):rows;
  if(!rows.length)return empty('No matching records','Try clearing a filter or choosing a different scope.');
- return '<div class="table-scroll '+(compact?'home-table':'')+'" role="region" tabindex="0" aria-label="'+esc(name==='roster'?'Class register':name+' table')+'"><table class="data-table"><thead><tr>'+columns.map(c=>sortHeader(c,name,state)).join('')+'</tr></thead><tbody>'+
- ordered.map(row=>'<tr>'+columns.map(([key])=>'<td class="'+(key===tableFirst[name]?'sticky-first ':'')+(['mean','average','below','scored','students','cases','gapToTarget','subjects'].includes(key)?'num':'')+'">'+cell(row,key)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+ return '<div class="table-scroll '+(compact?'home-table':name==='roster'?'roster-table':'')+'" role="region" tabindex="0" aria-label="'+esc(name==='roster'?'Class register':name+' table')+'"><table class="data-table"><thead><tr>'+columns.map(c=>sortHeader(c,name,state)).join('')+'</tr></thead><tbody>'+
+ ordered.map(row=>'<tr>'+columns.map(([key])=>'<td class="'+(key===tableFirst[name]?'sticky-first ':'')+(['mean','average','below','scored','students','cases','gapToTarget','subjects','latestPercent','nextGradePoints','coverageCount','gapToPrediction','noteCount'].includes(key)?'num':'')+'">'+cell(row,key)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 }
 const classColumns=[['code','Class'],['students','Pupils'],['mean','Mean','average'],['scored','Coverage','coverage'],['below','Below MTG','target'],['cases','Cases','intervention']];
 function classCell(r,key){
@@ -53,7 +54,7 @@ function classCell(r,key){
  return esc(r[key]);
 }
 export function sidebar(page,w){
- return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Home &amp; Notices</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
+ return '<div class="brand"><button class="mobile-toggle btn btn-icon" data-action="close-menu" aria-label="Close navigation">'+icon('close')+'</button><span class="brand-symbol" aria-hidden="true">J</span><div><strong>JIS Hub</strong><small>STAFF WORKSPACE</small></div></div><div class="nav-heading">Workspace</div><nav class="nav-group" aria-label="Main navigation">'+NAV.map(([id,label,ic])=>'<a class="nav-link" href="'+routeHash(id)+'" data-action="navigate" data-id="'+id+'" '+(page===id?'aria-current="page"':'')+'>'+icon(ic)+esc(label)+'</a>').join('')+'</nav><hr class="sidebar-line"><div class="nav-heading">Future modules</div><div class="nav-group">'+FUTURE.map(([label,ic])=>'<span class="future-link" aria-disabled="true" title="Not available in this development pass">'+icon(ic)+esc(label)+'</span>').join('')+'</div><div class="sidebar-bottom"><strong>Version 2 · Class overview</strong>Academic year '+esc(w.academicYear)+'<br>Fictional preview</div>';
 }
 export function topbar(w){
  return '<button type="button" class="btn btn-icon mobile-toggle" data-action="mobile-menu" aria-label="Open navigation" aria-expanded="false">'+icon('menu')+'</button><button type="button" class="search-launch" data-action="search">'+icon('search')+'<span>Search students, classes, staff…</span><kbd>/</kbd></button><div class="topbar-spacer"></div><div class="topbar-field"><label for="scope">Scope</label>'+select('scope',w.scope,w.scopeOptions.map(s=>[s.id,s.label]),'Workspace scope')+help('scope','workspace scope')+'</div><div class="staff-field"><span class="avatar" aria-hidden="true">'+esc(w.staff.name.split(' ').slice(0,2).map(s=>s[0]).join(''))+'</span><div><label class="field-label" for="staff">Preview staff</label>'+select('staff',w.staff.id,w.staffOptions.map(s=>[s.id,s.name.replace(/ \(demo\)/g,'')]),'Preview fictional staff member')+'<span class="roles">'+esc(w.staff.roles.map(r=>ROLE_LABELS[r]).join(' · '))+'</span></div></div>';
@@ -104,33 +105,54 @@ export function renderNotices(w,s){
  note('Personal completion markers do not submit reports to external systems. Notice and deadline edits are saved in the fictional demo audit history.');
 }
 export function renderClasses(w,s){
- const all=sortRows(w.classRows(),'code');
+ const all=sortRows(w.classRows(),'code'),current=all.findIndex(c=>c.id===s.classId);
  const quick=select('quick-class',s.classId||'', [['','All classes'],...all.map(c=>[c.id,c.code+' · '+c.subject.name])],'Quick class selector');
- const rows=all.filter(r=>matchText(s.query,r.code,r.name,r.teacher,r.faculty.name,r.course.name)&&(!s.below||r.below>0));
+ const previous=current>0?btn('‹ Previous','open-class',all[current-1].id):'<button class="btn" disabled>‹ Previous</button>';
+ const next=current>=0&&current<all.length-1?btn('Next ›','open-class',all[current+1].id):'<button class="btn" disabled>Next ›</button>';
+ const unique=(rows,key)=>[...new Set(rows.map(r=>r[key]))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
+ const filter=(id,val,label,values)=>select(id,val??'all',[['all',label],...values.map(v=>[String(v),String(v)])],label);
+ const rows=all.filter(r=>matchText(s.query,r.code,r.name,r.teacher,r.faculty.name,r.course.name)&&(!s.below||r.below>0)&&
+  (!s.classYear||s.classYear==='all'||String(r.year)===s.classYear)&&(!s.classFaculty||s.classFaculty==='all'||r.faculty.name===s.classFaculty));
  if(!s.classId||!w.scopedClassIds.has(s.classId)){
   return heading('Classes',SCOPE_LABELS[w.scope]+' · '+all.length+' teaching groups',quick,'Academic workspace')+
-  '<section class="surface"><div class="toolbar">'+field('page-query',s.query,'Filter class, subject or teacher')+'<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Classes with pupils below target</label><span class="count">'+rows.length+' classes</span></div>'+table('classes',classColumns,rows,classCell,s)+'</section>'+note('Means and coverage use the selected pupil scope. The full tracker and assessment editor are developed in V2-04 and V2-05.');
+  '<section class="surface"><div class="toolbar">'+field('page-query',s.query,'Filter class, subject or teacher')+
+  filter('class-year',s.classYear,'All years',unique(all,'year'))+filter('class-faculty',s.classFaculty,'All faculties',[...new Set(all.map(c=>c.faculty.name))].sort())+
+  '<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Classes with pupils below target</label>'+btn('Clear filters','clear-register-filters','','btn-quiet')+'<span class="count">'+rows.length+' classes</span></div>'+table('classes',classColumns,rows,classCell,s)+'</section>'+note('Means and coverage use the selected pupil scope. Select a class to open its Student Information tracker.');
  }
- const r=w.classRecord(s.classId);
- const selected=r.roster.filter(p=>matchText(s.query,p.name,p.tutorGroupId,p.house,p.tags)&&
-  (s.flag==='all'||p.tags.includes(s.flag))&&(!s.below||p.gapToTarget!==null&&p.gapToTarget<0));
- const cols=[['name','Student'],['tutorGroupId','Tutor group','tutor'],['house','House'],['tags','Flags','flags'],['active','Intervention','intervention'],
-  ['average','Average','average'],['grade','Grade'],['minimumGrade','MTG','target'],['predictedGrade','Prediction','predicted'],['gapToTarget','Δ target','target']];
+ const r=w.classRecord(s.classId),selected=filterRegister(r.roster,s,matchText),groups=s.columnGroups??DEFAULT_GROUPS;
+ const cols=registerColumns(groups),gap=v=>'<span class="'+(v!==null&&v<0?'negative':v!==null&&v>=0?'positive':'')+'">'+esc(gradeGap(v))+'</span>';
  const cell=(p,k)=>{
   if(k==='name')return link(p.name,'open-student',p.studentId);
-  if(k==='tutorGroupId')return tag('TG '+p.tutorGroupId);
-  if(k==='tags')return tags(p);
-  if(k==='active')return p.active.length?p.active.map(c=>link('W'+c.wave,'open-case',c.id)).join(' '):'—';
-  if(k==='average')return pct(p.average);
-  if(k==='gapToTarget')return '<span class="'+(p.gapToTarget<0?'negative':p.gapToTarget>=0&&p.gapToTarget!==null?'positive':'')+'">'+esc(gradeGap(p.gapToTarget))+'</span>';
+  if(k==='tutorGroupId')return tag(p.tutorGroupId);
+  if(k==='flags')return '<div class="tags">'+(p.tags.length?p.tags.map(t=>tag(t==='Access arrangements'?'AA':t)).join(''):'<span class="muted">—</span>')+'</div>';
+  if(k==='wave'){
+   const subject=p.active.map(c=>link('W'+c.wave,'open-case',c.id)).join(' ');
+   return p.soc?'<div class="tags">'+tag('SOC','tag-warning')+(subject||link('Other','open-student',p.studentId))+'</div>':'—';
+  }
+  if(k==='average')return link(pct(p.average),'subject-summary',p.enrolmentId);
+  if(k==='latestPercent')return p.latestPercent===null?'—':link(pct(p.latestPercent)+' · '+p.latestGrade,'subject-summary',p.enrolmentId);
+  if(k==='latestTitle')return p.latestTitle?'<span class="cell-title">'+esc(p.latestTitle)+'</span><span class="cell-sub">'+esc(displayDate(p.latestDate))+'</span>':'—';
+  if(k==='coverageCount')return link(p.coverage.scored+'/'+p.coverage.eligible,'subject-summary',p.enrolmentId);
+  if(k==='gapToTarget'||k==='gapToPrediction')return gap(p[k]);
+  if(k==='nextGradePoints')return p.nextGradePoints===null?'—':esc(p.nextGradePoints.toFixed(1)+' pp → '+p.nextGradeLabel);
+  if(k==='minimumGrade')return p.targetEditable?link(p.minimumGrade??'Set','edit-target',p.enrolmentId):esc(p.minimumGrade??'—');
   if(k==='predictedGrade')return p.editable?link(p.predictedGrade??'Set grade','edit-prediction',p.enrolmentId):esc(p.predictedGrade??'—');
+  if(k==='noteCount')return link(p.noteCount?String(p.noteCount)+(p.noteCount===1?' note':' notes'):p.canComment?'+ Add':'View','subject-comments',p.enrolmentId);
+  if(k==='track')return tag(p.track,p.onTrack===null?'':p.onTrack?'tag-success':'tag-warning');
   return esc(p[k]??'—');
  };
- return heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,quick+btn('All classes','go-classes','','','back'),'Classes')+
+ return heading(r.code+' · '+r.subject.name,r.course.name+' · '+r.teacher,quick+previous+next+btn('All classes','go-classes','','','back'),'Classes')+
  '<div class="metrics">'+metric('Pupils in scope',r.students,r.partial?'of '+r.total+' in class':'Full class','partial')+metric('Class mean',pct(r.mean),r.scored+'/'+r.students+' pupils scored','average')+metric('Below target',r.below,'Filter register','target','toggle-below')+metric('Active cases',r.cases,'Subject interventions','intervention','class-cases-current')+'</div>'+
  '<div class="tabs" aria-label="Class views"><button class="tab" aria-pressed="true">Student information</button>'+['Assessment tracker','Student analysis','Class analysis','Faculty analysis'].map(t=>'<button class="tab" disabled title="Available in a later development pass">'+esc(t)+'</button>').join('')+'</div>'+
  (r.partial?'<div class="info-box">This register is restricted to pupils in your selected scope. '+help('partial','partial class')+'</div>':'')+
- '<section class="surface"><div class="toolbar">'+field('page-query',s.query,'Filter pupil or tutor group')+select('flag-filter',s.flag,[['all','All flags'],...['EAL','SEN','HLP','Access arrangements'].map(t=>[t,t])],'Filter student tags')+'<label><input id="below-filter" type="checkbox" '+(s.below?'checked':'')+'> Below target</label><span class="count">'+selected.length+' of '+r.students+' pupils</span></div>'+table('roster',cols,selected,cell,s)+'</section>'+note('The visible register is connected to V2 results. Predicted grades may be edited by assigned teachers; the full assessment tracker follows in V2-05.');
+ '<section class="surface"><div class="toolbar register-filters">'+field('page-query',s.query,'Filter pupil or tutor group')+
+ filter('tutor-filter',s.tutorFilter,'All tutor groups',unique(r.roster,'tutorGroupId'))+filter('house-filter',s.houseFilter,'All Houses',unique(r.roster,'house'))+
+ select('flag-filter',s.flag??'all',[['all','All flags'],...['EAL','SEN','HLP','Access arrangements','SOC'].map(t=>[t,t])],'Filter student tags')+
+ select('track-filter',s.below?'below':s.trackFilter??'all',[['all','Any attainment'],['on','On track'],['below','Below target'],['unknown','Unknown']],'Target status')+
+ select('support-filter',s.supportFilter??'all',[['all','Any support'],['soc','SOC'],['w1','Subject Wave 1'],['w2','Subject Wave 2'],['w3','Subject Wave 3'],['none','No visible active case']],'Intervention filter')+
+ btn('Clear','clear-register-filters','','btn-quiet')+'<span class="count">'+selected.length+' of '+r.students+' pupils</span></div>'+
+ '<div class="column-toolbar" role="group" aria-label="Visible register column groups"><span class="field-label">Columns</span>'+GROUPS.map(g=>'<button class="column-toggle" type="button" data-action="toggle-columns" data-id="'+esc(g.id)+'" aria-pressed="'+groups.includes(g.id)+'">'+esc(g.label)+'</button>').join('')+btn('Reset columns','reset-columns','','btn-quiet')+'</div>'+
+ table('roster',cols,selected,cell,s)+'</section>'+note('Select a mark summary for its assessment evidence. Click MTG, prediction or comments to edit where authorised. SOC is derived from visible active cases; AA denotes access arrangements. The full markbook follows in V2-05.');
 }
 export function renderStudents(w,s){
  const all=w.studentRows(),rows=all.filter(p=>matchText(s.query,p.name,p.id,p.year,p.tutorGroupId,p.house,p.tags)&&(s.flag==='all'||p.tags.includes(s.flag)));
@@ -223,8 +245,33 @@ export function renderDetail(w,detail){
   const d=w.staffDetail(id);
   return drawer(d.staff.name,'Fictional staff directory',facts([['Roles',d.staff.roles.map(r=>ROLE_LABELS[r]).join(', ')]])+section('Accessible teaching groups',d.classes.length?d.classes.map(c=>listRow(c.code,c.name,'open-class',c.id,'class')).join(''):empty('No teaching groups in your access scope')));
  }
+ if(kind==='subject-summary'){
+  const d=w.subjectDetail(id),r=d.summary,c=r.coverage;
+  const resultRows=r.results.length?'<div class="table-scroll"><table class="data-table"><thead><tr><th>Assessment</th><th>Date</th><th>Mark</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>'+r.results.map(x=>'<tr><td>'+esc(x.title)+'</td><td>'+esc(displayDate(x.date))+'</td><td>'+esc(x.rawMark===null?'—':x.rawMark+'/'+x.maxMarks)+'</td><td>'+esc(pct(x.percent))+'</td><td>'+esc(x.grade??'—')+'</td><td>'+esc(x.status)+'</td></tr>').join('')+'</tbody></table></div>':empty('No eligible assessment records');
+  return drawer(d.student.name,r.classInfo.code+' · Assessment summary',
+   facts([['Overall percentage',pct(r.average)],['Current grade',r.grade],['Most recent',r.latest?pct(r.latest.percent)+' · '+r.latest.grade:'—'],['Minimum target',r.minimumGrade],['Prediction',r.predictedGrade],['Next grade',r.nextGrade?r.nextGrade.percentagePoints.toFixed(1)+' pp → '+r.nextGrade.grade:'—']])+
+   section('Calculation coverage','<p>'+esc(c.scored+' of '+c.eligible+' eligible results scored · '+c.absent+' absent · '+c.missing+' missing · '+c.incomplete+' incomplete · '+c.excluded+' excluded')+'</p><p class="muted">'+esc(HELP.studentAverage)+'</p>')+
+   section('Contributing assessment records',resultRows+'<p class="small muted">Drafts and whole-assessment exclusions are not included in this summary.</p>'),btn('Subject comments','subject-comments',id,'btn-quiet'));
+ }
+ if(kind==='subject-comments'){
+  const d=w.subjectDetail(id);
+  const history=d.notes.length?d.notes.map(n=>'<article class="comment-record"><div class="comment-meta"><strong>'+esc(n.author)+'</strong><span class="small muted">'+esc(displayDate(n.date))+(n.updatedDate?' · edited '+esc(displayDate(n.updatedDate)):'')+'</span></div><p>'+esc(n.text)+'</p>'+(n.editable?btn('Edit my comment','edit-comment',n.id,'btn-quiet','edit'):'')+'</article>').join(''):empty('No subject comments');
+  const form=d.canComment?'<form id="comment-form" class="form-stack"><label for="comment-text">Add academic comment<textarea id="comment-text" class="input text-area" name="text" maxlength="2000" rows="3" required placeholder="Record a fictional academic observation or next step"></textarea></label><div id="form-error" class="error" role="alert" hidden></div><button class="btn btn-primary" type="submit">'+icon('check')+'Save comment</button></form>':'<p class="muted small">Read only. Only the assigned class teacher can add a comment.</p>';
+  return drawer(d.student.name,d.summary.classInfo.code+' · Subject comments',section('New comment',form)+section('Comment history',history)+note(HELP.comments));
+ }
+ if(kind==='comment-edit'){
+  const n=w.noteDetail(id);if(!n.editable)throw Error('Only the assigned author can edit this subject comment');
+  return drawer('Edit subject comment',n.subject.student.name+' · '+n.subject.summary.classInfo.code,
+   '<form id="comment-form" class="form-stack"><label for="comment-text">Academic comment<textarea id="comment-text" class="input text-area" name="text" maxlength="2000" rows="4" required>'+esc(n.text)+'</textarea></label><div id="form-error" class="error" role="alert" hidden></div><button class="btn btn-primary" type="submit">'+icon('check')+'Save changes</button></form>');
+ }
+ if(kind==='target'){
+  const d=w.subjectDetail(id),r=d.summary;
+  if(!d.targetEditable)throw Error('Only relevant faculty leadership can edit the minimum target');
+  return drawer('Edit minimum target',d.student.name+' · '+r.classInfo.code,facts([['Current grade',r.grade],['Existing target',r.minimumGrade],['Prediction',r.predictedGrade]])+
+   '<form id="target-form" class="form-stack"><label for="minimum-target">Minimum target grade'+select('minimum-target',r.minimumGrade??'',r.grades.map(g=>[g,g]),'Minimum target grade')+'</label><div class="alert">'+esc(HELP.minimumTarget)+'<label class="check-field"><input type="checkbox" name="confirmed" required> Confirm the revised target</label></div><div id="form-error" class="error" role="alert" hidden></div><button class="btn btn-primary" type="submit">'+icon('check')+'Save target</button></form>');
+ }
  if(kind==='prediction'){
-  const studentId=id.split('@')[0],d=w.studentDetail(studentId),r=d.subjects.find(x=>x.enrolmentId===id);
+  const subject=w.subjectDetail(id),d={student:subject.student},r=subject.summary;
   if(!r||!r.editable)throw Error('Only the assigned teacher can edit this prediction');
   return drawer('Edit predicted grade',d.student.name+' · '+r.classInfo.code,facts([['Current grade',r.grade],['Minimum target',r.minimumGrade],['Existing prediction',r.predictedGrade]])+'<form id="prediction-form" class="form-stack"><label for="prediction">Teacher prediction'+select('prediction',r.predictedGrade??'',[['','Not entered'],...r.grades.map(g=>[g,g])],'Predicted grade')+'</label><div class="info-box">'+esc(HELP.edit)+'</div><div id="form-error" class="error" role="alert" hidden></div><button class="btn btn-primary" type="submit">'+icon('check')+'Save prediction</button></form>');
  }
