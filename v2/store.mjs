@@ -2,6 +2,7 @@ import {assertData,clone,SCHEMA_VERSION,resultKey,isText,isDate} from './model.m
 import {createAccess} from './access.mjs';
 import {createAnalytics} from './analytics.mjs';
 import {createDemoData} from './demo-data.mjs';
+import {normalizeDefinition,resultInput,createMarkbook} from './markbook.mjs';
 import {communicationPolicy,communicationView,noticeFields,deadlineFields,noticeVersion} from './communications.mjs';
 
 export const STORAGE_KEY='jis-hub-v2-synthetic-schema-'+SCHEMA_VERSION;
@@ -109,6 +110,74 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
     let r=resultRecord(d,assessmentId,enrolmentId);
     if(!r){r={id:'R-'+resultKey(assessmentId,enrolmentId),assessmentId,enrolmentId,status:'missing',marks:{},exclusionReason:null};d.results.push(r);}
     return r;
+  }
+  function addUnit(staffId,classId,title){
+    const id=nextId('units','U-new-');
+    const result=transaction(staffId,'addUnit',id,(d,a)=>{
+      const cls=lookup(d,'classes',classId);
+      must(cls&&a.leads(classId),'Only faculty leadership can add course units');
+      must(isText(title)&&title.trim().length<=120,'Enter a unit title');
+      const units=d.units.filter(u=>u.courseId===cls.courseId);
+      must(!units.some(u=>u.title.toLowerCase()===title.trim().toLowerCase()),'A unit with this title already exists');
+      const record={id,courseId:cls.courseId,title:title.trim(),order:Math.max(0,...units.map(u=>u.order))+1};
+      d.units.push(record);return {before:null,after:record};
+    });
+    return {...result,id};
+  }
+  function saveAssessment(staffId,classId,id,input){
+    const recordId=id??nextId('assessments','A-new-');
+    const result=transaction(staffId,id?'editAssessment':'createAssessment',recordId,(d,a)=>{
+      const old=id?lookup(d,'assessments',id):null;
+      must(!id||old&&old.classIds.includes(classId)&&a.canManageAssessment(id),'Only authorised assessment owner/faculty lead can edit this definition');
+      const {fields,bands,tracker}=normalizeDefinition(d,a,classId,input,old);
+      const previousScheme=old?lookup(d,'gradeSchemes',old.gradeSchemeId):null;
+      let gradeSchemeId=old?.gradeSchemeId??tracker.id;
+      const sameBands=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
+      const boundaryChanged=!sameBands(bands,previousScheme?.bands??tracker.bands);
+      const metadataChanged=old&&Object.keys(fields).some(k=>JSON.stringify(fields[k])!==JSON.stringify(old[k]));
+      if(old&&old.status==='published'&&(boundaryChanged||metadataChanged))must(input.confirmed===true&&isText(input.reason),'Confirm changes to published assessment and provide a reason');
+      if(boundaryChanged||!old){
+        if(sameBands(bands,tracker.bands))gradeSchemeId=tracker.id;
+        else{
+          gradeSchemeId=nextId('gradeSchemes','GS-custom-');
+          d.gradeSchemes.push({id:gradeSchemeId,name:fields.title+' · custom boundaries',bands,illustrative:true});
+        }
+      }
+      const before=old?clone(old):null;
+      if(old){Object.assign(old,fields,{gradeSchemeId});return {before,after:old,reason:input.reason?.trim()??null};}
+      const record={id:recordId,...fields,gradeSchemeId,status:'draft',includeInSummary:true,exclusionReason:null};
+      d.assessments.push(record);return {before:null,after:record};
+    });
+    return {...result,id:recordId};
+  }
+  function publishAssessment(staffId,id,{confirmed=false}={}){
+    return transaction(staffId,'publishAssessment',id,(d,a)=>{
+      const r=lookup(d,'assessments',id);
+      must(r&&a.canManageAssessment(id)&&r.status==='draft','Only authorised assessment owner/faculty lead can publish a draft');
+      must(confirmed===true,'Confirm publishing this assessment');
+      const before=clone(r);r.status='published';return {before,after:r};
+    });
+  }
+  function saveResultBatch(staffId,assessmentId,entries,{confirmed=false,confirmClear=false,expectedRevision=null}={}){
+    must(confirmed===true,'Confirm saving the mark batch');
+    must(expectedRevision===null||expectedRevision===revision,'Results changed since this grid was opened; reopen the grid');
+    must(Array.isArray(entries)&&entries.length>0&&entries.length<=1000,'Enter a non-empty batch of results');
+    must(new Set(entries.map(e=>e.enrolmentId)).size===entries.length,'Duplicate pupil in mark batch');
+    return transaction(staffId,'saveResultBatch',assessmentId,(d,a)=>{
+      const assessment=lookup(d,'assessments',assessmentId);must(assessment,'Unknown assessment');
+      const before=[],after=[];
+      for(const entry of entries){
+        must(a.canEditResult(assessmentId,entry.enrolmentId),'Only the teaching staff of this class can edit marks');
+        const old=resultRecord(d,assessmentId,entry.enrolmentId),clean=resultInput(assessment,entry.status,entry.marks);
+        const clears=old&&Object.keys(old.marks).some(id=>!Object.hasOwn(clean.marks,id));
+        must(!clears||confirmClear===true,'Confirm clearing previously recorded marks');
+        if(old&&old.status===clean.status&&JSON.stringify(old.marks)===JSON.stringify(clean.marks)||!old&&clean.status==='missing'&&!Object.keys(clean.marks).length)continue;
+        before.push(old?clone(old):null);
+        const r=ensureResult(d,assessmentId,entry.enrolmentId);
+        r.status=clean.status;r.marks=clean.marks;after.push(clone(r));
+      }
+      return {before,after};
+    });
   }
   function saveResult(staffId,assessmentId,enrolmentId,{status,marks,confirmClear=false}){
     return transaction(staffId,'saveResult',resultKey(assessmentId,enrolmentId),(d,a)=>{
@@ -266,6 +335,6 @@ export function createStore({initialData=createDemoData(),storage=null,storageKe
   }
   return {snapshot,revision:()=>revision,analytics:()=>createAnalytics(snapshot()),read:staffId=>createReadModel(snapshot(),staffId),
     subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
-    saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,setDemoDate,
+    addUnit,saveAssessment,publishAssessment,saveResultBatch,saveResult,setStudentExclusion,setAssessmentInclusion,setPrediction,setMinimumTarget,saveSubjectNote,setDemoDate,
     saveNotice,archiveNotice,acknowledgeNotice,saveDeadline,archiveDeadline,setDeadlineCompletion,reset};
 }
