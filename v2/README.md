@@ -265,3 +265,23 @@ The regression suite includes a deterministic, synthetic class with 30 pupils, 5
 Manual acceptance checklist (fictional data only): create a total test, topic test and QLA; enter zero and blank marks; enter an absent result; expand/collapse assessments; paste a range; undo and redo; export/reimport by ID; switch to percentage/grade views; change a faculty or course policy as an authorised lead; submit a report grade; amend later assessment evidence and check the submitted grade is unchanged. Verify a parallel class and read-only user cannot modify results outside their scope.
 
 Run the automated suite with `node --test tests/*.test.cjs tests/v2-*.test.mjs` and the browser checks with `node tests/browser-smoke.mjs` (Node 22 and Chromium). These checks validate the fictional prototype, not production security, SIMS integration or real pupil-data processing. Those require an authenticated backend, institutional approval, and deployment-specific acceptance testing.
+
+
+## Responsive workspace foundations (PR28)
+
+The top bar provides an **Auto / Standard / Compact** display selector, a desktop navigation toggle, and a reset control. Auto selects compact density when the available viewport is 1,280 CSS pixels wide or less, or 800 CSS pixels high or less. Standard and Compact may be selected explicitly. The sidebar becomes an icon rail by default in compact mode; the desktop toggle can expand or collapse it independently. At widths of 760 CSS pixels or less the sidebar becomes an off-canvas navigation panel, with a backdrop, accessible expanded state, inert background, keyboard focus containment and Escape to close. It automatically closes when navigating or leaving the mobile breakpoint.
+
+Display preferences are local to the current fictional staff member, independently of gradebook layout settings and stored school records. Reset returns both density and navigation to Auto. Resizing or changing display mode updates presentation attributes without rerendering the active workspace: active inputs, unsaved gradebook marks, selected ranges, history and expanded columns remain intact. Layout controls are allowed while marks are staged; switching class, staff, scope or page still uses the existing unsaved-data guard.
+
+The new screen-only `responsive-workspace.css` contains shared shell, spacing, responsive navigation and flexible work-area rules. Pages can opt into the fill layout via `data-workspace-fill="true"`, `workspace-fill-panel` and `workspace-fill-scroll`. The gradebook and reporting registers now use this contract instead of subtracting a fixed header allowance from the viewport. Tables expand into available space; short screens preserve a usable minimum table height and allow the outer workspace to scroll. Wide gradebooks use the available monitor width, with horizontal scrolling inside the table. The normal print stylesheet is unchanged.
+
+Browser tests exercise 320×568, 390×844, 844×390, 768×1024, 1024×768, 1280×720, 1366×768, 1920×1080 and 2560×1440 with the full-year gradebook fixture; test table growth with viewport height, mobile navigation and resize, staff-specific preference persistence and unsaved marks/history through display changes. These are foundation tests, not the final all-pages responsive audit.
+
+### Responsive roadmap
+
+- PR29: Compact headers, on-demand help and collapsible secondary information/filters; keep identity, errors, urgent warnings and support flags accessible.
+- PR30: Gradebook focus mode; consolidate tools and preserve working state.
+- PR31: Responsive registers and single-assessment mobile mark entry.
+- PR32: Expandable analysis, student profiles and detail drawers.
+- PR33: Home and noticeboard responsive refinement.
+- PR34: Comprehensive responsive and accessibility audit, including orientation, browser zoom and all roles/screens.
