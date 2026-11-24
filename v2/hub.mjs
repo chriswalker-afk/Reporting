@@ -107,8 +107,9 @@ function openClass(id,below=false){
 function focusToken(el){return el?{element:el,id:el.id,action:el.dataset?.action,record:el.dataset?.id}:null;}
 function restoreFocus(token){
  if(!token)return;
- const node=token.element?.isConnected?token.element:token.id?byId(token.id):token.action?document.querySelector('[data-action="'+CSS.escape(token.action)+'"]'+(token.record!==undefined?'[data-id="'+CSS.escape(token.record)+'"]':'')):null;
- node?.focus({preventScroll:true});
+ const matches=token.action?[...document.querySelectorAll('[data-action="'+CSS.escape(token.action)+'"]'+(token.record!==undefined?'[data-id="'+CSS.escape(token.record)+'"]':''))]:[];
+ const node=token.element?.isConnected&&token.element.getClientRects().length?token.element:token.id?byId(token.id):matches.find(el=>el.getClientRects().length)??matches.find(el=>el.closest('.register-cards')?.getClientRects().length)??matches[0];
+ if(node){for(let parent=node.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;node.focus({preventScroll:true});}
 }
 function canLeaveDetail(){
  if(formDirty&&!window.confirm('Discard unsaved form changes? Saved records will not change.'))return false;
