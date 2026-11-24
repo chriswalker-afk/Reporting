@@ -10,6 +10,7 @@ import {createGridController,definitionInput} from './markbook-controller.mjs';
 import {createGradebookController} from './gradebook-controller.mjs';
 import {createWorkspaceDisplay} from './responsive-workspace.mjs';
 import {createWorkspaceDisclosures} from './workspace-disclosures.mjs';
+import {createGradebookFocus,focusContext} from './gradebook-focus.mjs';
 import {loadLayout,saveLayout,normalizeLayout,updateLayout,revealLayout,moveAssessment,groupOf,matchesLayout,layoutKey} from './gradebook-layout.mjs';
 import {editorInput,changeBoundaryUnit,changeEditorRows,resetEditorBoundaries} from './assessment-editor.mjs';
 import {GROUPS,DEFAULT_GROUPS,FULL_GROUPS,registerFocusFilter,visibleRegisterRows} from './class-overview.mjs';
@@ -26,6 +27,7 @@ const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWor
 const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const display=createWorkspaceDisplay({app:byId('app'),main,sidebar:nav,topbar:bar,backdrop:byId('navigation-backdrop'),getStaff:()=>state.staffId,notify});
 const disclosures=createWorkspaceDisclosures({root:main,getContext:()=>[state.staffId,state.page,state.page==='classes'?state.classId?'class:'+state.classTab:'index':''],getDensity:()=>byId('app').dataset.workspaceDensity});
+const gradebookFocus=createGradebookFocus({app:byId('app'),root:main,getContext:()=>focusContext(state),restoreDisclosures:()=>disclosures.sync()});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
 function loadColumns(id){try{const value=JSON.parse(window.localStorage.getItem(columnKey(id)));if(Array.isArray(value)&&value.every(v=>GROUPS.some(g=>g.id===v)))return [...new Set(value)];}catch{}return [...DEFAULT_GROUPS];}
 function saveColumns(){try{window.localStorage.setItem(columnKey(state.staffId),JSON.stringify(state.columnGroups));}catch{}}
@@ -74,7 +76,7 @@ function render({top=false,keepFocus=false}={}){
  }
  nav.innerHTML=sidebar(state.page,w);bar.innerHTML=topbar(w);display.sync();
  main.innerHTML=(storageIssue?'<div class="alert" role="status">'+esc(storageIssue)+'</div>':'')+renderPage(w,state);
- disclosures.sync();
+ disclosures.sync();gradebookFocus.sync();
  main.scrollTop=top?0:oldScroll;
  const table=main.querySelector('.table-scroll');if(!top&&table&&tableScroll){table.scrollTop=tableScroll.top;table.scrollLeft=tableScroll.left;}
  gradebook.mount();
@@ -237,10 +239,12 @@ document.addEventListener('click',event=>{
  if(disclosures.click(event))return;
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns','gradebook-undo','gradebook-redo','gradebook-copy','gradebook-fill','gradebook-clear','gradebook-export','gradebook-import-preview','gradebook-import-apply','gradebook-layout-toggle','gradebook-reveal-layout','gradebook-reset-layout','gradebook-toggle-group','gradebook-move-earlier','gradebook-move-later','mobile-menu','close-menu','toggle-workspace-navigation','reset-workspace-display','gradebook-focus-toggle','gradebook-focus-panel'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
+  case 'gradebook-focus-toggle':gradebookFocus.toggle();break;
+  case 'gradebook-focus-panel':gradebookFocus.togglePanel(id);break;
   case 'gradebook-save':gradebook.save();break;
   case 'gradebook-discard':gradebook.discard();break;
   case 'gradebook-undo':case 'gradebook-redo':case 'gradebook-copy':case 'gradebook-fill':case 'gradebook-clear':case 'gradebook-export':case 'gradebook-import-preview':case 'gradebook-import-apply':gradebook.bulkAction(action);break;
@@ -651,6 +655,7 @@ document.addEventListener('keydown',event=>{
   return;
  }
  if(detailDialog.open||resetDialog.open)return;
+ if(gradebookFocus.keyboard(event))return;
  const typing=/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.target.isContentEditable;
  if((event.key==='/'&&!typing||event.key.toLowerCase()==='k'&&(event.ctrlKey||event.metaKey))){event.preventDefault();openSearch();}
 
@@ -658,7 +663,7 @@ document.addEventListener('keydown',event=>{
 for(const eventName of ['pointerover','focusin'])document.addEventListener(eventName,event=>{const el=event.target.closest?.('[data-help]');if(el&&!helpPinned)showHelp(el);});
 document.addEventListener('pointerout',event=>{if(helpAnchor&&!helpPinned&&helpAnchor.contains(event.target)&&!helpAnchor.contains(event.relatedTarget)&&document.activeElement!==helpAnchor)hideHelp();});
 document.addEventListener('focusout',event=>{if(helpAnchor&&!helpPinned&&event.target===helpAnchor)hideHelp();});
-window.addEventListener('resize',()=>{hideHelp();display.sync();disclosures.sync();});document.addEventListener('scroll',hideHelp,true);
+window.addEventListener('resize',()=>{hideHelp();display.sync();disclosures.sync();gradebookFocus.sync();});document.addEventListener('scroll',hideHelp,true);
 window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY||event.key===null)notify('Demo data changed in another tab. Reload before making further edits.');});
 searchDialog.addEventListener('cancel',event=>{event.preventDefault();closeSearch();});
 detailDialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
