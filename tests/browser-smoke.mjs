@@ -965,7 +965,7 @@ try{
  await viewport(320,568);await viewport(844,390);await viewport(1440,900);
  assert.equal(await evaluate(sel=>document.querySelector(sel).open,homeSummary),true);
  assert.equal(await visible('.home-mobile-label'),false);
- await click(homeSummary+' > summary');assert.equal(await visible('.home-metrics'),false);
+ await click(homeSummary+' > summary');assert.equal(await evaluate(sel=>document.querySelector(sel).open,homeSummary),false);
  await action('go-notices',undefined,'.home-lower ');
  await viewport(390,844);
  assert.ok(await visible('.communication-priority'));
