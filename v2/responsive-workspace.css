@@ -542,3 +542,56 @@
  }
 }
 @media print{.home-mobile-label{display:none!important}}
+
+
+/* PR34: final shared accessibility and short-screen safeguards. */
+@media screen{
+ .workspace-disclosure:not([open])>.disclosure-body{display:none}
+ .floating-tooltip{pointer-events:auto;max-height:calc(100dvh - 16px);overflow:auto;overflow-wrap:anywhere}
+ .table-scroll,.entry-table,.tabs,.profile-tabs{scrollbar-width:thin;scroll-padding-block:8px}
+ .table-scroll:focus-visible,.entry-table:focus-visible,.tabs:focus-visible,.profile-tabs:focus-visible{outline-offset:-3px}
+ .workspace-inner,.workspace-inner>section,.workspace-inner>div,.surface,.panel-body,.drawer-body,.form-stack{min-inline-size:0}
+ .workspace-inner .page-actions,.drawer-footer,.drawer-head-actions,.toolbar,.analysis-subtoolbar,.profile-controls,.gradebook-exchange{max-inline-size:100%;min-inline-size:0;flex-wrap:wrap}
+ .workspace-inner .input,.workspace-inner .select,.drawer-body .input,.drawer-body .select,.drawer-body textarea,.drawer-body fieldset{max-inline-size:100%;min-inline-size:0}
+ .workspace-inner .btn,.drawer-body .btn,.drawer-footer .btn{max-inline-size:100%;white-space:normal;overflow-wrap:anywhere}
+ .workspace-inner .scope-inline,.workspace-inner .alert,.workspace-inner .error,.drawer-body .error{overflow-wrap:anywhere}
+ .workspace-inner .tabs .tab,.profile-tabs .tab{white-space:nowrap;flex-shrink:0}
+ .workspace-inner .table-scroll,.drawer-body .table-scroll{max-inline-size:100%}
+ .workspace-inner .profile-table,.workspace-inner .reporting-table{min-inline-size:0}
+ .detail-dialog .drawer-body{scroll-padding-block:8px}
+ .detail-dialog .dialog-head{min-inline-size:0}
+ .detail-dialog .dialog-head>div:first-child{flex:1 1 100px;min-inline-size:0}
+ .detail-dialog .dialog-head>.drawer-head-actions{flex:0 1 auto}
+ .detail-dialog .drawer-head-actions .btn{min-height:32px}
+ .search-dialog .dialog-head{min-inline-size:0}
+ .search-dialog .dialog-head>div{min-inline-size:0;overflow-wrap:anywhere}
+ .search-dialog .dialog-head>.btn{flex-shrink:0}
+ .search-dialog .search-input-wrap,.search-dialog .search-input-wrap input{min-inline-size:0;max-inline-size:100%}
+ .search-result,.search-result>span{min-inline-size:0;overflow-wrap:anywhere}
+ .search-result strong,.search-result small{white-space:normal;overflow-wrap:anywhere}
+ .gradebook-focus-top,.gradebook-save-bar{scroll-margin-block:5px}
+ @media(max-width:760px){
+  .help,.btn-icon{min-width:28px;min-height:28px}
+  .drawer-head-actions{gap:3px}
+  .toolbar .count{white-space:normal;overflow-wrap:anywhere}
+  .workspace-inner .page-actions{flex-basis:auto}
+  .workspace-inner .home-metric .metric-head{min-width:0;overflow-wrap:anywhere}
+  .workspace-inner .class-switcher{flex-wrap:wrap;min-width:0;max-width:100%}
+  .workspace-inner .class-switcher .select{min-width:0;max-width:100%}
+  .workspace-inner .gradebook-save-bar>.page-actions{flex-wrap:wrap}
+  .workspace-inner .gradebook-single-controls .select{max-width:100%}
+ }
+ @media(max-height:420px){
+  /* Avoid an immovable sticky stack hiding the whole table on landscape or
+     at large zoom. The workspace can scroll to reach every control. */
+  #app[data-gradebook-focus="true"] .gradebook-focus-top,
+  #app[data-gradebook-focus="true"] .gradebook-save-bar,
+  .gradebook-surface[data-entry-view="single"] .gradebook-save-bar{position:static}
+  .detail-dialog .drawer-body{min-height:65px}
+  .detail-dialog[open]{overflow:auto}
+  .search-dialog{margin-block:4px;max-height:calc(100dvh - 8px)}
+ }
+}
+@media (prefers-reduced-motion:reduce){
+ .workspace,.table-scroll,.drawer-body{scroll-behavior:auto!important}
+}
