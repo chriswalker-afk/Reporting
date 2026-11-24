@@ -61,7 +61,7 @@ export function topbar(w){
 const noticeBadge=n=>n.canAcknowledge?tag('Acknowledge','tag-warning'):n.acknowledged?tag('Acknowledged','tag-success'):n.priority==='urgent'?tag('Urgent','tag-danger'):n.priority==='important'?tag('Important','tag-warning'):n.status!=='active'?tag(n.status):'';
 const deadlineBadge=d=>tag(({archived:'Archived',completed:'Done',overdue:'Overdue',today:'Due today',upcoming:'Upcoming'})[d.status]||d.status,d.status==='overdue'?'tag-danger':d.status==='today'?'tag-warning':d.status==='completed'?'tag-success':'');
 const noticeRow=(w,n)=>listRow((n.pinned?'Pinned · ':'')+n.title,w.audienceLabel(n.audience)+' · '+displayDate(n.publishedDate),'open-notice',n.id,'notice',noticeBadge(n));
-const deadlineRow=(w,d)=>listRow(d.title,w.audienceLabel(d.audience)+' · '+displayDate(d.dueDate),'open-deadline',d.id,'calendar',deadlineBadge(d));
+const deadlineRow=(w,d)=>listRow(d.title,w.audienceLabel(d.audience)+' · '+displayDate(d.dueDate),'open-deadline',d.id,'calendar',(d.recipient?'':tag('Oversight'))+deadlineBadge(d));
 export function renderHome(w,s){
  const h=w.home(),c=h.cohort,classes=sortRows(w.classRows(),'code'),all=w.allHome(),comm=w.communications(),actions=all.actions;
  const classTable=table('homeClasses',classColumns,classes,classCell,s,{compact:true});
@@ -70,14 +70,14 @@ export function renderHome(w,s){
    ...actions.map(a=>{const r=w.caseDetail(a.caseId);return {kind:'case',html:listRow(ACTION_LABELS[a.type],r.student.name+' · '+r.classInfo.code+' · '+displayDate(a.reviewDate),'open-case',r.id,'support',r.overdue?tag('Overdue','tag-danger'):'')};})
  ];
  const attention=queue.length?queue.slice(0,4).map(a=>a.html).join(''):empty('Nothing awaiting your attention','Your notice acknowledgements and intervention actions appear here.');
- const notices=comm.activeNotices.slice(0,3),deadlines=comm.openDeadlines.slice(0,3);
+ const notices=comm.activeNotices.slice(0,3),reportingRows=w.access.has('leadership')?comm.deadlines.filter(d=>!d.archived&&(!d.recipient||!d.completed)):comm.openDeadlines,deadlines=reportingRows.slice(0,3);
  const scopeTitle=w.scope==='house'?'House academic overview':w.scope==='tutor'?'Tutee academic overview':w.scope==='faculty'?'Faculty class overview':w.scope==='school'?'School class overview':'Class overview';
  return heading('Welcome, '+w.staff.name.split(' ')[0],displayDate(w.asOf)+' · '+SCOPE_LABELS[w.scope],tag('Demo reference date')+help('date','reference date'),'Your workspace')+
  '<div class="metrics">'+metric('Pupils',c.students,c.enrolments+' subject enrolments','scope','go-students')+metric('Below minimum target',c.belowTarget.length,'View affected classes','target','go-below')+metric('Active interventions',c.interventions.active,c.interventions.students+' individual pupils','intervention','go-cases')+metric('Actions requiring attention',queue.length,actions.length+' intervention · '+comm.pendingAcknowledgements.length+' notice','personalActions','focus-attention')+'</div>'+
  '<div class="home-grid">'+panel(scopeTitle,classTable,btn('View classes','go-classes','','btn-quiet','arrow'),'average')+
  '<div id="attention-panel" tabindex="-1">'+panel('Requires your attention','<div class="list">'+attention+'</div><div class="attention-footer">'+btn('Interventions ('+actions.length+')','go-personal-actions','','btn-quiet')+btn('Notices ('+comm.pendingAcknowledgements.length+')','go-acknowledgements','','btn-quiet')+'</div>','', 'personalActions')+'</div></div>'+
  '<div class="home-lower">'+panel('Latest notices','<div class="list">'+(notices.length?notices.map(n=>noticeRow(w,n)).join(''):empty('No active notices'))+'</div>',btn('All notices','go-notices','','btn-quiet'),'notices')+
- panel('Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+comm.openDeadlines.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
+ panel(w.access.has('leadership')?'School reporting schedule':'Reporting reminders','<div class="list">'+(deadlines.length?deadlines.map(d=>deadlineRow(w,d)).join(''):empty('No open reporting reminders'))+'</div>',btn('Schedule ('+reportingRows.length+')','go-schedule','','btn-quiet'),'reporting')+'</div>'+
  note('Academic figures follow the selected scope. Your action queue and communications cover all your assigned responsibilities. Intervention plan editing follows in V2-08.');
 }
 export function renderNotices(w,s){
