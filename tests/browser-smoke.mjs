@@ -627,6 +627,63 @@ try{
  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'0');
  await click(auditToggle);
  assert.equal(await evaluate(sel=>document.querySelector(sel).value,yearCell('AUDIT-A03','P121@11-maths','i5')),'25');
+ // Shared responsive workspace: adaptive rail, overlay navigation and
+ // display preferences must not rebuild or discard the working gradebook.
+ await viewport(1440,900);
+ await action('reset-workspace-display');
+ const tableHeight=()=>evaluate(()=>document.querySelector('.gradebook-scroll').clientHeight);
+ const normalHeight=await tableHeight();
+ await viewport(1440,1200);
+ assert.ok(await tableHeight()>normalHeight+200,'Gradebook should grow with available screen height');
+ await viewport(1366,768);
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceDensity),'compact');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'rail');
+ await fill(firstYear,'7');
+ await evaluate(sel=>{document.querySelector(sel).dataset.testResponsiveIdentity='original';},firstYear);
+ const pending=await text('#gradebook-save-status');
+ await fill('#workspace-density','standard');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceDensity),'standard');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'full');
+ await action('toggle-workspace-navigation');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'rail');
+ await fill('#workspace-density','compact');
+ assert.equal(await text('#gradebook-save-status'),pending);
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testResponsiveIdentity,firstYear),'original');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'7');
+ for(const [width,height] of [[320,568],[390,844],[844,390],[768,1024],[1024,768],[1280,720],[1366,768],[1920,1080],[2560,1440]]){
+  await viewport(width,height);
+  assert.ok(await tableHeight()>=139,'Short screen must retain a usable table');
+  assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'7');
+  assert.equal(await text('#gradebook-save-status'),pending);
+  assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),width<=760?'overlay':'rail');
+ }
+ await viewport(390,844);
+ await action('mobile-menu');
+ assert.equal(await evaluate(()=>document.querySelector('.app-main').inert),true);
+ assert.equal(await evaluate(()=>document.activeElement.dataset.action),'close-menu');
+ assert.ok(await q('#navigation-backdrop:not([hidden])'));
+ await evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})));
+ assert.equal(await evaluate(()=>document.querySelector('.app-main').inert),false);
+ assert.equal(await evaluate(()=>document.activeElement.dataset.action),'mobile-menu');
+ await action('mobile-menu');
+ await viewport(1440,900);
+ assert.equal(await evaluate(()=>document.querySelector('.app-main').inert),false);
+ assert.equal(await evaluate(()=>document.querySelector('#sidebar').dataset.open),'false');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.testResponsiveIdentity,firstYear),'original');
+ await action('gradebook-undo');
+ assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),'0');
+ assert.match(await text('#gradebook-save-status'),/All changes saved/);
+ // Preferences survive reload and remain independent from other demo identities.
+ await send('Page.navigate',{url:'about:blank'});await until(()=>evaluate(()=>location.href==='about:blank'),'unloaded responsive workspace');
+ await open('v2/#classes/11-maths-1/markbook');
+ assert.equal(await evaluate(()=>document.querySelector('#workspace-density').value),'compact');
+ assert.equal(await evaluate(()=>document.querySelector('#app').dataset.workspaceNavigation),'rail');
+ await fill('#staff','avery');
+ assert.equal(await evaluate(()=>document.querySelector('#workspace-density').value),'auto');
+ await fill('#staff','sam');
+ assert.equal(await evaluate(()=>document.querySelector('#workspace-density').value),'compact');
+ await action('reset-workspace-display');
+ assert.equal(await evaluate(()=>document.querySelector('#workspace-density').value),'auto');
  assert.equal(dialogs.length,0,'Expected discard confirmations were not shown');
  assert.deepEqual(errors,[],'Unhandled browser exceptions or unexpected dialogs');
  console.log('Browser smoke passed: all destinations, role shortcuts, mark edit/save/reload, analysis drilldown, back navigation, unsaved guards, profile, case update, alternate entrypoint and four viewport sizes.');
