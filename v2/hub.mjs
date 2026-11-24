@@ -18,7 +18,7 @@ const main=byId('workspace'),nav=byId('sidebar'),bar=byId('topbar');
 const searchDialog=byId('search-dialog'),detailDialog=byId('detail-dialog'),resetDialog=byId('reset-dialog');
 const tooltip=byId('tooltip'),toast=byId('toast');
 let store,w,workspaceKey='',toastTimer,helpAnchor=null,helpPinned=false,drawerReturn=null,searchReturn=null,detail=null,detailStack=[];
-const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
+const state={...parseRoute(location.hash),staffId:'sam',scope:null,query:'',flag:'all',below:false,caseFilter:'active',caseClass:null,boardExpanded:false,noticeFilter:'active',deadlineFilter:'open',tutorFilter:'all',houseFilter:'all',trackFilter:'all',supportFilter:'all',classYear:'all',classFaculty:'all',columnGroups:[...DEFAULT_GROUPS],registerFiltersOpen:false,registerColumnsOpen:false,sorts:{},gradebookExpanded:{},classTab:'information',unitId:'',analysisStudent:'',analysisAssessment:'',analysisCommon:'',analysisUnit:'',analysisFrom:'',analysisTo:'',studentYear:'all',studentAttainment:'all',studentSupport:'all'};
 const grid=createGridController({dialog:detailDialog,getDetail:()=>detail,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const gradebook=createGradebookController({root:main,getWorkspace:()=>w,getStore:()=>store,getStaff:()=>state.staffId,notify});
 const columnKey=id=>'jis-hub-v2-register-columns-'+id;
@@ -210,12 +210,20 @@ document.addEventListener('click',event=>{
  hideHelp();
  const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
  const action=el.dataset.action,id=el.dataset.id||'';
- if(!['gradebook-save','gradebook-discard'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
+ if(!['gradebook-save','gradebook-discard','toggle-assessment-columns'].includes(action)&&!gradebook.guard()){event.preventDefault();return;}
  if(el.tagName==='A'&&(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey))return;
  event.preventDefault();
  switch(action){
   case 'gradebook-save':gradebook.save();break;
   case 'gradebook-discard':gradebook.discard();break;
+  case 'toggle-assessment-columns':{
+    const b=w.markbook(state.classId),a=b.overview(state.unitId).assessments.find(a=>a.id===id&&a.mode!=='total');if(!a)break;
+    const open=new Set(state.gradebookExpanded[state.classId]??[]);if(open.has(id))open.delete(id);else open.add(id);
+    state.gradebookExpanded[state.classId]=[...open];render();
+    const toggle=main.querySelector('[data-action="toggle-assessment-columns"][data-id="'+CSS.escape(id)+'"]');
+    if(open.has(id)){const first=main.querySelector('.gradebook-cell[data-assessment="'+CSS.escape(id)+'"]');if(first){first.focus({preventScroll:true});first.scrollIntoView({block:'nearest',inline:'nearest'});}else toggle?.focus();}
+    else toggle?.focus();break;
+  }
   case 'navigate':navigate(id);break;
   case 'mobile-menu':{const open=nav.dataset.open!=='true';nav.dataset.open=String(open);el.setAttribute('aria-expanded',String(open));break;}
   case 'close-menu':nav.dataset.open='false';bar.querySelector('.mobile-toggle')?.setAttribute('aria-expanded','false');bar.querySelector('.mobile-toggle')?.focus();break;
@@ -391,7 +399,7 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('change',event=>{
  const el=event.target;
- if(grid.onChange(el))return;
+ if(gradebook.onChange(el)||grid.onChange(el))return;
  if(el.id==='boundary-unit'){try{changeBoundaryUnit(byId('assessment-form'));}catch(error){notify(error.message);}formDirty=true;return;}
  if(el.id==='assessment-mode')editorInput(byId('assessment-form'),el);
  if(detailDialog.contains(el)&&el.closest('form')&&el.closest('form').id!=='mark-grid-form')formDirty=true;
@@ -467,9 +475,10 @@ document.addEventListener('submit',event=>{
     const old=record.kind==='assessment-edit'?book.detail(assessmentId):null;
     const input=definitionInput(form,book,old);
     const saved=store.saveAssessment(state.staffId,classId,old?assessmentId:null,input);
-    formDirty=false;if(state.unitId&&state.unitId!==input.unitId)state.unitId=input.unitId;render();
+    formDirty=false;if(state.unitId&&state.unitId!==input.unitId)state.unitId=input.unitId;
+    if(input.mode!=='total'&&!old){const expanded=new Set(state.gradebookExpanded[classId]??[]);expanded.add(saved.id);state.gradebookExpanded[classId]=[...expanded];}render();
     if(old&&detailStack.length)detailBack();
-    else if(input.mode==='total'&&state.page==='classes'&&state.classTab==='markbook'){
+    else if(state.page==='classes'&&state.classId===classId&&state.classTab==='markbook'){
      closeDetail(false);main.querySelector('.gradebook-cell[data-assessment="'+CSS.escape(saved.id)+'"]')?.focus();
     }else{closeDetail();openDetail('mark-grid',bookId(classId,saved.id));}
     notify(old?'Assessment settings saved.':input.initialStatus==='draft'?'Draft created. Publish it when ready.':'Assessment created. Ready for mark entry.');return;
