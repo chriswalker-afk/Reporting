@@ -187,7 +187,7 @@ document.addEventListener('click',event=>{
   case 'reset-columns':state.columnGroups=[...DEFAULT_GROUPS];saveColumns();render();main.querySelector('[data-action="reset-columns"]')?.focus({preventScroll:true});break;
   case 'close-detail':closeDetail();break;
   case 'detail-back':detailBack();break;
-  case 'toggle-below':state.below=!state.below;render({keepFocus:true});break;
+  case 'toggle-below':{const below=state.below||state.trackFilter==='below';state.below=!below;state.trackFilter='all';render({keepFocus:true});break;}
   case 'filter-active':state.caseFilter='active';render();break;
   case 'filter-due':state.caseFilter='due';render();break;
   case 'filter-closed':state.caseFilter='closed';render();break;
@@ -209,7 +209,7 @@ document.addEventListener('change',event=>{
  if(el.id==='quick-class'){if(el.value)openClass(el.value);else navigate('classes');}
  if(el.id==='flag-filter'){state.flag=el.value;render({keepFocus:true});}
  const registerFilters={'tutor-filter':'tutorFilter','house-filter':'houseFilter','track-filter':'trackFilter','support-filter':'supportFilter','class-year':'classYear','class-faculty':'classFaculty'};
- if(registerFilters[el.id]){state[registerFilters[el.id]]=el.value;render({keepFocus:true});}
+ if(registerFilters[el.id]){state[registerFilters[el.id]]=el.value;if(el.id==='track-filter')state.below=false;render({keepFocus:true});}
  if(el.id==='below-filter'){state.below=el.checked;render({keepFocus:true});}
  if(el.id==='case-filter'){state.caseFilter=el.value;render({keepFocus:true});}
  if(el.id==='notice-filter'){state.noticeFilter=el.value;render({keepFocus:true});}
