@@ -53,7 +53,8 @@ export const HELP={
   notices:'Published, unexpired notices matching your assigned responsibilities. The scope selector changes academic cohorts, not notice audiences. Leadership can also see notices for oversight.',
   acknowledgement:'Acknowledgements belong to the current staff member and notice version. Acknowledging does not acknowledge for anyone else. Editing a notice resets its acknowledgements.',
   reporting:'One centrally managed reporting schedule. Completing a reminder is personal and does not submit reports or grades to SIMS. Revised deadlines reset completion markers.',
-  personalActions:'Your intervention actions across all assigned responsibilities. Academic scope filters do not hide tasks from this Home queue.',
+  personalActions:'Your intervention actions and outstanding notice acknowledgements across all assigned responsibilities. Academic scope filters do not hide tasks from this Home queue.',
+  belowSubjects:'The number of subject enrolments below minimum target (not unique pupils). A pupil below target in two subjects counts twice; unknown attainment or target is separate.',
   edit:'Only assigned teachers can edit predicted grades. The new grade is validated against the course grading scale and recorded in demo audit history.',
   caseWorkflow:'One active academic case per subject. Wave 1 is teacher-led; a referral records the reason and assigns the next responsible staff member. A requested wave is not an activated plan. Only the appropriate roles can perform each action. All changes retain their history.',
   studyPlan:'An individual academic study plan has a measurable target, specific actions, responsible staff member and separate review date. A completed plan can be deliberately reopened. Its review does not automatically close the intervention.',
@@ -86,9 +87,10 @@ export function parseRoute(hash){
   const page=NAV.some(n=>n[0]===parts[0])?parts[0]:'home';
   let classId=null;
   if(page==='classes'&&parts[1])try{classId=decodeURIComponent(parts[1]);}catch{}
-  return {page,classId};
+  return {page,classId,...(classId&&CLASS_TABS.includes(parts[2])?{classTab:parts[2]}:{})};
 }
-export const routeHash=(page,classId)=>'#'+page+(page==='classes'&&classId?'/'+encodeURIComponent(classId):'');
+export const CLASS_TABS=['information','markbook','student-analysis','class-analysis','faculty-analysis'];
+export const routeHash=(page,classId,tab)=>'#'+page+(page==='classes'&&classId?'/'+encodeURIComponent(classId)+(CLASS_TABS.includes(tab)&&tab!=='information'?'/'+tab:''):'');
 
 /** Permission-aware projection of the single V2 snapshot. No synthetic summary constants. */
 export function createWorkspace(store,staffId,requestedScope){
@@ -203,13 +205,16 @@ export function createWorkspace(store,staffId,requestedScope){
     studentRowsCache=[...scopeStudentIds].map(id=>directoryRow(studentInfo(id),subjectRows.get(id)??[],caseRows.get(id)??[]));
     return studentRowsCache;
   }
+  const studentDetailCache=new Map();
   function studentDetail(id){
+    if(studentDetailCache.has(id))return studentDetailCache.get(id);
     const result=read.student(id);
-    return {student:studentInfo(id),subjects:result.subjects.map(s=>({...s,classInfo:classInfo(s.classId),
+    const detail={student:studentInfo(id),subjects:result.subjects.map(s=>({...s,classInfo:classInfo(s.classId),
       editable:access.canEditPrediction(s.enrolmentId),
       grades:get('gradeSchemes',classInfo(s.classId).course.gradeSchemeId).bands.map(b=>b.grade)})),
       cases:result.cases.map(enrichCase),notes:result.notes.map(n=>({...n,author:get('staff',n.authorStaffId)?.name,
         classInfo:enrolmentClass(n.enrolmentId)}))};
+    studentDetailCache.set(id,detail);return detail;
   }
   const profileCache=new Map();
   let profileEngine;
@@ -291,9 +296,11 @@ export function createWorkspace(store,staffId,requestedScope){
     const p=get('staff',id);
     return {staff:p,classes:data.classes.filter(c=>accessibleClassIds.has(c.id)&&c.teacherIds.includes(id)).map(c=>classInfo(c.id))};
   }
+  let directoryCache;
   const directory=()=>{
-    const notices=allHome().notices;
-    return [
+    if(directoryCache)return directoryCache;
+    const notices=communications().activeNotices;
+    return directoryCache=[
       ...data.students.filter(p=>access.canViewStudent(p.id)).map(p=>({kind:'student',id:p.id,title:p.name,sub:'Year '+p.year+' · TG '+p.tutorGroupId+' · '+get('houses',p.houseId).name,terms:[p.id,p.tutorGroupId,p.tags]})),
       ...[...accessibleClassIds].map(id=>{const c=classInfo(id);return {kind:'class',id,title:c.code+' · '+c.name,sub:c.course.name+' · '+c.teachers,terms:[c.faculty.name,c.id]};}),
       ...visibleCases.map(c=>{const r=enrichCase(c);return {kind:'case',id:c.id,title:r.student.name+' · '+r.status,sub:r.classInfo.code+' · '+r.student.tutorGroupId,terms:[c.id,r.faculty,c.reason]};}),
