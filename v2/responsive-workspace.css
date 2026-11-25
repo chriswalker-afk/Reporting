@@ -437,7 +437,6 @@
  .home-cohort .disclosure-body>.surface>.panel-head,.home-lower>.disclosure-home-secondary>.disclosure-body>.surface>.panel-head{padding:6px 9px}
  .home-attention>.disclosure-home-secondary{border:0;border-block:1px solid var(--line);border-radius:0}
  .home-attention>.disclosure-home-secondary>.disclosure-body{padding:0}
- .home-urgent{border-top:3px solid var(--danger)}
  .home-urgent .panel-head{gap:6px}
  .home-urgent .panel-head h2{margin-right:auto}
  .home-reporting .panel-head h2,.home-attention .panel-head h2,.home-lower .panel-head h2{min-width:0;overflow-wrap:anywhere}
@@ -457,7 +456,7 @@
  .app-shell[data-workspace-density="compact"] .home-role-context,.app-shell[data-workspace-density="compact"] .home-date{margin-top:3px}
  /* A single desktop line, with intrinsic wrapping for smaller workspaces
     and page zoom. No hidden counters or horizontally scrolling toolbar. */
- .notices-header{display:flex;align-items:center;flex-wrap:wrap;gap:3px 6px;padding:5px 9px;margin:0 0 8px;border-left:3px solid var(--jis-burgundy);min-width:0}
+ .notices-header{display:flex;align-items:center;flex-wrap:wrap;gap:3px 6px;padding:5px 9px;margin:0 0 8px;min-width:0}
  .notices-header-title{display:flex;align-items:center;gap:3px;flex:none;margin-right:4px}
  .notices-header-title h1{font-size:clamp(19px,1.7vw,25px);line-height:1.2}
  .notices-header .notices-header-stat{min-height:32px;min-width:0;max-width:100%;padding:4px 6px;gap:5px;text-align:left;white-space:normal;line-height:1.35;overflow-wrap:anywhere;font-weight:550;font-size:12px}
@@ -805,7 +804,7 @@
 /* PR42: compact directory and class headers. Intrinsic flex wrapping follows
    the actual workspace width, including rail navigation and per-page zoom. */
 @media screen{
- .compact-workspace-header{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:5px 9px;margin:0 0 8px;border-left:3px solid var(--jis-burgundy);min-width:0;max-width:100%}
+ .compact-workspace-header{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:5px 9px;margin:0 0 8px;min-width:0;max-width:100%}
  .compact-header-identity{display:flex;align-items:center;flex-wrap:wrap;gap:3px 9px;min-width:0;max-width:100%;flex:0 1 auto}
  .compact-header-identity h1{font-size:clamp(19px,1.7vw,25px);line-height:1.2;overflow-wrap:anywhere}
  .compact-header-context{font-size:12px;color:var(--muted);line-height:1.3;overflow-wrap:anywhere;min-width:0}

@@ -102,6 +102,32 @@ try{
  };
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
  await open();
+ // PR43: check actual computed styles, not simply the presence of class names.
+ const surfaceStyle=selector=>evaluate(sel=>{
+  const el=document.querySelector(sel);if(!el)throw Error('Missing surface '+sel);
+  const style=getComputedStyle(el);
+  return {bg:style.backgroundColor,top:style.borderTopColor,left:style.borderLeftColor,topWidth:parseFloat(style.borderTopWidth),leftWidth:parseFloat(style.borderLeftWidth),shadow:style.boxShadow};
+ },selector);
+ const burgundy='rgb(130, 5, 47)',dangerColor='rgb(160, 62, 60)',canvasColor='rgb(237, 233, 235)';
+ const accent=async(selector,side='top',color=burgundy)=>{
+  const style=await surfaceStyle(selector);
+  assert.equal(style[side],color,selector+' accent colour');
+  assert.ok(style[side+'Width']>=3,selector+' accent width');
+ };
+ const plain=async selector=>{
+  const style=await surfaceStyle(selector);
+  assert.ok(style.topWidth<=1&&style.leftWidth<=1,selector+' should not have a heavy accent');
+ };
+ assert.equal((await surfaceStyle('#workspace')).bg,canvasColor);
+ assert.equal((await surfaceStyle('.home-reporting>.surface')).bg,'rgb(255, 255, 255)');
+ assert.notEqual((await surfaceStyle('.home-reporting>.surface')).shadow,'none');
+ await accent('#attention-panel');await accent('.home-reporting>.surface');
+ await accent('.home-welcome','left');await plain('.home-welcome .jis-welcome-copy');
+ await accent('[data-workspace-disclosure="home-academic-summary"]','left');
+ await accent('[data-workspace-disclosure="home-cohort"]','left');
+ await plain('.home-cohort .disclosure-body>.surface');
+ assert.equal((await surfaceStyle('.home-cohort .disclosure-body>.surface')).shadow,'none');
+ if(await q('.home-urgent'))await accent('.home-urgent','top',dangerColor);
  assert.match(await heading(),/Welcome, Sam/);
  assert.ok(await q('.jis-crest'));assert.ok(await q('.jis-welcome-photo img'));
  assert.ok(await q('.home-dashboard[data-home-scope="faculty"]'));
@@ -116,6 +142,8 @@ try{
  }
  // Expandable staffroom board preserves access to the notice detail drawer.
  await action('navigate','notices');
+ await accent('.notices-header','left');await accent('.noticeboard-shell');await accent('#schedule-panel>.surface');
+ await plain('.workspace-inner>.surface.toolbar');await plain('.notice-paper');
  assert.ok(await q('.noticeboard-content .notice-paper'));
  await action('toggle-noticeboard');
  assert.ok(await q('.board-expanded [aria-expanded="true"][data-action="toggle-noticeboard"]'));
@@ -270,6 +298,9 @@ try{
  await close();
  // A direct queue action is editable; cancellation protects unsaved case input.
  await action('navigate','intervention');
+ await accent('.compact-header-intervention','left');await accent('.intervention-register');
+ await accent('[data-workspace-disclosure="case-progression"]','left');
+ await plain('.case-pipeline');assert.equal((await surfaceStyle('.case-pipeline')).shadow,'none');
  assert.equal(await evaluate(()=>document.querySelectorAll('.case-stage-card').length),3);
  await action('case-focus','w1');
  assert.equal(await evaluate(()=>document.querySelector('#case-filter').value),'w1');
@@ -277,6 +308,8 @@ try{
  await action('case-focus','study');
  assert.equal(await evaluate(()=>document.querySelector('#case-filter').value),'study');
  await action('open-case-plan','I001');
+ await accent('.case-identity','left');await accent('#case-study-plan');await plain('.case-task');
+ assert.equal((await surfaceStyle('#detail-dialog .drawer-body')).bg,canvasColor);
  assert.ok(await q('#detail-dialog.wide-case #case-study-plan'));
  assert.equal(await evaluate(()=>document.activeElement.id),'case-study-plan');
  assert.match(await text('#case-study-plan'),/Measurable target/);
@@ -897,6 +930,7 @@ try{
  // PR32: expanded analytical panels retain filters and working evidence links.
  await open('v2/#classes/11-maths-1/class-analysis');
  await viewport(1440,900);
+ await accent('.analysis-panel');await plain('.analysis-controls');
  const panelSelector=key=>'[data-expandable-panel='+JSON.stringify(key)+']';
  const hist=panelSelector('analysis:Percentage distribution'),gradePanel=panelSelector('analysis:Grade distribution');
  const histSize=()=>evaluate(sel=>document.querySelector(sel+' .frequency-column').clientHeight,hist);
@@ -917,6 +951,7 @@ try{
  assert.equal(await evaluate(sel=>document.querySelector(sel).dataset.panelExpanded,gradePanel),'false');
  // Drawer expansion preserves dirty form controls and existing discard guard.
  await action('class-tab','information');
+ await accent('.compact-header-class','left');await accent('.class-register');await accent('[data-workspace-disclosure="class-summary"]','left');
  await action('edit-prediction','P121@11-maths','.roster-table ');
  const predictionBefore=await evaluate(()=>document.querySelector('#prediction').value),predictionDraft=predictionBefore==='8'?'7':'8';
  await fill('#prediction',predictionDraft);
@@ -942,6 +977,8 @@ try{
  await action('open-student','P121','.roster-table ');
  assert.match(await detail(),/Demo Student 121/);
  assert.ok(await q('.profile-identity-main .house-badge-large'));
+ await accent('.profile-identity','left');await accent('.profile-tab-body>.profile-section');
+ assert.equal((await surfaceStyle('#detail-dialog .drawer-body')).bg,canvasColor);
  await action('drawer-expand',undefined,'#detail-dialog ');
  await click('.profile-identity-staff summary');
  assert.ok(await visible('.profile-identity-staff .drawer-summary'));
@@ -1030,6 +1067,8 @@ try{
  await viewport(1440,900);
  // PR42: the directory header shares one desktop line and reflows on phones.
  await action('navigate','classes');
+ await accent('.compact-header-directory','left');
+ await accent('.workspace-inner>.surface:has(>[data-workspace-disclosure="class-index-filters"])');
  const compactHeaderGeometry=()=>evaluate(()=>{
   const header=document.querySelector('.compact-workspace-header'),r=header.getBoundingClientRect();
   const items=[...header.children].map(el=>el.getBoundingClientRect());
@@ -1056,6 +1095,8 @@ try{
  assert.ok(await q('.compact-header-class'));
  await action('go-classes');
  await action('navigate','students');
+ await accent('.compact-header-students','left');
+ await accent('.workspace-inner>.surface:has(>[data-workspace-disclosure="student-filters"])');
  assert.ok(await visible('.compact-header-students [data-action="students-due"]'));
  await action('students-below',undefined,'.compact-header-students ');
  assert.equal(await evaluate(()=>document.querySelector('#student-attainment').value),'below');
@@ -1324,6 +1365,7 @@ try{
  await action('gradebook-undo');assert.equal(await evaluate(sel=>document.querySelector(sel).value,firstYear),oldFlyoutMark);
  assert.match(await text('#gradebook-save-status'),/All changes saved/);
  // PR40: compact assessment headers reveal details without replacing the grid.
+ await accent('.gradebook-surface');
  await viewport(1260,514);
  await action('reset-workspace-display');
  if(await evaluate(()=>document.querySelector('#gradebook-surface').dataset.headerDetails==='true'))await action('gradebook-header-toggle');
