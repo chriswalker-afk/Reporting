@@ -1,0 +1,76 @@
+/* PR43: JIS surface hierarchy. Only visual treatments, not layout or
+   interaction rules. These are shared across existing semantic panels so
+   collapsed summaries and dynamically rendered views receive the same style. */
+@media screen {
+ :root{
+  --canvas:#ede9eb;
+  --surface-bg:#fff;
+  --surface-border:#d4ccd0;
+  --shadow-subtle:0 1px 2px rgb(48 21 28 / 7%),0 3px 8px rgb(48 21 28 / 5%);
+  --surface-accent-width:3px;
+ }
+ /* Keep inner grid lines and status borders on their original tokens. */
+ .workspace,.detail-dialog .drawer-body:has(>.profile-top,>.case-workspace){background:var(--canvas)}
+ .surface,.metric,.home-welcome,
+ .disclosure-home-secondary,.disclosure-metrics,
+ .profile-identity,.case-identity,.profile-section,
+ .case-workspace .drawer-section,.case-action-strip{
+  border-color:var(--surface-border);
+  box-shadow:var(--shadow-subtle);
+ }
+ .surface,.metric,.profile-section,.case-workspace .drawer-section{background:var(--surface-bg)}
+ /* Context strips that did not previously have an enclosing surface. */
+ .analysis-context{
+  background:var(--surface-bg);
+  border:1px solid var(--surface-border);
+  border-radius:7px;
+  padding-inline:8px;
+ }
+ /* Top accents identify the main working panels. The two directory
+    selectors target the outer register, not the individual pupil cards. */
+ .surface-accent-top,
+ .home-attention,.home-reporting>.surface,
+ .noticeboard-shell,#schedule-panel>.surface,
+ .workspace-inner>.surface:has(>[data-workspace-disclosure="class-index-filters"],>[data-workspace-disclosure="student-filters"]),
+ .class-register,.gradebook-surface,.report-grades,.intervention-register,
+ .analysis-panel,.analysis-focus,
+ .profile-tab-body>.profile-section,.profile-analysis-grid>.profile-section,
+ .case-workspace>.drawer-section:not(details),.case-overview-grid>.drawer-section{
+  border-top:var(--surface-accent-width) solid var(--jis-burgundy);
+ }
+ /* Left accents identify context and summaries, including closed disclosures. */
+ .surface-accent-left,
+ .notices-header,.compact-workspace-header,.analysis-context,
+ .home-dashboard>[data-workspace-disclosure="home-academic-summary"],
+ .home-cohort>[data-workspace-disclosure="home-cohort"],
+ .home-lower>[data-workspace-disclosure="home-latest-notices"],
+ [data-workspace-disclosure="class-summary"],
+ [data-workspace-disclosure="case-progression"],
+ .profile-identity,.case-identity{
+  border-left:var(--surface-accent-width) solid var(--jis-burgundy);
+ }
+ /* Move the welcome stripe onto the enclosing banner; retain its original
+    four-pixel thickness and do not duplicate the edge inside the copy. */
+ .home-dashboard .home-welcome{border-left:4px solid var(--jis-burgundy)}
+ /* Genuine urgency is red, not the standard JIS maroon. */
+ .home-urgent{border-top:var(--surface-accent-width) solid var(--danger)}
+ /* Nested panels already have a visual boundary: no extra accent/shadow.
+    Keep the outer disclosure as the single visible card when expanded. */
+ .home-dashboard .disclosure-home-secondary>.disclosure-body>.surface,
+ [data-workspace-disclosure="case-progression"]>.disclosure-body>.case-pipeline{
+  border:0;
+  box-shadow:none;
+ }
+ .home-attention>.disclosure-home-secondary{
+  border:0;
+  border-block:1px solid var(--line);
+  box-shadow:none;
+ }
+ .disclosure-body .metric{box-shadow:none}
+ /* Full-screen spreadsheet is a utilitarian working area. Keep the
+    accent without casting a shadow around the viewport. */
+ #app[data-gradebook-focus="true"] .gradebook-surface{box-shadow:none}
+}
+@media print {
+ .surface,.metric,.drawer-section,.disclosure-home-secondary,.disclosure-metrics{box-shadow:none!important}
+}
