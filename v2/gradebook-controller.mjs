@@ -3,8 +3,10 @@ import {createEditHistory,selectedRectangle,copyRectangle,planRangeEdit,exportGr
 import {projectGradebook,groupSummary,targetGap,markDisplay,itemDisplay} from './gradebook-layout.mjs';
 import {nextMarkCell} from './assessment-refinement.mjs';
 import {pct} from './workspace.mjs';
+import {createDraftStore,draftStorageKey,restorableDrafts} from './gradebook-drafts.mjs';
 
-export function createGradebookController({root,getWorkspace,getStore,getStaff,notify}){
+export function createGradebookController({root,getWorkspace,getStore,getStaff,notify,storage=null}){
+ const drafts=createDraftStore(storage);let draftKey=null,draftKept=false;
  let context=null,layout=null,book=null,overview=null,columns=[],projection=null,records=new Map(),revision=null,edits=new Map(),anchor=null,end=null,saving=false;
  const history=createEditHistory();let stagedImport=null;
  const surface=()=>root.querySelector('#gradebook-surface');
@@ -18,14 +20,16 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(!dirty())return true;
   error('Save or discard gradebook changes before leaving this view.');return false;
  }
- function reset(){edits.clear();history.reset();stagedImport=null;anchor=end=null;context=layout=null;overview=book=projection=null;columns=[];records.clear();revision=null;}
+ function reset(){draftKey=null;edits.clear();history.reset();stagedImport=null;anchor=end=null;context=layout=null;overview=book=projection=null;columns=[];records.clear();revision=null;}
  function mount(){
   const node=surface();
   if(!node){if(!dirty())reset();return;}
   stagedImport=null;
   const w=getWorkspace(),key=JSON.stringify([getStaff(),w.scope,node.dataset.classId,node.dataset.unitId]);
-  if(context!==key){if(dirty()){error('Unsaved changes belong to a different gradebook. Return to that view.');return;}context=key;anchor=end=null;history.reset();revision=getStore().revision();}
+  const opened=context!==key;
+  if(opened){if(dirty()){error('Unsaved changes belong to a different gradebook. Return to that view.');return;}context=key;anchor=end=null;history.reset();revision=getStore().revision();}
   if(!dirty())revision=getStore().revision();
+  draftKey=draftStorageKey(getStaff(),node.dataset.classId,node.dataset.unitId);
   book=w.markbook(node.dataset.classId);overview=book.overview(node.dataset.unitId);
   projection=projectGradebook(overview,book.units,JSON.parse(node.dataset.layout??'{}'),JSON.parse(node.dataset.expanded??'[]'),w.asOf,node.dataset.entryView==='single'?{assessmentId:node.dataset.entryAssessment,itemId:node.dataset.entryItem}:null);
   columns=projection.columns;
@@ -33,7 +37,9 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(layout!==nextLayout){anchor=end=null;layout=nextLayout;}
   records=new Map();
   for(const p of overview.rows)for(const a of overview.assessments)records.set(entryKey(a.id,p.enrolmentId),{a,r:p.results[a.id]});
+  const recovered=opened&&!dirty()?recoverDrafts():0;
   syncValues();refresh();invalidateImport();
+  if(recovered)notify('Recovered '+recovered+' unsaved result'+(recovered===1?'':'s')+' from your last session. Check them, then Save changes (or Discard).');
  }
  function syncValues(skip=null){
   for(const el of cells()){
@@ -44,6 +50,12 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   for(const el of root.querySelectorAll('.gradebook-result-status')){
    const key=keyOf(el);el.value=edits.get(key)?.draft.status??records.get(key).r.entryStatus;
   }
+ }
+ function recoverDrafts(){
+  const {restored,skipped}=restorableDrafts(drafts.load(draftKey),records);
+  for(const [key,draft] of restored){try{setDraft(key,draft);}catch{}}
+  if(skipped&&!restored.length)drafts.clear(draftKey);
+  return edits.size;
  }
  function setDraft(key,draft){
   const {a,r}=records.get(key),decoded=decodeDraft(a,r,draft);
@@ -102,10 +114,11 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   }
   for(const node of root.querySelectorAll('[data-gradebook-coverage]'))node.textContent=coverage.get(node.dataset.gradebookCoverage)+'/'+overview.rows.length+' scored';
   const invalid=[...edits.values()].filter(c=>!c.entry).length,status=root.querySelector('#gradebook-save-status');
-  if(status)status.textContent=dirty()?edits.size+' unsaved result'+(edits.size===1?'':'s')+(invalid?' · '+invalid+' invalid':''):'All changes saved';
+  if(draftKey)draftKept=drafts.save(draftKey,edits,records);
+  if(status)status.textContent=dirty()?edits.size+' unsaved result'+(edits.size===1?'':'s')+(invalid?' · '+invalid+' invalid':'')+(draftKept?' · draft kept on this device':''):'All changes saved';
   const hidden=root.querySelector('[data-gradebook-hidden-edits]');if(hidden){const count=[...edits].filter(([key,change])=>{const record=records.get(key);if(!projection.shownIds.has(record?.a.id))return true;return Boolean(projection.single&&record?.a.items.some(i=>i.id!==projection.single.item?.id&&(change.draft.raw[i.id]!==String(record.r.marks[i.id]??'')||change.errors[i.id])));}).length;hidden.textContent=count?count+' unsaved result'+(count===1?'':'s')+(projection.single?' with changes outside this view — switch assessment or question, or return to spreadsheet':' in hidden assessments — Show all to review'):'';}
   const save=root.querySelector('[data-action="gradebook-save"]'),discard=root.querySelector('[data-action="gradebook-discard"]');
-  if(save)save.disabled=!dirty()||invalid>0;if(discard)discard.disabled=!dirty();
+  if(save){save.disabled=!dirty()||invalid>0;save.textContent=dirty()?'Save '+edits.size+' change'+(edits.size===1?'':'s'):'Save changes';}if(discard)discard.disabled=!dirty();
   paintSelection();
  }
  function paintSelection(){
@@ -131,7 +144,11 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
  function onFocus(el){if(!el.matches?.('.gradebook-cell'))return;const p=point(el);if(end?.row===p.row&&end?.col===p.col)return;anchor=end=p;paintSelection();}
  function pointer(event){
   const el=event.target.closest?.('.gradebook-cell');if(!el)return;
-  if(event.shiftKey){event.preventDefault();focus(el,{extend:true});}else{anchor=end=point(el);paintSelection();}
+  if(event.shiftKey){event.preventDefault();focus(el,{extend:true});}
+  // Spreadsheet behaviour: the first click selects the whole mark so typing replaces it;
+  // clicking an already-focused cell places the caret for editing within it.
+  else if(event.pointerType==='mouse'&&event.button===0&&document.activeElement!==el){event.preventDefault();focus(el);}
+  else{anchor=end=point(el);paintSelection();}
  }
  function onInput(el){
   if(el.id==='gradebook-import-text'){invalidateImport();return true;}
@@ -288,5 +305,5 @@ export function createGradebookController({root,getWorkspace,getStore,getStaff,n
   if(!next&&key!=='Enter')return false;
   event.preventDefault();if(next){if(event.shiftKey&&key.startsWith('Arrow')&&(!anchor||!end||end.row!==point(el).row||end.col!==point(el).col))anchor=end=point(el);focus(next.input,{extend:event.shiftKey&&key.startsWith('Arrow')});}return true;
  }
- return {mount,isDirty:dirty,guard,onInput,onChange,onFocus,pointer,paste,copy,keyboard,save,discard,bulkAction};
+ return {clearSavedDrafts:()=>drafts.clearAll(),mount,isDirty:dirty,guard,onInput,onChange,onFocus,pointer,paste,copy,keyboard,save,discard,bulkAction};
 }
